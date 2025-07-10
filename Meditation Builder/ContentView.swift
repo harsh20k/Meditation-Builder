@@ -44,15 +44,39 @@ struct RoutineBuilderView: View {
     @State private var showBellPickerIndex: IdentifiableInt? = nil
     @State private var isSaving = false
     @State private var isStarting = false
+    @State private var draggingBlock: MeditationBlock? = nil
+    @State private var dragOffset: CGSize = .zero
+    @State private var dragIndex: Int? = nil
+    @State private var blockOffsets: [UUID: CGFloat] = [:]
+    @GestureState private var isDetectingLongPress = false
     
     var totalTime: Int {
         routine.blocks.map { $0.durationInMinutes }.reduce(0, +)
     }
     
+    func moveBlock(from source: Int, to destination: Int) {
+        guard source != destination, source < routine.blocks.count, destination < routine.blocks.count else { return }
+        var newBlocks = routine.blocks
+        let moved = newBlocks.remove(at: source)
+        newBlocks.insert(moved, at: destination)
+        routine.blocks = newBlocks
+        // For simplicity, clear all bells after reorder
+        routine.transitionBells = Array(repeating: nil, count: newBlocks.count > 0 ? newBlocks.count - 1 : 0)
+    }
+    
+    func deleteBlock(at index: Int) {
+        routine.blocks.remove(at: index)
+        if routine.transitionBells.indices.contains(index) {
+            routine.transitionBells.remove(at: index)
+        } else if routine.transitionBells.indices.contains(index - 1) {
+            routine.transitionBells.remove(at: index - 1)
+        }
+    }
+    
     var body: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                Color.black.ignoresSafeArea()
+            ZStack(alignment: .bottomTrailing) {
+                Color(red: 0.07, green: 0.07, blue: 0.07).ignoresSafeArea()
                 VStack(spacing: 0) {
                     HStack {
                         Text("Your Routine")
@@ -62,18 +86,26 @@ struct RoutineBuilderView: View {
                         Button("Save") {
                             isSaving = true // Placeholder
                         }
-                        .foregroundColor(.blue)
+                        .foregroundColor(.white)
                         .padding(.trailing, 8)
                     }
                     .padding([.top, .horizontal])
                     
                     ScrollView {
                         VStack(spacing: 0) {
-                            ForEach(routine.blocks.indices, id: \ .self) { idx in
-                                RoutineBlockView(
-                                    block: routine.blocks[idx],
-                                    onEdit: { editBlock = routine.blocks[idx] },
-                                    onDrag: {} // Placeholder
+                            ForEach(Array(routine.blocks.enumerated()), id: \ .element.id) { (idx, block) in
+                                DraggableSwipeableBlock(
+                                    block: block,
+                                    onEdit: { editBlock = block },
+                                    onDelete: { deleteBlock(at: idx) },
+                                    onDrag: { dragState in
+                                        if let from = dragState.from, let to = dragState.to {
+                                            moveBlock(from: from, to: to)
+                                        }
+                                    },
+                                    index: idx,
+                                    blocksCount: routine.blocks.count,
+                                    draggingBlock: $draggingBlock
                                 )
                                 .padding(.horizontal)
                                 .padding(.top, idx == 0 ? 16 : 8)
@@ -86,18 +118,6 @@ struct RoutineBuilderView: View {
                                     .padding(.horizontal, 32)
                                 }
                             }
-                            Button(action: { showAddBlock = true }) {
-                                Text("+ Add Block")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                    .padding(.horizontal, 32)
-                                    .padding(.vertical, 12)
-                                    .background(
-                                        Capsule()
-                                            .stroke(Color.gray.opacity(0.7), lineWidth: 2)
-                                    )
-                            }
-                            .padding(.top, 24)
                         }
                         .padding(.bottom, 32)
                     }
@@ -108,6 +128,7 @@ struct RoutineBuilderView: View {
                         .padding(.top, 8)
                         .padding(.bottom, 4)
                         .frame(maxWidth: .infinity)
+                        .background(Color.clear)
                     
                     Button(action: { isStarting = true }) {
                         Text("Start Routine")
@@ -115,12 +136,33 @@ struct RoutineBuilderView: View {
                             .foregroundColor(.black)
                             .frame(maxWidth: .infinity)
                             .padding()
-                            .background(Color.white)
-                            .cornerRadius(16)
+                            .background(
+                                Capsule()
+                                    .fill(Color.white)
+                            )
                             .padding(.horizontal)
                             .padding(.bottom, 12)
                     }
+                    .background(Color.clear)
                 }
+                // Floating Add Button (higher position)
+                Button(action: { showAddBlock = true }) {
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 24, style: .continuous)
+                            .fill(Color(red: 0.13, green: 0.13, blue: 0.15))
+                            .frame(width: 56, height: 56)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 24, style: .continuous)
+                                    .stroke(Color.white, lineWidth: 2)
+                            )
+                        Image(systemName: "plus")
+                            .foregroundColor(.white)
+                            .font(.system(size: 28, weight: .bold))
+                    }
+                }
+                .padding(.trailing, 24)
+                .padding(.bottom, 100) // Higher to clear Start Routine button
+                .shadow(radius: 8)
             }
             .sheet(item: $editBlock) { block in
                 EditBlockView(block: block) { updatedBlock in
@@ -150,15 +192,102 @@ struct RoutineBuilderView: View {
     }
 }
 
+// MARK: - DraggableSwipeableBlock
+struct DraggableSwipeableBlock: View {
+    let block: MeditationBlock
+    var onEdit: () -> Void
+    var onDelete: () -> Void
+    var onDrag: (_ dragState: (from: Int?, to: Int?)) -> Void
+    let index: Int
+    let blocksCount: Int
+    @Binding var draggingBlock: MeditationBlock?
+    @State private var offset: CGFloat = 0
+    @GestureState private var dragTranslation: CGSize = .zero
+    @State private var isSwiped: Bool = false
+    
+    var body: some View {
+        ZStack(alignment: .leading) {
+            // Swipe to delete background
+            HStack {
+                Spacer()
+                Button(action: {
+                    withAnimation { isSwiped = false }
+                    onDelete()
+                }) {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                        .padding()
+                        .background(Color.white.opacity(0.1))
+                        .clipShape(Circle())
+                }
+                .padding(.trailing, 16)
+            }
+            .frame(maxWidth: .infinity)
+            .background(Color.clear)
+            
+            RoutineBlockView(block: block, onEdit: onEdit)
+                .offset(x: isSwiped ? -80 : dragTranslation.width)
+                .gesture(
+                    DragGesture(minimumDistance: 10, coordinateSpace: .local)
+                        .updating($dragTranslation) { value, state, _ in
+                            if abs(value.translation.width) > abs(value.translation.height) {
+                                state = value.translation
+                            }
+                        }
+                        .onEnded { value in
+                            if value.translation.width < -60 {
+                                withAnimation { isSwiped = true }
+                            } else if value.translation.width > 40 {
+                                withAnimation { isSwiped = false }
+                            }
+                        }
+                )
+                .simultaneousGesture(
+                    LongPressGesture(minimumDuration: 0.2)
+                        .onEnded { _ in
+                            draggingBlock = block
+                        }
+                )
+                .gesture(
+                    DragGesture(minimumDistance: 10)
+                        .onChanged { value in
+                            if draggingBlock == block {
+                                offset = value.translation.height
+                            }
+                        }
+                        .onEnded { value in
+                            if draggingBlock == block {
+                                let dragThreshold: CGFloat = 40
+                                var from = index
+                                var to = index
+                                if value.translation.height < -dragThreshold && index > 0 {
+                                    to = index - 1
+                                } else if value.translation.height > dragThreshold && index < blocksCount - 1 {
+                                    to = index + 1
+                                }
+                                if from != to {
+                                    onDrag((from: from, to: to))
+                                }
+                                offset = 0
+                                draggingBlock = nil
+                            }
+                        }
+                )
+                .offset(y: draggingBlock == block ? offset : 0)
+                .animation(.spring(), value: offset)
+        }
+        .animation(.spring(), value: isSwiped)
+    }
+}
+
 // MARK: - RoutineBlockView
 struct RoutineBlockView: View {
     let block: MeditationBlock
     var onEdit: () -> Void
-    var onDrag: () -> Void // Placeholder for drag
     var body: some View {
         HStack {
             Image(systemName: "line.3.horizontal")
-                .foregroundColor(.gray)
+                .foregroundColor(.white)
                 .padding(.trailing, 8)
             VStack(alignment: .leading) {
                 Text(block.name)
@@ -169,14 +298,22 @@ struct RoutineBlockView: View {
                     .foregroundColor(.gray)
             }
             Spacer()
-            Button("Edit") { onEdit() }
-                .foregroundColor(.blue)
+            Button(action: onEdit) {
+                Image(systemName: "pencil")
+                    .foregroundColor(.white)
+            }
         }
-        .padding()
+        .padding(.vertical, 12)
+        .padding(.horizontal, 16)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(red: 0.13, green: 0.13, blue: 0.15))
+            Capsule()
+                .fill(Color(red: 0.09, green: 0.09, blue: 0.11))
         )
+        .overlay(
+            Capsule()
+                .stroke(Color.white, lineWidth: 2)
+        )
+        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
     }
 }
 
