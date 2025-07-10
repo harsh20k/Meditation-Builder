@@ -91,6 +91,7 @@ struct RoutineBuilderView: View {
     @State private var dragIndex: Int? = nil
     @State private var blockOffsets: [UUID: CGFloat] = [:]
     @GestureState private var isDetectingLongPress = false
+    @State private var showBellPickerIndex: IdentifiableInt? = nil
     
     let bgColor = Color(red: 34/255, green: 38/255, blue: 45/255) // #22262D
     let cardColor = Color(red: 42/255, green: 46/255, blue: 55/255) // #2A2E37
@@ -170,7 +171,10 @@ struct RoutineBuilderView: View {
                                     index: idx,
                                     blocksCount: routine.blocks.count,
                                     draggingBlock: $draggingBlock,
-                                    bell: idx < routine.transitionBells.count ? routine.transitionBells[idx] : nil
+                                    bell: idx < routine.transitionBells.count ? routine.transitionBells[idx] : nil,
+                                    onBellTap: {
+                                        showBellPickerIndex = IdentifiableInt(value: idx)
+                                    }
                                 )
                                 .frame(height: 76)
                             }
@@ -224,6 +228,13 @@ struct RoutineBuilderView: View {
                 CustomTabBar(bgColor: bgColor, orange: orange)
             }
         }
+        .sheet(item: $showBellPickerIndex) { identifiable in
+            let idx = identifiable.value
+            BellPickerView(selected: routine.transitionBells[idx]) { bell in
+                routine.transitionBells[idx] = bell
+                showBellPickerIndex = nil
+            }
+        }
         .sheet(item: $editBlock) { block in
             EditBlockView(block: block) { updatedBlock in
                 if let idx = routine.blocks.firstIndex(where: { $0.id == updatedBlock.id }) {
@@ -257,6 +268,7 @@ struct TimelineBlockCard: View {
     let blocksCount: Int
     @Binding var draggingBlock: MeditationBlock?
     let bell: TransitionBell?
+    var onBellTap: (() -> Void)? = nil
     @State private var offset: CGFloat = 0
     @GestureState private var dragTranslation: CGSize = .zero
     @State private var isSwiped: Bool = false
@@ -299,10 +311,12 @@ struct TimelineBlockCard: View {
                 }
                 Spacer()
                 if !isLast {
-                    Image(systemName: "bell.fill")
-                        .foregroundColor(orange)
-                        .font(.system(size: 18, weight: .bold))
-                        .padding(.bottom, 2)
+                    Button(action: { onBellTap?() }) {
+                        Image(systemName: "bell.fill")
+                            .foregroundColor(orange)
+                            .font(.system(size: 18, weight: .bold))
+                    }
+                    .padding(.bottom, 2)
                 }
                 Button(action: onEdit) {
                     Image(systemName: "pencil")
@@ -376,43 +390,83 @@ struct EditBlockView: View {
     @State var block: MeditationBlock
     var onSave: (MeditationBlock) -> Void
     @Environment(\.dismiss) var dismiss
+    
+    let bgColor = Color(red: 34/255, green: 38/255, blue: 45/255) // #22262D
+    let cardColor = Color(red: 42/255, green: 46/255, blue: 55/255) // #2A2E37
+    let orange = Color(red: 1.0, green: 122/255, blue: 0) // #FF7A00
+    let lightGrey = Color(red: 176/255, green: 176/255, blue: 176/255) // #B0B0B0
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                HStack {
-                    Text(block.type.icon)
-                        .font(.title)
-                    TextField("Name", text: $block.name)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                        .font(.headline)
+            ZStack {
+                bgColor.ignoresSafeArea()
+                VStack(spacing: 32) {
+                    VStack(spacing: 24) {
+                        HStack(spacing: 16) {
+                            ZStack {
+                                Circle()
+                                    .fill(orange)
+                                    .frame(width: 40, height: 40)
+                                Image(systemName: block.type.icon)
+                                    .foregroundColor(.white)
+                                    .font(.system(size: 22, weight: .bold))
+                            }
+                            TextField("Name", text: $block.name)
+                                .font(.system(size: 17, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(cardColor)
+                                .cornerRadius(12)
+                        }
+                        .padding(.horizontal, 8)
+                        Stepper(value: $block.durationInMinutes, in: 1...60) {
+                            Text("Duration: \(block.durationInMinutes) min")
+                                .font(.system(size: 15, weight: .regular, design: .rounded))
+                                .foregroundColor(lightGrey)
+                        }
+                        .padding(.horizontal, 8)
+                    }
+                    .padding(.vertical, 24)
+                    .padding(.horizontal, 12)
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(cardColor)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.18), radius: 4, x: 0, y: 2)
+                    
+                    Button(action: {
+                        onSave(block)
+                        dismiss()
+                    }) {
+                        Text("Save")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(
+                                Capsule()
+                                    .fill(orange)
+                            )
+                    }
+                    .padding(.horizontal)
+                    Spacer()
                 }
-                
-                Stepper(value: $block.durationInMinutes, in: 1...60) {
-                    Text("Duration: \(block.durationInMinutes) min")
-                        .font(.subheadline)
-                }
-                
-                Spacer()
             }
-            .padding()
             .navigationTitle("Edit Block")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .navigationBarLeading) {
+                ToolbarItem(placement: .navigationBarTrailing) {
                     Button("Cancel") {
                         dismiss()
                     }
-                }
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Save") {
-                        onSave(block)
-                        dismiss()
-                    }
-                    .fontWeight(.semibold)
+                    .foregroundColor(orange)
                 }
             }
         }
-        .background(Color(.systemBackground))
     }
 }
 
@@ -627,36 +681,85 @@ struct BellPickerView: View {
     var onSelect: (TransitionBell?) -> Void
     @Environment(\.dismiss) var dismiss
     let bells = ["None", "Soft Bell", "Tibetan Bowl", "Digital Chime"]
+    
+    let bgColor = Color(red: 34/255, green: 38/255, blue: 45/255) // #22262D
+    let cardColor = Color(red: 42/255, green: 46/255, blue: 55/255) // #2A2E37
+    let orange = Color(red: 1.0, green: 122/255, blue: 0) // #FF7A00
+    let lightGrey = Color(red: 176/255, green: 176/255, blue: 176/255) // #B0B0B0
+    
+    var bellIcon: (String) -> String = { name in
+        switch name {
+        case "None": return "bell.slash.fill"
+        case "Soft Bell": return "bell.fill"
+        case "Tibetan Bowl": return "circle.grid.cross"
+        case "Digital Chime": return "waveform"
+        default: return "bell"
+        }
+    }
+    
     var body: some View {
         NavigationView {
-            VStack(spacing: 24) {
-                ForEach(bells, id: \.self) { name in
-                    Button(action: {
-                        onSelect(name == "None" ? nil : TransitionBell(soundName: name))
-                        dismiss()
-                    }) {
-                        HStack {
-                            Text(name == "None" ? "🔕" : "🔔")
-                                .font(.title2)
-                            Text(name)
-                                .font(.headline)
-                            Spacer()
-                            if selected?.soundName == name {
-                                Image(systemName: "checkmark")
-                                    .foregroundColor(.blue)
+            ZStack {
+                bgColor.ignoresSafeArea()
+                ScrollView(showsIndicators: false) {
+                    ZStack(alignment: .leading) {
+                        if bells.count > 1 {
+                            GeometryReader { geo in
+                                let blockHeight: CGFloat = 76
+                                let spacing: CGFloat = 20
+                                let totalHeight = CGFloat(bells.count) * blockHeight + CGFloat(bells.count - 1) * spacing
+                                Rectangle()
+                                    .fill(lightGrey.opacity(0.25))
+                                    .frame(width: 2, height: totalHeight - blockHeight/2)
+                                    .offset(x: 54, y: blockHeight/2)
                             }
                         }
-                        .padding()
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(.systemGray6))
-                        )
+                        VStack(spacing: 20) {
+                            ForEach(bells, id: \.self) { name in
+                                HStack(alignment: .center, spacing: 16) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(orange)
+                                            .frame(width: 40, height: 40)
+                                        Image(systemName: bellIcon(name))
+                                            .foregroundColor(.white)
+                                            .font(.system(size: 22, weight: .bold))
+                                    }
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(name)
+                                            .font(.system(size: 17, weight: .bold, design: .rounded))
+                                            .foregroundColor(.white)
+                                    }
+                                    Spacer()
+                                    if selected?.soundName == name || (selected == nil && name == "None") {
+                                        Image(systemName: "checkmark.circle.fill")
+                                            .foregroundColor(orange)
+                                            .font(.system(size: 24, weight: .bold))
+                                    }
+                                }
+                                .padding(.vertical, 18)
+                                .padding(.horizontal, 20)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(cardColor)
+                                )
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                                )
+                                .shadow(color: Color.black.opacity(0.18), radius: 4, x: 0, y: 2)
+                                .frame(height: 76)
+                                .onTapGesture {
+                                    onSelect(name == "None" ? nil : TransitionBell(soundName: name))
+                                    dismiss()
+                                }
+                            }
+                        }
+                        .padding(.vertical, 24)
+                        .padding(.bottom, 80)
                     }
-                    .buttonStyle(PlainButtonStyle())
                 }
-                Spacer()
             }
-            .padding()
             .navigationTitle("Select Bell")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -664,10 +767,10 @@ struct BellPickerView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .foregroundColor(orange)
                 }
             }
         }
-        .background(Color(.systemBackground))
     }
 }
 
