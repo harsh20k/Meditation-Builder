@@ -12,10 +12,55 @@ struct MeditationBlock: Identifiable, Equatable {
     let id: UUID
     var name: String
     var durationInMinutes: Int
+    var type: BlockType
+    
+    enum BlockType: String, CaseIterable {
+        case silence = "Silence"
+        case breathwork = "Breathwork"
+        case chanting = "Chanting"
+        case visualization = "Visualization"
+        case bodyScan = "Body Scan"
+        case walking = "Walking"
+        case custom = "Custom"
+        
+        var icon: String {
+            switch self {
+            case .silence: return "🔕"
+            case .breathwork: return "🌬️"
+            case .chanting: return "🕉️"
+            case .visualization: return "👁️"
+            case .bodyScan: return "🧘"
+            case .walking: return "🚶"
+            case .custom: return "✨"
+            }
+        }
+        
+        var defaultDuration: Int {
+            switch self {
+            case .silence: return 5
+            case .breathwork: return 3
+            case .chanting: return 4
+            case .visualization: return 6
+            case .bodyScan: return 8
+            case .walking: return 10
+            case .custom: return 5
+            }
+        }
+    }
 }
 
 struct TransitionBell: Equatable {
     var soundName: String
+    
+    var displayName: String {
+        switch soundName {
+        case "None": return "🔕 None"
+        case "Soft Bell": return "🔔 Soft Bell"
+        case "Tibetan Bowl": return "🪘 Tibetan Bowl"
+        case "Digital Chime": return "🎵 Digital Chime"
+        default: return "🔔 \(soundName)"
+        }
+    }
 }
 
 struct Routine {
@@ -33,9 +78,9 @@ struct IdentifiableInt: Identifiable {
 struct RoutineBuilderView: View {
     @State private var routine = Routine(
         blocks: [
-            MeditationBlock(id: UUID(), name: "Silence", durationInMinutes: 5),
-            MeditationBlock(id: UUID(), name: "Breathwork", durationInMinutes: 3),
-            MeditationBlock(id: UUID(), name: "Chanting", durationInMinutes: 4)
+            MeditationBlock(id: UUID(), name: "Silence", durationInMinutes: 5, type: .silence),
+            MeditationBlock(id: UUID(), name: "Breathwork", durationInMinutes: 3, type: .breathwork),
+            MeditationBlock(id: UUID(), name: "Chanting", durationInMinutes: 4, type: .chanting)
         ],
         transitionBells: [nil, nil]
     )
@@ -80,7 +125,7 @@ struct RoutineBuilderView: View {
                 VStack(spacing: 0) {
                     HStack {
                         Text("Your Routine")
-                            .font(.title2).bold()
+                            .font(.largeTitle).bold()
                             .foregroundColor(.white)
                         Spacer()
                         Button("Save") {
@@ -92,7 +137,7 @@ struct RoutineBuilderView: View {
                     .padding([.top, .horizontal])
                     
                     ScrollView {
-                        VStack(spacing: 0) {
+                        VStack(spacing: 16) {
                             ForEach(Array(routine.blocks.enumerated()), id: \ .element.id) { (idx, block) in
                                 DraggableSwipeableBlock(
                                     block: block,
@@ -108,40 +153,40 @@ struct RoutineBuilderView: View {
                                     draggingBlock: $draggingBlock
                                 )
                                 .padding(.horizontal)
-                                .padding(.top, idx == 0 ? 16 : 8)
                                 
                                 if idx < routine.blocks.count - 1 {
                                     TransitionBellView(
                                         bell: routine.transitionBells[idx],
                                         onTap: { showBellPickerIndex = IdentifiableInt(value: idx) }
                                     )
-                                    .padding(.horizontal, 32)
+                                    .padding(.horizontal, 48)
                                 }
                             }
                         }
                         .padding(.bottom, 32)
                     }
                     
-                    Text("Total Time: \(totalTime) min")
-                        .font(.subheadline)
-                        .foregroundColor(.gray)
-                        .padding(.top, 8)
-                        .padding(.bottom, 4)
-                        .frame(maxWidth: .infinity)
-                        .background(Color.clear)
-                    
-                    Button(action: { isStarting = true }) {
-                        Text("Start Routine")
-                            .font(.headline)
-                            .foregroundColor(.black)
-                            .frame(maxWidth: .infinity)
-                            .padding()
-                            .background(
-                                Capsule()
-                                    .fill(Color.white)
-                            )
-                            .padding(.horizontal)
-                            .padding(.bottom, 12)
+                    // Footer
+                    VStack(spacing: 16) {
+                        Text("Total Time: \(totalTime) min")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .padding(.top, 8)
+                        
+                        Button(action: { isStarting = true }) {
+                            Text("Start Routine")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 16)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 24)
+                                        .fill(Color.blue)
+                                )
+                                .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom, 12)
                     }
                     .background(Color.clear)
                 }
@@ -161,7 +206,7 @@ struct RoutineBuilderView: View {
                     }
                 }
                 .padding(.trailing, 24)
-                .padding(.bottom, 100) // Higher to clear Start Routine button
+                .padding(.bottom, 120) // Higher to clear Start Routine button
                 .shadow(radius: 8)
             }
             .sheet(item: $editBlock) { block in
@@ -285,35 +330,56 @@ struct RoutineBlockView: View {
     let block: MeditationBlock
     var onEdit: () -> Void
     var body: some View {
-        HStack {
-            Image(systemName: "line.3.horizontal")
-                .foregroundColor(.white)
-                .padding(.trailing, 8)
-            VStack(alignment: .leading) {
+        HStack(spacing: 16) {
+            // Block type icon
+            Text(block.type.icon)
+                .font(.title2)
+                .frame(width: 40, height: 40)
+                .background(
+                    Circle()
+                        .fill(Color.white.opacity(0.1))
+                )
+            
+            VStack(alignment: .leading, spacing: 4) {
                 Text(block.name)
                     .font(.headline)
+                    .fontWeight(.semibold)
                     .foregroundColor(.white)
                 Text("\(block.durationInMinutes) min")
                     .font(.subheadline)
                     .foregroundColor(.gray)
             }
+            
             Spacer()
+            
+            // Reorder handle
+            Image(systemName: "line.3.horizontal")
+                .foregroundColor(.gray)
+                .font(.caption)
+            
+            // Edit button
             Button(action: onEdit) {
                 Image(systemName: "pencil")
                     .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .medium))
+                    .frame(width: 32, height: 32)
+                    .background(
+                        Circle()
+                            .fill(Color.white.opacity(0.1))
+                    )
             }
         }
-        .padding(.vertical, 12)
-        .padding(.horizontal, 16)
+        .padding(.horizontal, 20)
+        .padding(.vertical, 16)
         .background(
-            Capsule()
-                .fill(Color(red: 0.09, green: 0.09, blue: 0.11))
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(red: 0.12, green: 0.12, blue: 0.14))
         )
         .overlay(
-            Capsule()
-                .stroke(Color.white, lineWidth: 2)
+            RoundedRectangle(cornerRadius: 16)
+                .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
-        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+        .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
     }
 }
 
@@ -324,105 +390,276 @@ struct TransitionBellView: View {
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: 8) {
-                Image(systemName: "bell")
-                    .foregroundColor(.yellow)
-                Text(bell?.soundName ?? "Tap to Set Transition Bell")
+                Text(bell?.displayName ?? "🔔 Set Bell")
                     .font(.footnote)
                     .foregroundColor(.gray)
+                Spacer()
+                Image(systemName: "chevron.right")
+                    .font(.caption)
+                    .foregroundColor(.gray)
             }
-            .padding(.vertical, 4)
-            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 16)
+            .padding(.vertical, 8)
+            .background(
+                RoundedRectangle(cornerRadius: 12)
+                    .fill(Color.white.opacity(0.05))
+            )
         }
     }
 }
 
-// MARK: - EditBlockView (Stub)
+// MARK: - EditBlockView
 struct EditBlockView: View {
     @State var block: MeditationBlock
     var onSave: (MeditationBlock) -> Void
     @Environment(\.dismiss) var dismiss
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Edit Block")
-                .font(.title2).bold()
-            TextField("Name", text: $block.name)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            Stepper(value: $block.durationInMinutes, in: 1...60) {
-                Text("Duration: \(block.durationInMinutes) min")
+        NavigationView {
+            VStack(spacing: 24) {
+                HStack {
+                    Text(block.type.icon)
+                        .font(.title)
+                    TextField("Name", text: $block.name)
+                        .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .font(.headline)
+                }
+                
+                Stepper(value: $block.durationInMinutes, in: 1...60) {
+                    Text("Duration: \(block.durationInMinutes) min")
+                        .font(.subheadline)
+                }
+                
+                Spacer()
             }
-            Button("Save") {
-                onSave(block)
-                dismiss()
+            .padding()
+            .navigationTitle("Edit Block")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Save") {
+                        onSave(block)
+                        dismiss()
+                    }
+                    .fontWeight(.semibold)
+                }
             }
-            .buttonStyle(.borderedProminent)
         }
-        .padding()
         .background(Color(.systemBackground))
     }
 }
 
-// MARK: - AddBlockView (Stub)
+// MARK: - AddBlockView
 struct AddBlockView: View {
-    @State private var name: String = ""
-    @State private var duration: Int = 5
+    @State private var selectedTab = 0
+    @State private var searchText = ""
+    @State private var customName = ""
+    @State private var customDuration = 5
     var onAdd: (MeditationBlock) -> Void
     @Environment(\.dismiss) var dismiss
-    var body: some View {
-        VStack(spacing: 24) {
-            Text("Add Block")
-                .font(.title2).bold()
-            TextField("Name", text: $name)
-                .textFieldStyle(RoundedBorderTextFieldStyle())
-            Stepper(value: $duration, in: 1...60) {
-                Text("Duration: \(duration) min")
-            }
-            Button("Add") {
-                let newBlock = MeditationBlock(id: UUID(), name: name.isEmpty ? "New Block" : name, durationInMinutes: duration)
-                onAdd(newBlock)
-                dismiss()
-            }
-            .buttonStyle(.borderedProminent)
+    
+    var filteredDefaultBlocks: [MeditationBlock.BlockType] {
+        let blocks = MeditationBlock.BlockType.allCases.filter { $0 != .custom }
+        if searchText.isEmpty {
+            return blocks
         }
-        .padding()
+        return blocks.filter { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
+    }
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 0) {
+                // Search bar
+                HStack {
+                    Image(systemName: "magnifyingglass")
+                        .foregroundColor(.gray)
+                    TextField("Search blocks...", text: $searchText)
+                }
+                .padding()
+                .background(Color(.systemGray6))
+                .cornerRadius(12)
+                .padding(.horizontal)
+                
+                // Tab selector
+                Picker("Block Type", selection: $selectedTab) {
+                    Text("Default").tag(0)
+                    Text("Custom").tag(1)
+                }
+                .pickerStyle(SegmentedPickerStyle())
+                .padding()
+                
+                if selectedTab == 0 {
+                    // Default blocks
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(filteredDefaultBlocks, id: \.self) { blockType in
+                                Button(action: {
+                                    let newBlock = MeditationBlock(
+                                        id: UUID(),
+                                        name: blockType.rawValue,
+                                        durationInMinutes: blockType.defaultDuration,
+                                        type: blockType
+                                    )
+                                    onAdd(newBlock)
+                                    dismiss()
+                                }) {
+                                    HStack(spacing: 16) {
+                                        Text(blockType.icon)
+                                            .font(.title2)
+                                            .frame(width: 40, height: 40)
+                                            .background(
+                                                Circle()
+                                                    .fill(Color.blue.opacity(0.2))
+                                            )
+                                        
+                                        VStack(alignment: .leading, spacing: 4) {
+                                            Text(blockType.rawValue)
+                                                .font(.headline)
+                                                .foregroundColor(.primary)
+                                            Text("\(blockType.defaultDuration) min")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "plus.circle")
+                                            .foregroundColor(.blue)
+                                            .font(.title2)
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .fill(Color(.systemGray6))
+                                    )
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                        }
+                        .padding()
+                    }
+                } else {
+                    // Custom block
+                    VStack(spacing: 24) {
+                        HStack {
+                            Text("✨")
+                                .font(.title)
+                                .frame(width: 40, height: 40)
+                                .background(
+                                    Circle()
+                                        .fill(Color.purple.opacity(0.2))
+                                )
+                            
+                            TextField("Block name", text: $customName)
+                                .textFieldStyle(RoundedBorderTextFieldStyle())
+                                .font(.headline)
+                        }
+                        
+                        Stepper(value: $customDuration, in: 1...60) {
+                            Text("Duration: \(customDuration) min")
+                                .font(.subheadline)
+                        }
+                        
+                        Button(action: {
+                            let newBlock = MeditationBlock(
+                                id: UUID(),
+                                name: customName.isEmpty ? "Custom Block" : customName,
+                                durationInMinutes: customDuration,
+                                type: .custom
+                            )
+                            onAdd(newBlock)
+                            dismiss()
+                        }) {
+                            Text("Add Custom Block")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 16)
+                                        .fill(Color.purple)
+                                )
+                        }
+                        .disabled(customName.isEmpty)
+                        
+                        Spacer()
+                    }
+                    .padding()
+                }
+            }
+            .navigationTitle("Add Block")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
         .background(Color(.systemBackground))
     }
 }
 
-// MARK: - BellPickerView (Stub)
+// MARK: - BellPickerView
 struct BellPickerView: View {
     @State var selected: TransitionBell?
     var onSelect: (TransitionBell?) -> Void
     @Environment(\.dismiss) var dismiss
     let bells = ["None", "Soft Bell", "Tibetan Bowl", "Digital Chime"]
     var body: some View {
-        VStack(spacing: 24) {
-            Text("Select Transition Bell")
-                .font(.title2).bold()
-            ForEach(bells, id: \ .self) { name in
-                Button(action: {
-                    onSelect(name == "None" ? nil : TransitionBell(soundName: name))
-                    dismiss()
-                }) {
-                    HStack {
-                        Image(systemName: "bell")
-                        Text(name)
-                        if selected?.soundName == name { Image(systemName: "checkmark") }
+        NavigationView {
+            VStack(spacing: 24) {
+                ForEach(bells, id: \.self) { name in
+                    Button(action: {
+                        onSelect(name == "None" ? nil : TransitionBell(soundName: name))
+                        dismiss()
+                    }) {
+                        HStack {
+                            Text(name == "None" ? "🔕" : "🔔")
+                                .font(.title2)
+                            Text(name)
+                                .font(.headline)
+                            Spacer()
+                            if selected?.soundName == name {
+                                Image(systemName: "checkmark")
+                                    .foregroundColor(.blue)
+                            }
+                        }
+                        .padding()
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(.systemGray6))
+                        )
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                Spacer()
+            }
+            .padding()
+            .navigationTitle("Select Bell")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button("Cancel") {
+                        dismiss()
                     }
                 }
             }
         }
-        .padding()
         .background(Color(.systemBackground))
     }
 }
 
-
 struct ContentView: View {
-	var body: some View {
-			RoutineBuilderView()
-	}
+    var body: some View {
+        RoutineBuilderView()
+    }
 }
-
 
 // MARK: - Preview
 #Preview {
