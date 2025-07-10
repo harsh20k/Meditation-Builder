@@ -25,13 +25,13 @@ struct MeditationBlock: Identifiable, Equatable {
         
         var icon: String {
             switch self {
-            case .silence: return "🔕"
-            case .breathwork: return "🌬️"
-            case .chanting: return "🕉️"
-            case .visualization: return "👁️"
-            case .bodyScan: return "🧘"
-            case .walking: return "🚶"
-            case .custom: return "✨"
+            case .silence: return "bell.fill"
+            case .breathwork: return "leaf.fill"
+            case .chanting: return "om.symbol"
+            case .visualization: return "eye.fill"
+            case .bodyScan: return "figure.mind.and.body"
+            case .walking: return "figure.walk"
+            case .custom: return "sparkles"
             }
         }
         
@@ -51,14 +51,13 @@ struct MeditationBlock: Identifiable, Equatable {
 
 struct TransitionBell: Equatable {
     var soundName: String
-    
     var displayName: String {
         switch soundName {
-        case "None": return "🔕 None"
-        case "Soft Bell": return "🔔 Soft Bell"
-        case "Tibetan Bowl": return "🪘 Tibetan Bowl"
-        case "Digital Chime": return "🎵 Digital Chime"
-        default: return "🔔 \(soundName)"
+        case "None": return "None"
+        case "Soft Bell": return "Soft Bell"
+        case "Tibetan Bowl": return "Tibetan Bowl"
+        case "Digital Chime": return "Digital Chime"
+        default: return soundName
         }
     }
 }
@@ -82,18 +81,21 @@ struct RoutineBuilderView: View {
             MeditationBlock(id: UUID(), name: "Breathwork", durationInMinutes: 3, type: .breathwork),
             MeditationBlock(id: UUID(), name: "Chanting", durationInMinutes: 4, type: .chanting)
         ],
-        transitionBells: [nil, nil]
+        transitionBells: [TransitionBell(soundName: "Soft Bell"), TransitionBell(soundName: "Soft Bell")]
     )
     @State private var editBlock: MeditationBlock? = nil
     @State private var showAddBlock = false
-    @State private var showBellPickerIndex: IdentifiableInt? = nil
     @State private var isSaving = false
-    @State private var isStarting = false
     @State private var draggingBlock: MeditationBlock? = nil
     @State private var dragOffset: CGSize = .zero
     @State private var dragIndex: Int? = nil
     @State private var blockOffsets: [UUID: CGFloat] = [:]
     @GestureState private var isDetectingLongPress = false
+    
+    let bgColor = Color(red: 34/255, green: 38/255, blue: 45/255) // #22262D
+    let cardColor = Color(red: 42/255, green: 46/255, blue: 55/255) // #2A2E37
+    let orange = Color(red: 1.0, green: 122/255, blue: 0) // #FF7A00
+    let lightGrey = Color(red: 176/255, green: 176/255, blue: 176/255) // #B0B0B0
     
     var totalTime: Int {
         routine.blocks.map { $0.durationInMinutes }.reduce(0, +)
@@ -106,7 +108,7 @@ struct RoutineBuilderView: View {
         newBlocks.insert(moved, at: destination)
         routine.blocks = newBlocks
         // For simplicity, clear all bells after reorder
-        routine.transitionBells = Array(repeating: nil, count: newBlocks.count > 0 ? newBlocks.count - 1 : 0)
+        routine.transitionBells = Array(repeating: TransitionBell(soundName: "Soft Bell"), count: newBlocks.count > 0 ? newBlocks.count - 1 : 0)
     }
     
     func deleteBlock(at index: Int) {
@@ -119,30 +121,47 @@ struct RoutineBuilderView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                Color(red: 0.07, green: 0.07, blue: 0.07).ignoresSafeArea()
-                VStack(spacing: 0) {
-                    HStack {
-                        Text("Your Routine")
-                            .font(.largeTitle).bold()
-                            .foregroundColor(.white)
-                        Spacer()
-                        Button("Save") {
-                            isSaving = true // Placeholder
-                        }
+        ZStack(alignment: .bottomTrailing) {
+            bgColor.ignoresSafeArea()
+            VStack(spacing: 0) {
+                // Header
+                HStack {
+                    Text("Routine")
+                        .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
-                        .padding(.trailing, 8)
-                    }
-                    .padding([.top, .horizontal])
-                    
-                    ScrollView {
-                        VStack(spacing: 16) {
+                    Spacer()
+                    Image(systemName: "sun.max.fill")
+                        .foregroundColor(orange)
+                        .font(.system(size: 28, weight: .bold))
+                }
+                .padding(.horizontal)
+                .padding(.top, 24)
+                .padding(.bottom, 8)
+                
+                // Timeline + Block List
+                ScrollView(showsIndicators: false) {
+                    ZStack(alignment: .leading) {
+                        // Timeline vertical line (scrolls with blocks)
+                        if routine.blocks.count > 1 {
+                            GeometryReader { geo in
+                                let blockHeight: CGFloat = 76 // Approximate block height (padding + card)
+                                let spacing: CGFloat = 20
+                                let totalHeight = CGFloat(routine.blocks.count) * blockHeight + CGFloat(routine.blocks.count - 1) * spacing
+                                Rectangle()
+                                    .fill(lightGrey.opacity(0.25))
+                                    .frame(width: 2, height: totalHeight - blockHeight/2)
+                                    .offset(x: 54, y: blockHeight/2)
+                            }
+                        }
+                        VStack(spacing: 20) {
                             ForEach(Array(routine.blocks.enumerated()), id: \ .element.id) { (idx, block) in
-                                DraggableSwipeableBlock(
+                                TimelineBlockCard(
                                     block: block,
+                                    isLast: idx == routine.blocks.count - 1,
+                                    orange: orange,
+                                    cardColor: cardColor,
+                                    lightGrey: lightGrey,
                                     onEdit: { editBlock = block },
-                                    onDelete: { deleteBlock(at: idx) },
                                     onDrag: { dragState in
                                         if let from = dragState.from, let to = dragState.to {
                                             moveBlock(from: from, to: to)
@@ -150,261 +169,205 @@ struct RoutineBuilderView: View {
                                     },
                                     index: idx,
                                     blocksCount: routine.blocks.count,
-                                    draggingBlock: $draggingBlock
+                                    draggingBlock: $draggingBlock,
+                                    bell: idx < routine.transitionBells.count ? routine.transitionBells[idx] : nil
                                 )
-                                .padding(.horizontal)
-                                
-                                if idx < routine.blocks.count - 1 {
-                                    TransitionBellView(
-                                        bell: routine.transitionBells[idx],
-                                        onTap: { showBellPickerIndex = IdentifiableInt(value: idx) }
-                                    )
-                                    .padding(.horizontal, 48)
-                                }
+                                .frame(height: 76)
                             }
                         }
-                        .padding(.bottom, 32)
+                        .padding(.vertical, 24)
+                        .padding(.bottom, 80)
                     }
-                    
-                    // Footer
-                    VStack(spacing: 16) {
-                        Text("Total Time: \(totalTime) min")
-                            .font(.subheadline)
-                            .foregroundColor(.gray)
-                            .padding(.top, 8)
-                        
-                        Button(action: { isStarting = true }) {
-                            Text("Start Routine")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, 16)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 24)
-                                        .fill(Color.blue)
-                                )
-                                .shadow(color: .blue.opacity(0.3), radius: 8, x: 0, y: 4)
-                        }
+                }
+                .frame(maxHeight: .infinity)
+                
+                // Total Time & Save Button
+                VStack(spacing: 16) {
+                    Text("Total \(totalTime) min")
+                        .font(.system(size: 19, weight: .semibold, design: .rounded))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
-                        .padding(.bottom, 12)
-                    }
-                    .background(Color.clear)
-                }
-                // Floating Add Button (higher position)
-                Button(action: { showAddBlock = true }) {
-                    ZStack {
-                        RoundedRectangle(cornerRadius: 24, style: .continuous)
-                            .fill(Color(red: 0.13, green: 0.13, blue: 0.15))
-                            .frame(width: 56, height: 56)
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 24, style: .continuous)
-                                    .stroke(Color.white, lineWidth: 2)
-                            )
-                        Image(systemName: "plus")
+                    
+                    Button(action: { isSaving = true }) {
+                        Text("SAVE")
+                            .font(.system(size: 20, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
-                            .font(.system(size: 28, weight: .bold))
+                            .frame(maxWidth: .infinity)
+                            .frame(height: 48)
+                            .background(
+                                Capsule()
+                                    .fill(orange)
+                            )
                     }
+                    .padding(.horizontal)
                 }
-                .padding(.trailing, 24)
-                .padding(.bottom, 120) // Higher to clear Start Routine button
-                .shadow(radius: 8)
+                .padding(.bottom, 72)
             }
-            .sheet(item: $editBlock) { block in
-                EditBlockView(block: block) { updatedBlock in
-                    if let idx = routine.blocks.firstIndex(where: { $0.id == updatedBlock.id }) {
-                        routine.blocks[idx] = updatedBlock
-                    }
-                    editBlock = nil
-                }
-            }
-            .sheet(isPresented: $showAddBlock) {
-                AddBlockView { newBlock in
-                    routine.blocks.append(newBlock)
-                    if routine.blocks.count > 1 {
-                        routine.transitionBells.append(nil)
-                    }
-                    showAddBlock = false
+            // Floating Add Button
+            Button(action: { showAddBlock = true }) {
+                ZStack {
+                    Circle()
+                        .fill(orange)
+                        .frame(width: 56, height: 56)
+                    Image(systemName: "plus")
+                        .foregroundColor(.white)
+                        .font(.system(size: 28, weight: .bold))
                 }
             }
-            .sheet(item: $showBellPickerIndex) { identifiable in
-                let idx = identifiable.value
-                BellPickerView(selected: routine.transitionBells[idx]) { bell in
-                    routine.transitionBells[idx] = bell
-                    showBellPickerIndex = nil
+            .padding(.trailing, 24)
+            .padding(.bottom, 112)
+            .shadow(radius: 8)
+            // Tab Bar
+            VStack {
+                Spacer()
+                CustomTabBar(bgColor: bgColor, orange: orange)
+            }
+        }
+        .sheet(item: $editBlock) { block in
+            EditBlockView(block: block) { updatedBlock in
+                if let idx = routine.blocks.firstIndex(where: { $0.id == updatedBlock.id }) {
+                    routine.blocks[idx] = updatedBlock
                 }
+                editBlock = nil
+            }
+        }
+        .sheet(isPresented: $showAddBlock) {
+            AddBlockView { newBlock in
+                routine.blocks.append(newBlock)
+                if routine.blocks.count > 1 {
+                    routine.transitionBells.append(TransitionBell(soundName: "Soft Bell"))
+                }
+                showAddBlock = false
             }
         }
     }
 }
 
-// MARK: - DraggableSwipeableBlock
-struct DraggableSwipeableBlock: View {
+// MARK: - TimelineBlockCard
+struct TimelineBlockCard: View {
     let block: MeditationBlock
+    let isLast: Bool
+    let orange: Color
+    let cardColor: Color
+    let lightGrey: Color
     var onEdit: () -> Void
-    var onDelete: () -> Void
     var onDrag: (_ dragState: (from: Int?, to: Int?)) -> Void
     let index: Int
     let blocksCount: Int
     @Binding var draggingBlock: MeditationBlock?
+    let bell: TransitionBell?
     @State private var offset: CGFloat = 0
     @GestureState private var dragTranslation: CGSize = .zero
     @State private var isSwiped: Bool = false
     
     var body: some View {
         ZStack(alignment: .leading) {
-            // Swipe to delete background
-            HStack {
+            // Timeline node
+            VStack {
                 Spacer()
-                Button(action: {
-                    withAnimation { isSwiped = false }
-                    onDelete()
-                }) {
-                    Image(systemName: "trash")
-                        .foregroundColor(.red)
-                        .padding()
-                        .background(Color.white.opacity(0.1))
-                        .clipShape(Circle())
-                }
-                .padding(.trailing, 16)
+                Circle()
+                    .fill(orange)
+                    .frame(width: 16, height: 16)
+                    .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 2))
+                    .padding(.leading, 28)
+                Spacer()
             }
-            .frame(maxWidth: .infinity)
-            .background(Color.clear)
+            .frame(width: 40)
             
-            RoutineBlockView(block: block, onEdit: onEdit)
-                .offset(x: isSwiped ? -80 : dragTranslation.width)
-                .gesture(
-                    DragGesture(minimumDistance: 10, coordinateSpace: .local)
-                        .updating($dragTranslation) { value, state, _ in
-                            if abs(value.translation.width) > abs(value.translation.height) {
-                                state = value.translation
-                            }
-                        }
-                        .onEnded { value in
-                            if value.translation.width < -60 {
-                                withAnimation { isSwiped = true }
-                            } else if value.translation.width > 40 {
-                                withAnimation { isSwiped = false }
-                            }
-                        }
-                )
-                .simultaneousGesture(
-                    LongPressGesture(minimumDuration: 0.2)
-                        .onEnded { _ in
-                            draggingBlock = block
-                        }
-                )
-                .gesture(
-                    DragGesture(minimumDistance: 10)
-                        .onChanged { value in
-                            if draggingBlock == block {
-                                offset = value.translation.height
-                            }
-                        }
-                        .onEnded { value in
-                            if draggingBlock == block {
-                                let dragThreshold: CGFloat = 40
-                                var from = index
-                                var to = index
-                                if value.translation.height < -dragThreshold && index > 0 {
-                                    to = index - 1
-                                } else if value.translation.height > dragThreshold && index < blocksCount - 1 {
-                                    to = index + 1
-                                }
-                                if from != to {
-                                    onDrag((from: from, to: to))
-                                }
-                                offset = 0
-                                draggingBlock = nil
-                            }
-                        }
-                )
-                .offset(y: draggingBlock == block ? offset : 0)
-                .animation(.spring(), value: offset)
-        }
-        .animation(.spring(), value: isSwiped)
-    }
-}
-
-// MARK: - RoutineBlockView
-struct RoutineBlockView: View {
-    let block: MeditationBlock
-    var onEdit: () -> Void
-    var body: some View {
-        HStack(spacing: 16) {
-            // Block type icon
-            Text(block.type.icon)
-                .font(.title2)
-                .frame(width: 40, height: 40)
-                .background(
+            // Block Card
+            HStack(alignment: .center, spacing: 16) {
+                ZStack {
                     Circle()
-                        .fill(Color.white.opacity(0.1))
-                )
-            
-            VStack(alignment: .leading, spacing: 4) {
-                Text(block.name)
-                    .font(.headline)
-                    .fontWeight(.semibold)
-                    .foregroundColor(.white)
-                Text("\(block.durationInMinutes) min")
-                    .font(.subheadline)
-                    .foregroundColor(.gray)
+                        .fill(orange)
+                        .frame(width: 40, height: 40)
+                    Image(systemName: block.type.icon)
+                        .foregroundColor(.white)
+                        .font(.system(size: 22, weight: .bold))
+                }
+                
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(block.name)
+                        .font(.system(size: 17, weight: .bold, design: .rounded))
+                        .foregroundColor(.white)
+                        .lineLimit(2)
+                        .truncationMode(.tail)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text("\(block.durationInMinutes) min")
+                        .font(.system(size: 15, weight: .regular, design: .rounded))
+                        .foregroundColor(lightGrey)
+                }
+                Spacer()
+                if !isLast {
+                    Image(systemName: "bell.fill")
+                        .foregroundColor(orange)
+                        .font(.system(size: 18, weight: .bold))
+                        .padding(.bottom, 2)
+                }
+                Button(action: onEdit) {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .medium))
+                        .frame(width: 32, height: 32)
+                        .background(
+                            Circle()
+                                .fill(Color.white.opacity(0.08))
+                        )
+                }
             }
-            
-            Spacer()
-            
-            // Reorder handle
-            Image(systemName: "line.3.horizontal")
-                .foregroundColor(.gray)
-                .font(.caption)
-            
-            // Edit button
-            Button(action: onEdit) {
-                Image(systemName: "pencil")
-                    .foregroundColor(.white)
-                    .font(.system(size: 16, weight: .medium))
-                    .frame(width: 32, height: 32)
-                    .background(
-                        Circle()
-                            .fill(Color.white.opacity(0.1))
-                    )
-            }
+            .padding(.vertical, 18)
+            .padding(.horizontal, 20)
+            .background(
+                RoundedRectangle(cornerRadius: 16)
+                    .fill(cardColor)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 16)
+                    .stroke(Color.white.opacity(0.07), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.18), radius: 4, x: 0, y: 2)
+            .padding(.leading, 16)
         }
-        .padding(.horizontal, 20)
-        .padding(.vertical, 16)
-        .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(red: 0.12, green: 0.12, blue: 0.14))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 16)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-        )
-        .shadow(color: Color.black.opacity(0.3), radius: 4, x: 0, y: 2)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
 
-// MARK: - TransitionBellView
-struct TransitionBellView: View {
-    var bell: TransitionBell?
-    var onTap: () -> Void
+// MARK: - CustomTabBar
+struct CustomTabBar: View {
+    let bgColor: Color
+    let orange: Color
     var body: some View {
-        Button(action: onTap) {
-            HStack(spacing: 8) {
-                Text(bell?.displayName ?? "🔔 Set Bell")
-                    .font(.footnote)
-                    .foregroundColor(.gray)
-                Spacer()
-                Image(systemName: "chevron.right")
-                    .font(.caption)
-                    .foregroundColor(.gray)
+        HStack {
+            Spacer()
+            Image(systemName: "figure.mind.and.body")
+                .font(.system(size: 24, weight: .regular))
+                .foregroundColor(.white.opacity(0.7))
+            Spacer()
+            Image(systemName: "music.note")
+                .font(.system(size: 24, weight: .regular))
+                .foregroundColor(.white.opacity(0.7))
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(orange)
+                    .frame(width: 44, height: 44)
+                Image(systemName: "timer")
+                    .font(.system(size: 24, weight: .bold))
+                    .foregroundColor(.white)
             }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 8)
-            .background(
-                RoundedRectangle(cornerRadius: 12)
-                    .fill(Color.white.opacity(0.05))
-            )
+            Spacer()
+            Image(systemName: "hammer")
+                .font(.system(size: 24, weight: .regular))
+                .foregroundColor(.white.opacity(0.7))
+            Spacer()
+            Image(systemName: "gearshape")
+                .font(.system(size: 24, weight: .regular))
+                .foregroundColor(.white.opacity(0.7))
+            Spacer()
         }
+        .frame(height: 56)
+        .background(bgColor)
+        .ignoresSafeArea(edges: .bottom)
     }
 }
 
@@ -462,6 +425,11 @@ struct AddBlockView: View {
     var onAdd: (MeditationBlock) -> Void
     @Environment(\.dismiss) var dismiss
     
+    let bgColor = Color(red: 34/255, green: 38/255, blue: 45/255) // #22262D
+    let cardColor = Color(red: 42/255, green: 46/255, blue: 55/255) // #2A2E37
+    let orange = Color(red: 1.0, green: 122/255, blue: 0) // #FF7A00
+    let lightGrey = Color(red: 176/255, green: 176/255, blue: 176/255) // #B0B0B0
+    
     var filteredDefaultBlocks: [MeditationBlock.BlockType] {
         let blocks = MeditationBlock.BlockType.allCases.filter { $0 != .custom }
         if searchText.isEmpty {
@@ -472,123 +440,171 @@ struct AddBlockView: View {
     
     var body: some View {
         NavigationView {
-            VStack(spacing: 0) {
-                // Search bar
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
-                    TextField("Search blocks...", text: $searchText)
-                }
-                .padding()
-                .background(Color(.systemGray6))
-                .cornerRadius(12)
-                .padding(.horizontal)
-                
-                // Tab selector
-                Picker("Block Type", selection: $selectedTab) {
-                    Text("Default").tag(0)
-                    Text("Custom").tag(1)
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .padding()
-                
-                if selectedTab == 0 {
-                    // Default blocks
-                    ScrollView {
-                        LazyVStack(spacing: 12) {
-                            ForEach(filteredDefaultBlocks, id: \.self) { blockType in
-                                Button(action: {
-                                    let newBlock = MeditationBlock(
-                                        id: UUID(),
-                                        name: blockType.rawValue,
-                                        durationInMinutes: blockType.defaultDuration,
-                                        type: blockType
-                                    )
-                                    onAdd(newBlock)
-                                    dismiss()
-                                }) {
-                                    HStack(spacing: 16) {
-                                        Text(blockType.icon)
-                                            .font(.title2)
-                                            .frame(width: 40, height: 40)
-                                            .background(
-                                                Circle()
-                                                    .fill(Color.blue.opacity(0.2))
-                                            )
-                                        
-                                        VStack(alignment: .leading, spacing: 4) {
-                                            Text(blockType.rawValue)
-                                                .font(.headline)
-                                                .foregroundColor(.primary)
-                                            Text("\(blockType.defaultDuration) min")
-                                                .font(.subheadline)
-                                                .foregroundColor(.secondary)
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Image(systemName: "plus.circle")
-                                            .foregroundColor(.blue)
-                                            .font(.title2)
+            ZStack {
+                bgColor.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    // Search bar
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(orange)
+                        TextField("Search blocks...", text: $searchText)
+                            .foregroundColor(.white)
+                    }
+                    .padding(12)
+                    .background(cardColor)
+                    .cornerRadius(16)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    // Tab selector
+                    HStack(spacing: 0) {
+                        Button(action: { selectedTab = 0 }) {
+                            Text("Default")
+                                .font(.headline)
+                                .foregroundColor(selectedTab == 0 ? orange : .white.opacity(0.7))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(selectedTab == 0 ? cardColor.opacity(0.7) : Color.clear)
+                                .cornerRadius(12)
+                        }
+                        Button(action: { selectedTab = 1 }) {
+                            Text("Custom")
+                                .font(.headline)
+                                .foregroundColor(selectedTab == 1 ? orange : .white.opacity(0.7))
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 10)
+                                .background(selectedTab == 1 ? cardColor.opacity(0.7) : Color.clear)
+                                .cornerRadius(12)
+                        }
+                    }
+                    .background(cardColor.opacity(0.5))
+                    .cornerRadius(14)
+                    .padding(.horizontal)
+                    .padding(.top, 12)
+                    
+                    if selectedTab == 0 {
+                        // Timeline + Block List
+                        ScrollView(showsIndicators: false) {
+                            ZStack(alignment: .leading) {
+                                if filteredDefaultBlocks.count > 1 {
+                                    GeometryReader { geo in
+                                        let blockHeight: CGFloat = 76
+                                        let spacing: CGFloat = 20
+                                        let totalHeight = CGFloat(filteredDefaultBlocks.count) * blockHeight + CGFloat(filteredDefaultBlocks.count - 1) * spacing
+                                        Rectangle()
+                                            .fill(lightGrey.opacity(0.25))
+                                            .frame(width: 2, height: totalHeight - blockHeight/2)
+                                            .offset(x: 54, y: blockHeight/2)
                                     }
+                                }
+                                VStack(spacing: 20) {
+                                    ForEach(filteredDefaultBlocks, id: \.self) { blockType in
+                                        HStack(alignment: .center, spacing: 16) {
+                                            ZStack {
+                                                Circle()
+                                                    .fill(orange)
+                                                    .frame(width: 40, height: 40)
+                                                Image(systemName: blockType.icon)
+                                                    .foregroundColor(.white)
+                                                    .font(.system(size: 22, weight: .bold))
+                                            }
+                                            VStack(alignment: .leading, spacing: 2) {
+                                                Text(blockType.rawValue)
+                                                    .font(.system(size: 17, weight: .bold, design: .rounded))
+                                                    .foregroundColor(.white)
+                                                    .lineLimit(2)
+                                                    .truncationMode(.tail)
+                                                    .fixedSize(horizontal: false, vertical: true)
+                                                Text("\(blockType.defaultDuration) min")
+                                                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                                                    .foregroundColor(lightGrey)
+                                            }
+                                            Spacer()
+                                            Button(action: {
+                                                let newBlock = MeditationBlock(
+                                                    id: UUID(),
+                                                    name: blockType.rawValue,
+                                                    durationInMinutes: blockType.defaultDuration,
+                                                    type: blockType
+                                                )
+                                                onAdd(newBlock)
+                                                dismiss()
+                                            }) {
+                                                ZStack {
+                                                    Circle()
+                                                        .fill(orange)
+                                                        .frame(width: 36, height: 36)
+                                                    Image(systemName: "plus")
+                                                        .foregroundColor(.white)
+                                                        .font(.system(size: 20, weight: .bold))
+                                                }
+                                            }
+                                        }
+                                        .padding(.vertical, 18)
+                                        .padding(.horizontal, 20)
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .fill(cardColor)
+                                        )
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 16)
+                                                .stroke(Color.white.opacity(0.07), lineWidth: 1)
+                                        )
+                                        .shadow(color: Color.black.opacity(0.18), radius: 4, x: 0, y: 2)
+                                        .frame(height: 76)
+                                    }
+                                }
+                                .padding(.vertical, 24)
+                                .padding(.bottom, 80)
+                            }
+                        }
+                    } else {
+                        // Custom block
+                        VStack(spacing: 24) {
+                            HStack {
+                                ZStack {
+                                    Circle()
+                                        .fill(orange)
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: "sparkles")
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 22, weight: .bold))
+                                }
+                                TextField("Block name", text: $customName)
+                                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                            }
+                            Stepper(value: $customDuration, in: 1...60) {
+                                Text("Duration: \(customDuration) min")
+                                    .font(.subheadline)
+                                    .foregroundColor(lightGrey)
+                            }
+                            Button(action: {
+                                let newBlock = MeditationBlock(
+                                    id: UUID(),
+                                    name: customName.isEmpty ? "Custom Block" : customName,
+                                    durationInMinutes: customDuration,
+                                    type: .custom
+                                )
+                                onAdd(newBlock)
+                                dismiss()
+                            }) {
+                                Text("Add Custom Block")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
                                     .padding()
                                     .background(
-                                        RoundedRectangle(cornerRadius: 12)
-                                            .fill(Color(.systemGray6))
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(orange)
                                     )
-                                }
-                                .buttonStyle(PlainButtonStyle())
                             }
+                            .disabled(customName.isEmpty)
+                            Spacer()
                         }
                         .padding()
                     }
-                } else {
-                    // Custom block
-                    VStack(spacing: 24) {
-                        HStack {
-                            Text("✨")
-                                .font(.title)
-                                .frame(width: 40, height: 40)
-                                .background(
-                                    Circle()
-                                        .fill(Color.purple.opacity(0.2))
-                                )
-                            
-                            TextField("Block name", text: $customName)
-                                .textFieldStyle(RoundedBorderTextFieldStyle())
-                                .font(.headline)
-                        }
-                        
-                        Stepper(value: $customDuration, in: 1...60) {
-                            Text("Duration: \(customDuration) min")
-                                .font(.subheadline)
-                        }
-                        
-                        Button(action: {
-                            let newBlock = MeditationBlock(
-                                id: UUID(),
-                                name: customName.isEmpty ? "Custom Block" : customName,
-                                durationInMinutes: customDuration,
-                                type: .custom
-                            )
-                            onAdd(newBlock)
-                            dismiss()
-                        }) {
-                            Text("Add Custom Block")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(Color.purple)
-                                )
-                        }
-                        .disabled(customName.isEmpty)
-                        
-                        Spacer()
-                    }
-                    .padding()
                 }
             }
             .navigationTitle("Add Block")
@@ -598,10 +614,10 @@ struct AddBlockView: View {
                     Button("Cancel") {
                         dismiss()
                     }
+                    .foregroundColor(orange)
                 }
             }
         }
-        .background(Color(.systemBackground))
     }
 }
 
