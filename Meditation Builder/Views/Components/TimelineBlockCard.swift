@@ -95,4 +95,140 @@ struct TimelineBlockCard: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+}
+
+// MARK: - Preview
+#Preview("TimelineBlockCard") {
+    ZStack {
+        AppTheme.backgroundColor.ignoresSafeArea()
+        
+        VStack(spacing: 20) {
+            // Preview with bell (not last block)
+            TimelineBlockCard(
+                block: MeditationBlock(
+                    id: UUID(),
+                    name: "Breathwork",
+                    durationInMinutes: 5,
+                    type: .breathwork
+                ),
+                isLast: false,
+                onEdit: {},
+                onDrag: { _ in },
+                index: 0,
+                blocksCount: 3,
+                draggingBlock: .constant(nil),
+                bell: TransitionBell(soundName: "Soft Bell"),
+                onBellTap: {}
+            )
+            
+            // Preview without bell (last block)
+            TimelineBlockCard(
+                block: MeditationBlock(
+                    id: UUID(),
+                    name: "Silence",
+                    durationInMinutes: 10,
+                    type: .silence
+                ),
+                isLast: true,
+                onEdit: {},
+                onDrag: { _ in },
+                index: 2,
+                blocksCount: 3,
+                draggingBlock: .constant(nil),
+                bell: nil,
+                onBellTap: {}
+            )
+            
+            // Preview with long name
+            TimelineBlockCard(
+                block: MeditationBlock(
+                    id: UUID(),
+                    name: "Very Long Meditation Block Name That Might Wrap",
+                    durationInMinutes: 15,
+                    type: .visualization
+                ),
+                isLast: false,
+                onEdit: {},
+                onDrag: { _ in },
+                index: 1,
+                blocksCount: 3,
+                draggingBlock: .constant(nil),
+                bell: TransitionBell(soundName: "Tibetan Bowl"),
+                onBellTap: {}
+            )
+            
+            // Preview with custom block
+            TimelineBlockCard(
+                block: MeditationBlock(
+                    id: UUID(),
+                    name: "Custom Block",
+                    durationInMinutes: 8,
+                    type: .custom
+                ),
+                isLast: false,
+                onEdit: {},
+                onDrag: { _ in },
+                index: 3,
+                blocksCount: 4,
+                draggingBlock: .constant(nil),
+                bell: TransitionBell(soundName: "Digital Chime"),
+                onBellTap: {}
+            )
+        }
+        .padding()
+    }
+}
+
+#Preview("All Block Types") {
+    ZStack {
+        AppTheme.backgroundColor.ignoresSafeArea()
+        
+        ScrollView {
+            VStack(spacing: 16) {
+                ForEach(MeditationBlock.BlockType.allCases, id: \.self) { blockType in
+                    TimelineBlockCard(
+                        block: MeditationBlock(
+                            id: UUID(),
+                            name: blockType.rawValue,
+                            durationInMinutes: blockType.defaultDuration,
+                            type: blockType
+                        ),
+                        isLast: blockType == .custom,
+                        onEdit: {},
+                        onDrag: { _ in },
+                        index: MeditationBlock.BlockType.allCases.firstIndex(of: blockType) ?? 0,
+                        blocksCount: MeditationBlock.BlockType.allCases.count,
+                        draggingBlock: .constant(nil),
+                        bell: blockType != .custom ? TransitionBell(soundName: "Soft Bell") : nil,
+                        onBellTap: {}
+                    )
+                }
+            }
+            .padding()
+        }
+    }
+}
+
+#Preview("Single Block") {
+    ZStack {
+        AppTheme.backgroundColor.ignoresSafeArea()
+        
+        TimelineBlockCard(
+            block: MeditationBlock(
+                id: UUID(),
+                name: "Body Scan",
+                durationInMinutes: 12,
+                type: .bodyScan
+            ),
+            isLast: true,
+            onEdit: {},
+            onDrag: { _ in },
+            index: 0,
+            blocksCount: 1,
+            draggingBlock: .constant(nil),
+            bell: nil,
+            onBellTap: {}
+        )
+        .padding()
+    }
 } 
