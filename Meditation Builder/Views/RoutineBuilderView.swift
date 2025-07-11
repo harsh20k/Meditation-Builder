@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import Dragula
 
 struct RoutineBuilderView: View {
     @State private var routine = Routine(
@@ -19,34 +20,26 @@ struct RoutineBuilderView: View {
     @State private var editBlock: MeditationBlock? = nil
     @State private var showAddBlock = false
     @State private var isSaving = false
-    @State private var draggingBlock: MeditationBlock? = nil
-    @State private var dragOffset: CGSize = .zero
-    @State private var dragIndex: Int? = nil
-    @State private var blockOffsets: [UUID: CGFloat] = [:]
-    @GestureState private var isDetectingLongPress = false
     @State private var showBellPickerIndex: IdentifiableInt? = nil
     
     var totalTime: Int {
         routine.blocks.map { $0.durationInMinutes }.reduce(0, +)
     }
     
-    func moveBlock(from source: Int, to destination: Int) {
-        guard source != destination, source < routine.blocks.count, destination < routine.blocks.count else { return }
-        var newBlocks = routine.blocks
-        let moved = newBlocks.remove(at: source)
-        newBlocks.insert(moved, at: destination)
-        routine.blocks = newBlocks
-        // For simplicity, clear all bells after reorder
-        routine.transitionBells = Array(repeating: TransitionBell(soundName: "Soft Bell"), count: newBlocks.count > 0 ? newBlocks.count - 1 : 0)
+    func updateTransitionBells() {
+        // Update transition bells array to match blocks count
+        let bellsNeeded = max(0, routine.blocks.count - 1)
+        if routine.transitionBells.count > bellsNeeded {
+            routine.transitionBells = Array(routine.transitionBells.prefix(bellsNeeded))
+        } else if routine.transitionBells.count < bellsNeeded {
+            let additionalBells = Array(repeating: TransitionBell(soundName: "Soft Bell"), count: bellsNeeded - routine.transitionBells.count)
+            routine.transitionBells.append(contentsOf: additionalBells)
+        }
     }
     
     func deleteBlock(at index: Int) {
         routine.blocks.remove(at: index)
-        if routine.transitionBells.indices.contains(index) {
-            routine.transitionBells.remove(at: index)
-        } else if routine.transitionBells.indices.contains(index - 1) {
-            routine.transitionBells.remove(at: index - 1)
-        }
+        updateTransitionBells()
     }
     
     var body: some View {
@@ -67,7 +60,7 @@ struct RoutineBuilderView: View {
                 .padding(.top, AppTheme.Spacing.extraLarge)
                 .padding(.bottom, AppTheme.Spacing.small)
                 
-                // Timeline + Block List
+                // Timeline + Block List with Dragula
                 ScrollView(showsIndicators: false) {
                     ZStack(alignment: .leading) {
                         // Timeline vertical line (scrolls with blocks)
@@ -82,27 +75,29 @@ struct RoutineBuilderView: View {
                                     .offset(x: 54, y: blockHeight/2)
                             }
                         }
-                        VStack(spacing: AppTheme.Spacing.large) {
-                            ForEach(Array(routine.blocks.enumerated()), id: \.element.id) { (idx, block) in
+                        
+                        LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
+                            DragulaView(items: $routine.blocks) { block in
                                 TimelineBlockCard(
                                     block: block,
-                                    isLast: idx == routine.blocks.count - 1,
+                                    isLast: block.id == routine.blocks.last?.id,
                                     onEdit: { editBlock = block },
-                                    onDrag: { dragState in
-                                        if let from = dragState.from, let to = dragState.to {
-                                            moveBlock(from: from, to: to)
-                                        }
-                                    },
-                                    index: idx,
+                                    index: routine.blocks.firstIndex(where: { $0.id == block.id }) ?? 0,
                                     blocksCount: routine.blocks.count,
-                                    draggingBlock: $draggingBlock,
-                                    bell: idx < routine.transitionBells.count ? routine.transitionBells[idx] : nil,
+                                    bell: getBell(for: block),
                                     onBellTap: {
-                                        showBellPickerIndex = IdentifiableInt(value: idx)
+                                        if let index = routine.blocks.firstIndex(where: { $0.id == block.id }) {
+                                            showBellPickerIndex = IdentifiableInt(value: index)
+                                        }
                                     }
                                 )
                                 .frame(height: 76)
+                            } dropView: { block in
+                                DropIndicatorView(block: block)
+                            } dropCompleted: {
+                                updateTransitionBells()
                             }
+                            .environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.large)
                         }
                         .padding(.vertical, AppTheme.Spacing.extraLarge)
                         .padding(.bottom, 80)
@@ -173,11 +168,31 @@ struct RoutineBuilderView: View {
         .sheet(isPresented: $showAddBlock) {
             AddBlockView { newBlock in
                 routine.blocks.append(newBlock)
-                if routine.blocks.count > 1 {
-                    routine.transitionBells.append(TransitionBell(soundName: "Soft Bell"))
-                }
+                updateTransitionBells()
                 showAddBlock = false
             }
         }
     }
+    
+    // Helper function to get bell for a block
+    private func getBell(for block: MeditationBlock) -> TransitionBell? {
+        guard let index = routine.blocks.firstIndex(where: { $0.id == block.id }),
+              index < routine.transitionBells.count else { return nil }
+        return routine.transitionBells[index]
+    }
+}
+
+// MARK: - Drop Indicator View
+struct DropIndicatorView: View {
+    let block: MeditationBlock
+    
+    var body: some View {
+        Rectangle()
+            .fill(AppTheme.accentColor.opacity(0.3))
+            .frame(height: 4)
+            .clipShape(.rect(cornerRadius: 2))
+            .padding(.horizontal, AppTheme.Spacing.medium)
+            .padding(.leading, 56) // Align with timeline
+    }
 } 
+ 

@@ -1,0 +1,15 @@
+{
+  "originHash" : "d609a9f6f8903ab1c5bf80f8857564079f8c3d811e1b9dbbf7f21cdcc74443c8",
+  "pins" : [
+    {
+      "identity" : "dragula",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mufasayc/Dragula.git",
+      "state" : {
+        "branch" : "main",
+        "revision" : "12e4bd61ac582d173c6e848f1722b849837f9dd2"
+      }
+    }
+  ],
+  "version" : 3
+}

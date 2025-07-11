@@ -6,9 +6,10 @@
 //
 
 import Foundation
+import Dragula
 
 // MARK: - Meditation Block
-struct MeditationBlock: Identifiable, Equatable {
+struct MeditationBlock: Identifiable, Equatable, DragulaItem {
     let id: UUID
     var name: String
     var durationInMinutes: Int

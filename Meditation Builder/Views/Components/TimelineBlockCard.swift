@@ -11,16 +11,10 @@ struct TimelineBlockCard: View {
     let block: MeditationBlock
     let isLast: Bool
     var onEdit: () -> Void
-    var onDrag: (_ dragState: (from: Int?, to: Int?)) -> Void
     let index: Int
     let blocksCount: Int
-    @Binding var draggingBlock: MeditationBlock?
     let bell: TransitionBell?
     var onBellTap: (() -> Void)? = nil
-    
-    @State private var offset: CGFloat = 0
-    @GestureState private var dragTranslation: CGSize = .zero
-    @State private var isSwiped: Bool = false
     
     var body: some View {
         ZStack(alignment: .leading) {
@@ -113,10 +107,8 @@ struct TimelineBlockCard: View {
                 ),
                 isLast: false,
                 onEdit: {},
-                onDrag: { _ in },
                 index: 0,
                 blocksCount: 3,
-                draggingBlock: .constant(nil),
                 bell: TransitionBell(soundName: "Soft Bell"),
                 onBellTap: {}
             )
@@ -131,10 +123,8 @@ struct TimelineBlockCard: View {
                 ),
                 isLast: true,
                 onEdit: {},
-                onDrag: { _ in },
                 index: 2,
                 blocksCount: 3,
-                draggingBlock: .constant(nil),
                 bell: nil,
                 onBellTap: {}
             )
@@ -149,10 +139,8 @@ struct TimelineBlockCard: View {
                 ),
                 isLast: false,
                 onEdit: {},
-                onDrag: { _ in },
                 index: 1,
                 blocksCount: 3,
-                draggingBlock: .constant(nil),
                 bell: TransitionBell(soundName: "Tibetan Bowl"),
                 onBellTap: {}
             )
@@ -167,10 +155,8 @@ struct TimelineBlockCard: View {
                 ),
                 isLast: false,
                 onEdit: {},
-                onDrag: { _ in },
                 index: 3,
                 blocksCount: 4,
-                draggingBlock: .constant(nil),
                 bell: TransitionBell(soundName: "Digital Chime"),
                 onBellTap: {}
             )
@@ -195,10 +181,8 @@ struct TimelineBlockCard: View {
                         ),
                         isLast: blockType == .custom,
                         onEdit: {},
-                        onDrag: { _ in },
                         index: MeditationBlock.BlockType.allCases.firstIndex(of: blockType) ?? 0,
                         blocksCount: MeditationBlock.BlockType.allCases.count,
-                        draggingBlock: .constant(nil),
                         bell: blockType != .custom ? TransitionBell(soundName: "Soft Bell") : nil,
                         onBellTap: {}
                     )
@@ -222,10 +206,8 @@ struct TimelineBlockCard: View {
             ),
             isLast: true,
             onEdit: {},
-            onDrag: { _ in },
             index: 0,
             blocksCount: 1,
-            draggingBlock: .constant(nil),
             bell: nil,
             onBellTap: {}
         )

@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		3AB336882E2130C600BB948D /* Dragula in Frameworks */ = {isa = PBXBuildFile; productRef = 3AB336872E2130C600BB948D /* Dragula */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFileReference section */
 		3A41C5412E1E600500DECC0B /* Meditation Builder.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "Meditation Builder.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -23,6 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				3AB336882E2130C600BB948D /* Dragula in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -65,6 +70,7 @@
 			);
 			name = "Meditation Builder";
 			packageProductDependencies = (
+				3AB336872E2130C600BB948D /* Dragula */,
 			);
 			productName = "Meditation Builder";
 			productReference = 3A41C5412E1E600500DECC0B /* Meditation Builder.app */;
@@ -94,6 +100,9 @@
 			);
 			mainGroup = 3A41C5382E1E600500DECC0B;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				3AB336862E2130C600BB948D /* XCRemoteSwiftPackageReference "Dragula" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 3A41C5422E1E600500DECC0B /* Products */;
 			projectDirPath = "";
@@ -324,6 +333,25 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		3AB336862E2130C600BB948D /* XCRemoteSwiftPackageReference "Dragula" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/mufasayc/Dragula.git";
+			requirement = {
+				branch = main;
+				kind = branch;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		3AB336872E2130C600BB948D /* Dragula */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 3AB336862E2130C600BB948D /* XCRemoteSwiftPackageReference "Dragula" */;
+			productName = Dragula;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 3A41C5392E1E600500DECC0B /* Project object */;
 }
