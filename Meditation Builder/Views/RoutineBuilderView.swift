@@ -26,44 +26,18 @@ struct RoutineBuilderView: View {
     @GestureState private var isDetectingLongPress = false
     @State private var showBellPickerIndex: IdentifiableInt? = nil
     
-    // Enhanced drag state
-    @State private var hoverIndex: Int? = nil
-    @State private var isReordering = false
-    @State private var draggedBlockIndex: Int? = nil
-    @State private var reorderMode = false
-    
     var totalTime: Int {
         routine.blocks.map { $0.durationInMinutes }.reduce(0, +)
     }
     
     func moveBlock(from source: Int, to destination: Int) {
-        guard source != destination, 
-              source < routine.blocks.count, 
-              destination < routine.blocks.count,
-              source >= 0,
-              destination >= 0 else { return }
-        
+        guard source != destination, source < routine.blocks.count, destination < routine.blocks.count else { return }
         var newBlocks = routine.blocks
         let moved = newBlocks.remove(at: source)
         newBlocks.insert(moved, at: destination)
-        
-        // Update transition bells
-        var newBells = routine.transitionBells
-        if newBells.count > 0 {
-            if source < newBells.count {
-                let bell = newBells.remove(at: source)
-                if destination <= newBells.count {
-                    newBells.insert(bell, at: destination)
-                } else {
-                    newBells.append(bell)
-                }
-            }
-        }
-        
-        withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-            routine.blocks = newBlocks
-            routine.transitionBells = newBells
-        }
+        routine.blocks = newBlocks
+        // For simplicity, clear all bells after reorder
+        routine.transitionBells = Array(repeating: TransitionBell(soundName: "Soft Bell"), count: newBlocks.count > 0 ? newBlocks.count - 1 : 0)
     }
     
     func deleteBlock(at index: Int) {
@@ -75,80 +49,19 @@ struct RoutineBuilderView: View {
         }
     }
     
-    func handleDrag(from source: Int?, to destination: Int?) {
-        guard let from = source, let to = destination else { return }
-        
-        print("handleDrag called - from: \(from), to: \(to)")
-        
-        if from != to {
-            // Update visual feedback immediately
-            hoverIndex = to
-            draggedBlockIndex = from
-            print("Updated hoverIndex: \(hoverIndex), draggedBlockIndex: \(draggedBlockIndex)")
-        }
-    }
-    
-    func handleDragEnd() {
-        print("handleDragEnd called")
-        // Perform the actual reordering when drag ends
-        if let from = draggedBlockIndex, let to = hoverIndex, from != to {
-            print("Moving block from \(from) to \(to)")
-            withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                moveBlock(from: from, to: to)
-            }
-        } else {
-            print("No reorder needed - from: \(draggedBlockIndex), to: \(hoverIndex)")
-        }
-        
-        // Reset drag state
-        hoverIndex = nil
-        draggedBlockIndex = nil
-    }
-    
     var body: some View {
         ZStack(alignment: .bottomTrailing) {
             AppTheme.backgroundColor.ignoresSafeArea()
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Routine")
-                            .font(AppTheme.Typography.titleFont)
-                            .foregroundColor(.white)
-                        if reorderMode {
-                            Text("Reorder Mode: ON")
-                                .font(.caption)
-                                .foregroundColor(.green)
-                        }
-                    }
-                    Spacer()
-                    
-                    // Reorder mode toggle
-                    Button(action: {
-                        print("Reorder button tapped - current mode: \(reorderMode)")
-                        withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                            reorderMode.toggle()
-                        }
-                        print("Reorder mode changed to: \(reorderMode)")
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: reorderMode ? "checkmark.circle.fill" : "arrow.up.arrow.down")
-                                .font(.system(size: 16, weight: .medium))
-                            Text(reorderMode ? "Done" : "Reorder")
-                                .font(.system(size: 14, weight: .medium))
-                        }
-                        .foregroundColor(reorderMode ? .green : AppTheme.accentColor)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 6)
-                        .background(
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(reorderMode ? Color.green.opacity(0.2) : AppTheme.accentColor.opacity(0.2))
-                        )
-                    }
-                    
                     Image(systemName: "sun.max.fill")
                         .foregroundColor(AppTheme.accentColor)
                         .font(.system(size: 28, weight: .bold))
+                    Text("Routine")
+                        .font(AppTheme.Typography.titleFont)
+                        .foregroundColor(.white)
+                    Spacer()
                 }
                 .padding(.horizontal)
                 .padding(.top, AppTheme.Spacing.extraLarge)
@@ -169,41 +82,26 @@ struct RoutineBuilderView: View {
                                     .offset(x: 54, y: blockHeight/2)
                             }
                         }
-                        
                         VStack(spacing: AppTheme.Spacing.large) {
                             ForEach(Array(routine.blocks.enumerated()), id: \.element.id) { (idx, block) in
-                                VStack(spacing: 0) {
-                                    // Drop zone indicator
-                                    DropZoneIndicator(isActive: hoverIndex == idx)
-                                        .padding(.horizontal, 20)
-                                        .padding(.bottom, 8)
-                                    
-                                    // Block card
-                                    TimelineBlockCard(
-                                        block: block,
-                                        isLast: idx == routine.blocks.count - 1,
-                                        onEdit: { editBlock = block },
-                                        onDrag: handleDrag,
-                                        onDragEnd: handleDragEnd,
-                                        index: idx,
-                                        blocksCount: routine.blocks.count,
-                                        draggingBlock: $draggingBlock,
-                                        bell: idx < routine.transitionBells.count ? routine.transitionBells[idx] : nil,
-                                        onBellTap: {
-                                            showBellPickerIndex = IdentifiableInt(value: idx)
-                                        },
-                                        reorderMode: reorderMode
-                                    )
-                                    .frame(height: 76)
-                                    .opacity(draggedBlockIndex == idx ? 0.3 : 1.0)
-                                    .animation(.easeInOut(duration: 0.2), value: draggedBlockIndex)
-                                    .overlay(
-                                        reorderMode ? 
-                                        RoundedRectangle(cornerRadius: 8)
-                                            .stroke(Color.green, lineWidth: 2)
-                                            .opacity(0.5) : nil
-                                    )
-                                }
+                                TimelineBlockCard(
+                                    block: block,
+                                    isLast: idx == routine.blocks.count - 1,
+                                    onEdit: { editBlock = block },
+                                    onDrag: { dragState in
+                                        if let from = dragState.from, let to = dragState.to {
+                                            moveBlock(from: from, to: to)
+                                        }
+                                    },
+                                    index: idx,
+                                    blocksCount: routine.blocks.count,
+                                    draggingBlock: $draggingBlock,
+                                    bell: idx < routine.transitionBells.count ? routine.transitionBells[idx] : nil,
+                                    onBellTap: {
+                                        showBellPickerIndex = IdentifiableInt(value: idx)
+                                    }
+                                )
+                                .frame(height: 76)
                             }
                         }
                         .padding(.vertical, AppTheme.Spacing.extraLarge)

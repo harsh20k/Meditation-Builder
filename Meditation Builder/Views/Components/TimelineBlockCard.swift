@@ -12,33 +12,18 @@ struct TimelineBlockCard: View {
     let isLast: Bool
     var onEdit: () -> Void
     var onDrag: (_ dragState: (from: Int?, to: Int?)) -> Void
-    var onDragEnd: () -> Void
     let index: Int
     let blocksCount: Int
     @Binding var draggingBlock: MeditationBlock?
     let bell: TransitionBell?
     var onBellTap: (() -> Void)? = nil
-    let reorderMode: Bool
     
-    // Drag state
-    @State private var isDragging = false
-    @State private var dragOffset: CGSize = .zero
-    @State private var isLongPressed = false
-    @GestureState private var longPressState = false
-    @State private var lastDragIndex: Int? = nil
+    @State private var offset: CGFloat = 0
+    @GestureState private var dragTranslation: CGSize = .zero
+    @State private var isSwiped: Bool = false
     
     var body: some View {
         ZStack(alignment: .leading) {
-            // Debug info
-            if reorderMode {
-                Text("Reorder Mode Active")
-                    .font(.caption)
-                    .foregroundColor(.green)
-                    .padding(4)
-                    .background(Color.black.opacity(0.7))
-                    .cornerRadius(4)
-                    .position(x: 50, y: 20)
-            }
             // Timeline node
             VStack {
                 Spacer()
@@ -105,93 +90,10 @@ struct TimelineBlockCard: View {
                 RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
                     .stroke(Color.white.opacity(AppTheme.Opacity.border), lineWidth: 1)
             )
-            .shadow(color: AppTheme.Shadows.card, radius: isDragging ? 12 : 4, x: 0, y: isDragging ? 8 : 2)
+            .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
             .padding(.leading, AppTheme.Spacing.medium)
-            .scaleEffect(isDragging ? 1.05 : 1.0)
-            .rotation3DEffect(
-                .degrees(isDragging ? 5 : 0),
-                axis: (x: 1, y: 0, z: 0)
-            )
-            .opacity(isDragging ? 0.8 : 1.0)
-            .animation(.spring(response: 0.3, dampingFraction: 0.7), value: isDragging)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .offset(dragOffset)
-        .zIndex(isDragging ? 1000 : 0)
-        .onTapGesture {
-            print("Tap detected - reorderMode: \(reorderMode)")
-        }
-        .gesture(
-            reorderMode ? 
-            LongPressGesture(minimumDuration: 0.3)
-                .updating($longPressState) { currentState, gestureState, _ in
-                    print("Long press updating: \(currentState)")
-                    gestureState = currentState
-                }
-                .onEnded { _ in
-                    print("Long press ended - reorderMode: \(reorderMode)")
-                    withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                        isLongPressed = true
-                        isDragging = true
-                        draggingBlock = block
-                    }
-                }
-                .simultaneously(with: 
-                    DragGesture()
-                        .onChanged { value in
-                            if isLongPressed {
-                                print("Drag changed - translation: \(value.translation)")
-                                dragOffset = value.translation
-                                
-                                // Calculate potential drop index based on drag position
-                                let dragThreshold: CGFloat = 40
-                                let currentIndex = index
-                                let dragDistance = value.translation.height
-                                
-                                if abs(dragDistance) > dragThreshold {
-                                    let direction = dragDistance > 0 ? 1 : -1
-                                    let newIndex = max(0, min(blocksCount - 1, currentIndex + direction))
-                                    
-                                    if newIndex != currentIndex && newIndex != lastDragIndex {
-                                        print("Calling onDrag from \(currentIndex) to \(newIndex)")
-                                        // Haptic feedback
-                                        let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                                        impactFeedback.impactOccurred()
-                                        
-                                        lastDragIndex = newIndex
-                                        onDrag((from: currentIndex, to: newIndex))
-                                    }
-                                }
-                            }
-                        }
-                        .onEnded { value in
-                            if isLongPressed {
-                                print("Drag ended")
-                                withAnimation(.spring(response: 0.4, dampingFraction: 0.8)) {
-                                    dragOffset = .zero
-                                    isDragging = false
-                                    isLongPressed = false
-                                    draggingBlock = nil
-                                    lastDragIndex = nil
-                                }
-                                
-                                // Call drag end handler
-                                onDragEnd()
-                            }
-                        }
-                ) : nil
-        )
-        .onChange(of: longPressState) { _, newValue in
-            if !newValue && isLongPressed {
-                withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
-                    isDragging = false
-                    isLongPressed = false
-                    draggingBlock = nil
-                    dragOffset = .zero
-                    lastDragIndex = nil
-                }
-            }
-        }
     }
 }
 
@@ -212,13 +114,11 @@ struct TimelineBlockCard: View {
                 isLast: false,
                 onEdit: {},
                 onDrag: { _ in },
-                onDragEnd: {},
                 index: 0,
                 blocksCount: 3,
                 draggingBlock: .constant(nil),
                 bell: TransitionBell(soundName: "Soft Bell"),
-                onBellTap: {},
-                reorderMode: true
+                onBellTap: {}
             )
             
             // Preview without bell (last block)
@@ -232,13 +132,11 @@ struct TimelineBlockCard: View {
                 isLast: true,
                 onEdit: {},
                 onDrag: { _ in },
-                onDragEnd: {},
                 index: 2,
                 blocksCount: 3,
                 draggingBlock: .constant(nil),
                 bell: nil,
-                onBellTap: {},
-                reorderMode: true
+                onBellTap: {}
             )
             
             // Preview with long name
@@ -252,13 +150,11 @@ struct TimelineBlockCard: View {
                 isLast: false,
                 onEdit: {},
                 onDrag: { _ in },
-                onDragEnd: {},
                 index: 1,
                 blocksCount: 3,
                 draggingBlock: .constant(nil),
                 bell: TransitionBell(soundName: "Tibetan Bowl"),
-                onBellTap: {},
-                reorderMode: true
+                onBellTap: {}
             )
             
             // Preview with custom block
@@ -272,13 +168,11 @@ struct TimelineBlockCard: View {
                 isLast: false,
                 onEdit: {},
                 onDrag: { _ in },
-                onDragEnd: {},
                 index: 3,
                 blocksCount: 4,
                 draggingBlock: .constant(nil),
                 bell: TransitionBell(soundName: "Digital Chime"),
-                onBellTap: {},
-                reorderMode: true
+                onBellTap: {}
             )
         }
         .padding()
@@ -302,13 +196,11 @@ struct TimelineBlockCard: View {
                         isLast: blockType == .custom,
                         onEdit: {},
                         onDrag: { _ in },
-                        onDragEnd: {},
                         index: MeditationBlock.BlockType.allCases.firstIndex(of: blockType) ?? 0,
                         blocksCount: MeditationBlock.BlockType.allCases.count,
                         draggingBlock: .constant(nil),
                         bell: blockType != .custom ? TransitionBell(soundName: "Soft Bell") : nil,
-                        onBellTap: {},
-                        reorderMode: true
+                        onBellTap: {}
                     )
                 }
             }
@@ -331,13 +223,11 @@ struct TimelineBlockCard: View {
             isLast: true,
             onEdit: {},
             onDrag: { _ in },
-            onDragEnd: {},
             index: 0,
             blocksCount: 1,
             draggingBlock: .constant(nil),
             bell: nil,
-            onBellTap: {},
-            reorderMode: true
+            onBellTap: {}
         )
         .padding()
     }
