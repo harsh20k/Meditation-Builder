@@ -28,7 +28,7 @@ struct MeditationBlock: Identifiable, Equatable, DragulaItem {
             switch self {
             case .silence: return "bell.fill"
             case .breathwork: return "leaf.fill"
-            case .chanting: return "person.wave.2.fill"
+            case .chanting: return "om.symbol"
             case .visualization: return "eye.fill"
             case .bodyScan: return "figure.mind.and.body"
             case .walking: return "figure.walk"
@@ -65,9 +65,38 @@ struct TransitionBell: Equatable {
 }
 
 // MARK: - Routine
-struct Routine {
+struct Routine: Equatable {
     var blocks: [MeditationBlock]
     var transitionBells: [TransitionBell?] // size = blocks.count - 1
+    
+    static func == (lhs: Routine, rhs: Routine) -> Bool {
+        lhs.blocks == rhs.blocks && lhs.transitionBells == rhs.transitionBells
+    }
+}
+
+// MARK: - Saved Routine
+struct SavedRoutine: Identifiable, Equatable {
+    let id: UUID
+    var name: String
+    var routine: Routine
+    var createdAt: Date
+    var lastModified: Date
+    
+    init(id: UUID = UUID(), name: String, routine: Routine, createdAt: Date = Date(), lastModified: Date = Date()) {
+        self.id = id
+        self.name = name
+        self.routine = routine
+        self.createdAt = createdAt
+        self.lastModified = lastModified
+    }
+    
+    static func == (lhs: SavedRoutine, rhs: SavedRoutine) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.name == rhs.name &&
+        lhs.routine == rhs.routine &&
+        lhs.createdAt == rhs.createdAt &&
+        lhs.lastModified == rhs.lastModified
+    }
 }
 
 // MARK: - IdentifiableInt for sheet index

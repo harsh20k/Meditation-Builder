@@ -100,7 +100,7 @@ struct RoutineBuilderView: View {
                             .environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.large)
                         }
                         .padding(.vertical, AppTheme.Spacing.extraLarge)
-                        .padding(.bottom, 80)
+                        .padding(.bottom, 120) // Account for floating button and tab bar
                     }
                 }
                 .frame(maxHeight: .infinity)
@@ -126,7 +126,7 @@ struct RoutineBuilderView: View {
                     }
                     .padding(.horizontal)
                 }
-                .padding(.bottom, 72)
+                .padding(.bottom, 112) // Account for tab bar
             }
             
             // Floating Add Button
@@ -143,12 +143,6 @@ struct RoutineBuilderView: View {
             .padding(.trailing, AppTheme.Spacing.extraLarge)
             .padding(.bottom, 112)
             .shadow(radius: 8)
-            
-            // Tab Bar
-            VStack {
-                Spacer()
-                CustomTabBar()
-            }
         }
         .sheet(item: $showBellPickerIndex) { identifiable in
             let idx = identifiable.value
