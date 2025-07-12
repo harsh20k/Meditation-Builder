@@ -10,44 +10,51 @@ import SwiftUI
 struct RoutineLibraryView: View {
     @State private var savedRoutines: [SavedRoutine] = [
         SavedRoutine(
-            id: UUID(),
             name: "Morning Meditation",
             routine: Routine(
+                name: "Morning Meditation",
                 blocks: [
-                    MeditationBlock(id: UUID(), name: "Silence", durationInMinutes: 5, type: .silence),
-                    MeditationBlock(id: UUID(), name: "Breathwork", durationInMinutes: 10, type: .breathwork),
-                    MeditationBlock(id: UUID(), name: "Visualization", durationInMinutes: 8, type: .visualization)
+                    MeditationBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                    MeditationBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
+                    MeditationBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl)
                 ],
-                transitionBells: [TransitionBell(soundName: "Soft Bell"), TransitionBell(soundName: "Tibetan Bowl")]
+                openingBell: .softBell,
+                closingBell: .tibetanBowl
             ),
-            createdAt: Date(),
-            lastModified: Date()
+            playCount: 12,
+            lastPlayed: Date().addingTimeInterval(-3600) // 1 hour ago
         ),
         SavedRoutine(
-            id: UUID(),
             name: "Evening Wind Down",
             routine: Routine(
+                name: "Evening Wind Down",
                 blocks: [
-                    MeditationBlock(id: UUID(), name: "Body Scan", durationInMinutes: 15, type: .bodyScan),
-                    MeditationBlock(id: UUID(), name: "Silence", durationInMinutes: 10, type: .silence)
+                    MeditationBlock(name: "Body Scan", durationInMinutes: 15, type: .bodyScan, blockStartBell: .silent),
+                    MeditationBlock(name: "Silence", durationInMinutes: 10, type: .silence, blockStartBell: .digitalChime)
                 ],
-                transitionBells: [TransitionBell(soundName: "Soft Bell")]
+                openingBell: .digitalChime,
+                closingBell: .silent
             ),
             createdAt: Date().addingTimeInterval(-86400),
-            lastModified: Date().addingTimeInterval(-3600)
+            lastModified: Date().addingTimeInterval(-3600),
+            playCount: 8,
+            lastPlayed: Date().addingTimeInterval(-7200) // 2 hours ago
         ),
         SavedRoutine(
-            id: UUID(),
             name: "Quick Focus",
             routine: Routine(
+                name: "Quick Focus",
                 blocks: [
-                    MeditationBlock(id: UUID(), name: "Breathwork", durationInMinutes: 3, type: .breathwork),
-                    MeditationBlock(id: UUID(), name: "Silence", durationInMinutes: 2, type: .silence)
+                    MeditationBlock(name: "Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .silent),
+                    MeditationBlock(name: "Silence", durationInMinutes: 2, type: .silence, blockStartBell: .softBell)
                 ],
-                transitionBells: [TransitionBell(soundName: "Digital Chime")]
+                openingBell: .softBell,
+                closingBell: .softBell
             ),
             createdAt: Date().addingTimeInterval(-172800),
-            lastModified: Date().addingTimeInterval(-7200)
+            lastModified: Date().addingTimeInterval(-7200),
+            playCount: 25,
+            lastPlayed: Date().addingTimeInterval(-1800) // 30 minutes ago
         )
     ]
     
@@ -429,18 +436,18 @@ struct RoutinePlayerView: View {
             routine: SavedRoutine(
                 name: "Morning Meditation",
                 routine: Routine(
+                    name: "Morning Meditation",
                     blocks: [
-                        MeditationBlock(id: UUID(), name: "Silence", durationInMinutes: 5, type: .silence),
-                        MeditationBlock(id: UUID(), name: "Breathwork", durationInMinutes: 10, type: .breathwork),
-                        MeditationBlock(id: UUID(), name: "Visualization", durationInMinutes: 8, type: .visualization),
-                        MeditationBlock(id: UUID(), name: "Body Scan", durationInMinutes: 12, type: .bodyScan)
+                        MeditationBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                        MeditationBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
+                        MeditationBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl),
+                        MeditationBlock(name: "Body Scan", durationInMinutes: 12, type: .bodyScan, blockStartBell: .digitalChime)
                     ],
-                    transitionBells: [
-                        TransitionBell(soundName: "Soft Bell"),
-                        TransitionBell(soundName: "Tibetan Bowl"),
-                        TransitionBell(soundName: "Digital Chime")
-                    ]
-                )
+                    openingBell: .softBell,
+                    closingBell: .tibetanBowl
+                ),
+                playCount: 15,
+                lastPlayed: Date().addingTimeInterval(-900) // 15 minutes ago
             ),
             onPlay: {},
             onEdit: {}

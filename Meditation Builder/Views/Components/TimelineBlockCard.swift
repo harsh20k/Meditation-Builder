@@ -13,8 +13,6 @@ struct TimelineBlockCard: View {
     var onEdit: () -> Void
     let index: Int
     let blocksCount: Int
-    let bell: TransitionBell?
-    var onBellTap: (() -> Void)? = nil
     
     var body: some View {
         ZStack(alignment: .leading) {
@@ -48,20 +46,25 @@ struct TimelineBlockCard: View {
                         .lineLimit(2)
                         .truncationMode(.tail)
                         .fixedSize(horizontal: false, vertical: true)
-                    Text("\(block.durationInMinutes) min")
-                        .font(AppTheme.Typography.bodyFont)
-                        .foregroundColor(AppTheme.lightGrey)
+                    
+                    HStack(spacing: 8) {
+                        Text("\(block.durationInMinutes) min")
+                            .font(AppTheme.Typography.bodyFont)
+                            .foregroundColor(AppTheme.lightGrey)
+                        
+                        if index > 0 && block.blockStartBell != .silent {
+                            HStack(spacing: 4) {
+                                Image(systemName: block.blockStartBell.icon)
+                                    .font(.system(size: 12, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                Text(block.blockStartBell.displayName)
+                                    .font(.system(size: 12, weight: .medium, design: .rounded))
+                                    .foregroundColor(AppTheme.lightGrey)
+                            }
+                        }
+                    }
                 }
                 Spacer()
-                
-                if !isLast {
-                    Button(action: { onBellTap?() }) {
-                        Image(systemName: "bell.fill")
-                            .foregroundColor(AppTheme.accentColor)
-                            .font(.system(size: 18, weight: .bold))
-                    }
-                    .padding(.bottom, 2)
-                }
                 
                 Button(action: onEdit) {
                     Image(systemName: "pencil")
@@ -97,68 +100,60 @@ struct TimelineBlockCard: View {
         AppTheme.backgroundColor.ignoresSafeArea()
         
         VStack(spacing: 20) {
-            // Preview with bell (not last block)
+            // Preview first block (no bell shown since index 0)
             TimelineBlockCard(
                 block: MeditationBlock(
-                    id: UUID(),
                     name: "Breathwork",
                     durationInMinutes: 5,
-                    type: .breathwork
+                    type: .breathwork,
+                    blockStartBell: .softBell
                 ),
                 isLast: false,
                 onEdit: {},
                 index: 0,
-                blocksCount: 3,
-                bell: TransitionBell(soundName: "Soft Bell"),
-                onBellTap: {}
+                blocksCount: 3
             )
             
-            // Preview without bell (last block)
+            // Preview middle block (shows bell)
             TimelineBlockCard(
                 block: MeditationBlock(
-                    id: UUID(),
                     name: "Silence",
                     durationInMinutes: 10,
-                    type: .silence
-                ),
-                isLast: true,
-                onEdit: {},
-                index: 2,
-                blocksCount: 3,
-                bell: nil,
-                onBellTap: {}
-            )
-            
-            // Preview with long name
-            TimelineBlockCard(
-                block: MeditationBlock(
-                    id: UUID(),
-                    name: "Very Long Meditation Block Name That Might Wrap",
-                    durationInMinutes: 15,
-                    type: .visualization
+                    type: .silence,
+                    blockStartBell: .tibetanBowl
                 ),
                 isLast: false,
                 onEdit: {},
                 index: 1,
-                blocksCount: 3,
-                bell: TransitionBell(soundName: "Tibetan Bowl"),
-                onBellTap: {}
+                blocksCount: 3
             )
             
-            // Preview with custom block
+            // Preview last block
             TimelineBlockCard(
                 block: MeditationBlock(
-                    id: UUID(),
+                    name: "Very Long Meditation Block Name That Might Wrap",
+                    durationInMinutes: 15,
+                    type: .visualization,
+                    blockStartBell: .digitalChime
+                ),
+                isLast: true,
+                onEdit: {},
+                index: 2,
+                blocksCount: 3
+            )
+            
+            // Preview with silent bell
+            TimelineBlockCard(
+                block: MeditationBlock(
                     name: "Custom Block",
                     durationInMinutes: 8,
-                    type: .custom
+                    type: .custom,
+                    blockStartBell: .silent
                 ),
                 isLast: false,
                 onEdit: {},
-                index: 3,
-                blocksCount: 4,
-                bell: TransitionBell(soundName: "Digital Chime"),
-                onBellTap: {}
+                index: 1,
+                blocksCount: 4
             )
         }
         .padding()
@@ -171,20 +166,18 @@ struct TimelineBlockCard: View {
         
         ScrollView {
             VStack(spacing: 16) {
-                ForEach(MeditationBlock.BlockType.allCases, id: \.self) { blockType in
+                ForEach(Array(MeditationBlock.BlockType.allCases.enumerated()), id: \.element) { index, blockType in
                     TimelineBlockCard(
                         block: MeditationBlock(
-                            id: UUID(),
                             name: blockType.rawValue,
                             durationInMinutes: blockType.defaultDuration,
-                            type: blockType
+                            type: blockType,
+                            blockStartBell: index == 0 ? .silent : BellSound.allCases[index % BellSound.allCases.count]
                         ),
                         isLast: blockType == .custom,
                         onEdit: {},
-                        index: MeditationBlock.BlockType.allCases.firstIndex(of: blockType) ?? 0,
-                        blocksCount: MeditationBlock.BlockType.allCases.count,
-                        bell: blockType != .custom ? TransitionBell(soundName: "Soft Bell") : nil,
-                        onBellTap: {}
+                        index: index,
+                        blocksCount: MeditationBlock.BlockType.allCases.count
                     )
                 }
             }
@@ -199,17 +192,15 @@ struct TimelineBlockCard: View {
         
         TimelineBlockCard(
             block: MeditationBlock(
-                id: UUID(),
                 name: "Body Scan",
                 durationInMinutes: 12,
-                type: .bodyScan
+                type: .bodyScan,
+                blockStartBell: .tibetanBowl
             ),
             isLast: true,
             onEdit: {},
-            index: 0,
-            blocksCount: 1,
-            bell: nil,
-            onBellTap: {}
+            index: 1,
+            blocksCount: 1
         )
         .padding()
     }
