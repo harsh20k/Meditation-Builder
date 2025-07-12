@@ -6,17 +6,32 @@
 //
 
 import Foundation
+import SwiftUI
 import Dragula
 
 // MARK: - Block Content Type
 enum BlockContentType: String, Codable, CaseIterable {
-    case bell = "Bell"
-    case audio = "Audio"
-    case video = "Video"
-    case ambient = "Ambient"
+    case bell = "bell"
+    case audio = "audio"
+    case video = "video"
+    case ambient = "ambient"
     
     var displayName: String {
-        return self.rawValue
+        switch self {
+        case .bell: return String(localized: "content.type.bell")
+        case .audio: return String(localized: "content.type.audio")
+        case .video: return String(localized: "content.type.video")
+        case .ambient: return String(localized: "content.type.ambient")
+        }
+    }
+    
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .bell: return LocalizedStringKey("content.type.bell")
+        case .audio: return LocalizedStringKey("content.type.audio")
+        case .video: return LocalizedStringKey("content.type.video")
+        case .ambient: return LocalizedStringKey("content.type.ambient")
+        }
     }
     
     var icon: String {
@@ -48,13 +63,27 @@ struct MediaResource: Identifiable, Codable, Equatable {
 
 // MARK: - Bell Sound
 enum BellSound: String, CaseIterable, Equatable, Codable {
-    case silent = "Silent"
-    case softBell = "Soft Bell"
-    case tibetanBowl = "Tibetan Bowl"
-    case digitalChime = "Digital Chime"
+    case silent = "silent"
+    case softBell = "soft_bell"
+    case tibetanBowl = "tibetan_bowl"
+    case digitalChime = "digital_chime"
     
     var displayName: String {
-        return self.rawValue
+        switch self {
+        case .silent: return String(localized: "bell.silent")
+        case .softBell: return String(localized: "bell.soft")
+        case .tibetanBowl: return String(localized: "bell.tibetan")
+        case .digitalChime: return String(localized: "bell.digital")
+        }
+    }
+    
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .silent: return LocalizedStringKey("bell.silent")
+        case .softBell: return LocalizedStringKey("bell.soft")
+        case .tibetanBowl: return LocalizedStringKey("bell.tibetan")
+        case .digitalChime: return LocalizedStringKey("bell.digital")
+        }
     }
     
     var icon: String {
@@ -90,13 +119,37 @@ struct MeditationBlock: Identifiable, Equatable, Codable, DragulaItem {
     }
     
     enum BlockType: String, CaseIterable, Codable {
-        case silence = "Silence"
-        case breathwork = "Breathwork"
-        case chanting = "Chanting"
-        case visualization = "Visualization"
-        case bodyScan = "Body Scan"
-        case walking = "Walking"
-        case custom = "Custom"
+        case silence = "silence"
+        case breathwork = "breathwork"
+        case chanting = "chanting"
+        case visualization = "visualization"
+        case bodyScan = "body_scan"
+        case walking = "walking"
+        case custom = "custom"
+        
+        var displayName: String {
+            switch self {
+            case .silence: return String(localized: "block.type.silence")
+            case .breathwork: return String(localized: "block.type.breathwork")
+            case .chanting: return String(localized: "block.type.chanting")
+            case .visualization: return String(localized: "block.type.visualization")
+            case .bodyScan: return String(localized: "block.type.body_scan")
+            case .walking: return String(localized: "block.type.walking")
+            case .custom: return String(localized: "block.type.custom")
+            }
+        }
+        
+        var titleKey: LocalizedStringKey {
+            switch self {
+            case .silence: return LocalizedStringKey("block.type.silence")
+            case .breathwork: return LocalizedStringKey("block.type.breathwork")
+            case .chanting: return LocalizedStringKey("block.type.chanting")
+            case .visualization: return LocalizedStringKey("block.type.visualization")
+            case .bodyScan: return LocalizedStringKey("block.type.body_scan")
+            case .walking: return LocalizedStringKey("block.type.walking")
+            case .custom: return LocalizedStringKey("block.type.custom")
+            }
+        }
         
         var icon: String {
             switch self {

@@ -40,7 +40,7 @@ struct RoutineBuilderView: View {
                     Image(systemName: "sun.max.fill")
                         .foregroundColor(AppTheme.accentColor)
                         .font(.system(size: 28, weight: .bold))
-                    Text("Routine")
+                    Text(LocalizedStringKey("routine.builder.title"))
                         .font(AppTheme.Typography.titleFont)
                         .foregroundColor(.white)
                     Spacer()
@@ -90,14 +90,17 @@ struct RoutineBuilderView: View {
                 
                 // Total Time & Save Button
                 VStack(spacing: AppTheme.Spacing.medium) {
-                    Text("Total \(totalTime) min")
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "total.time.format"),
+                        totalTime
+                    ))
                         .font(AppTheme.Typography.captionFont)
                         .foregroundColor(.white)
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
                     
                     Button(action: { isSaving = true }) {
-                        Text("SAVE")
+                        Text(LocalizedStringKey("button.save"))
                             .font(AppTheme.Typography.buttonFont)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)

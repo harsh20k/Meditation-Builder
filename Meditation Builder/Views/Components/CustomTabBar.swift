@@ -26,11 +26,21 @@ enum TabSelection: Int, CaseIterable {
     
     var title: String {
         switch self {
-        case .library: return "Library"
-        case .music: return "Music"
-        case .timer: return "Timer"
-        case .tools: return "Tools"
-        case .settings: return "Settings"
+        case .library: return String(localized: "tab.library")
+        case .music: return String(localized: "tab.music")
+        case .timer: return String(localized: "tab.timer")
+        case .tools: return String(localized: "tab.tools")
+        case .settings: return String(localized: "tab.settings")
+        }
+    }
+    
+    var titleKey: LocalizedStringKey {
+        switch self {
+        case .library: return LocalizedStringKey("tab.library")
+        case .music: return LocalizedStringKey("tab.music")
+        case .timer: return LocalizedStringKey("tab.timer")
+        case .tools: return LocalizedStringKey("tab.tools")
+        case .settings: return LocalizedStringKey("tab.settings")
         }
     }
 }

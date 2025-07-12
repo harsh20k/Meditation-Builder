@@ -27,7 +27,7 @@ struct EditBlockView: View {
                                     .foregroundColor(.white)
                                     .font(.system(size: 22, weight: .bold))
                             }
-                            TextField("Name", text: $block.name)
+                            TextField(LocalizedStringKey("block.name.placeholder"), text: $block.name)
                                 .font(AppTheme.Typography.headlineFont)
                                 .foregroundColor(.white)
                                 .padding(12)
@@ -37,7 +37,10 @@ struct EditBlockView: View {
                         .padding(.horizontal, AppTheme.Spacing.small)
                         
                         Stepper(value: $block.durationInMinutes, in: 1...60) {
-                            Text("Duration: \(block.durationInMinutes) min")
+                            Text(String.localizedStringWithFormat(
+                                String(localized: "duration.with.value.format"),
+                                block.durationInMinutes
+                            ))
                                 .font(AppTheme.Typography.bodyFont)
                                 .foregroundColor(AppTheme.lightGrey)
                         }
@@ -59,7 +62,7 @@ struct EditBlockView: View {
                         onSave(block)
                         dismiss()
                     }) {
-                        Text("Save")
+                        Text(LocalizedStringKey("button.save"))
                             .font(AppTheme.Typography.buttonFont)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -73,11 +76,11 @@ struct EditBlockView: View {
                     Spacer()
                 }
             }
-            .navigationTitle("Edit Block")
+            .navigationTitle(LocalizedStringKey("block.edit.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") {
+                    Button(LocalizedStringKey("button.cancel")) {
                         dismiss()
                     }
                     .foregroundColor(AppTheme.accentColor)

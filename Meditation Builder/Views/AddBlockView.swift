@@ -20,7 +20,7 @@ struct AddBlockView: View {
         if searchText.isEmpty {
             return blocks
         }
-        return blocks.filter { $0.rawValue.localizedCaseInsensitiveContains(searchText) }
+        return blocks.filter { $0.displayName.localizedCaseInsensitiveContains(searchText) }
     }
     
     var body: some View {
@@ -32,7 +32,7 @@ struct AddBlockView: View {
                     HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(AppTheme.accentColor)
-                        TextField("Search blocks...", text: $searchText)
+                        TextField(LocalizedStringKey("search.blocks.placeholder"), text: $searchText)
                             .foregroundColor(.white)
                     }
                     .padding(12)
@@ -44,7 +44,7 @@ struct AddBlockView: View {
                     // Tab selector
                     HStack(spacing: 0) {
                         Button(action: { selectedTab = 0 }) {
-                            Text("Default")
+                            Text(LocalizedStringKey("blocks.tab.default"))
                                 .font(.headline)
                                 .foregroundColor(selectedTab == 0 ? AppTheme.accentColor : .white.opacity(0.7))
                                 .frame(maxWidth: .infinity)
@@ -53,7 +53,7 @@ struct AddBlockView: View {
                                 .cornerRadius(AppTheme.CornerRadius.small)
                         }
                         Button(action: { selectedTab = 1 }) {
-                            Text("Custom")
+                            Text(LocalizedStringKey("blocks.tab.custom"))
                                 .font(.headline)
                                 .foregroundColor(selectedTab == 1 ? AppTheme.accentColor : .white.opacity(0.7))
                                 .frame(maxWidth: .infinity)
@@ -94,13 +94,16 @@ struct AddBlockView: View {
                                                     .font(.system(size: 22, weight: .bold))
                                             }
                                             VStack(alignment: .leading, spacing: 2) {
-                                                Text(blockType.rawValue)
+                                                Text(blockType.titleKey)
                                                     .font(AppTheme.Typography.headlineFont)
                                                     .foregroundColor(.white)
                                                     .lineLimit(2)
                                                     .truncationMode(.tail)
                                                     .fixedSize(horizontal: false, vertical: true)
-                                                Text("\(blockType.defaultDuration) min")
+                                                Text(String.localizedStringWithFormat(
+                                                    String(localized: "duration.with.value.format"),
+                                                    blockType.defaultDuration
+                                                ))
                                                     .font(AppTheme.Typography.bodyFont)
                                                     .foregroundColor(AppTheme.lightGrey)
                                             }
@@ -108,7 +111,7 @@ struct AddBlockView: View {
                                             Button(action: {
                                                 let newBlock = MeditationBlock(
                                                     id: UUID(),
-                                                    name: blockType.rawValue,
+                                                    name: blockType.displayName,
                                                     durationInMinutes: blockType.defaultDuration,
                                                     type: blockType
                                                 )
@@ -155,27 +158,30 @@ struct AddBlockView: View {
                                         .foregroundColor(.white)
                                         .font(.system(size: 22, weight: .bold))
                                 }
-                                TextField("Block name", text: $customName)
+                                TextField(LocalizedStringKey("block.name.placeholder"), text: $customName)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
                                     .font(.headline)
                                     .foregroundColor(.white)
                             }
                             Stepper(value: $customDuration, in: 1...60) {
-                                Text("Duration: \(customDuration) min")
+                                Text(String.localizedStringWithFormat(
+                                    String(localized: "duration.with.value.format"),
+                                    customDuration
+                                ))
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.lightGrey)
                             }
                             Button(action: {
                                 let newBlock = MeditationBlock(
                                     id: UUID(),
-                                    name: customName.isEmpty ? "Custom Block" : customName,
+                                    name: customName.isEmpty ? String(localized: "block.type.custom") : customName,
                                     durationInMinutes: customDuration,
                                     type: .custom
                                 )
                                 onAdd(newBlock)
                                 dismiss()
                             }) {
-                                Text("Add Custom Block")
+                                Text(LocalizedStringKey("block.create.custom"))
                                     .font(.headline)
                                     .foregroundColor(.white)
                                     .frame(maxWidth: .infinity)
@@ -192,11 +198,11 @@ struct AddBlockView: View {
                     }
                 }
             }
-            .navigationTitle("Add Block")
+            .navigationTitle(LocalizedStringKey("block.add.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") {
+                    Button(LocalizedStringKey("button.cancel")) {
                         dismiss()
                     }
                     .foregroundColor(AppTheme.accentColor)

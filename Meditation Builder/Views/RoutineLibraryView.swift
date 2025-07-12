@@ -71,7 +71,7 @@ struct RoutineLibraryView: View {
             routine.name.localizedCaseInsensitiveContains(searchText) ||
             routine.routine.blocks.contains { block in
                 block.name.localizedCaseInsensitiveContains(searchText) ||
-                block.type.rawValue.localizedCaseInsensitiveContains(searchText)
+                block.type.displayName.localizedCaseInsensitiveContains(searchText)
             }
         }.sorted { $0.lastModified > $1.lastModified }
     }
@@ -86,7 +86,7 @@ struct RoutineLibraryView: View {
                     Image(systemName: "books.vertical.fill")
                         .foregroundColor(AppTheme.accentColor)
                         .font(.system(size: 28, weight: .bold))
-                    Text("Routine Library")
+                    Text(LocalizedStringKey("routine.library.title"))
                         .font(AppTheme.Typography.titleFont)
                         .foregroundColor(.white)
                     Spacer()
@@ -101,7 +101,7 @@ struct RoutineLibraryView: View {
                         .foregroundColor(AppTheme.accentColor)
                         .font(.system(size: 16, weight: .medium))
                     
-                    TextField("Search routines...", text: $searchText)
+                    TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
                         .foregroundColor(.white)
                         .font(AppTheme.Typography.bodyFont)
                 }
@@ -172,11 +172,14 @@ struct RoutineCard: View {
     }
     
     private var blocksSummary: String {
-        let blockTypes = routine.routine.blocks.map(\.type.rawValue)
+        let blockTypes = routine.routine.blocks.map(\.type.displayName)
         if blockTypes.count <= 3 {
             return blockTypes.joined(separator: " • ")
         } else {
-            return blockTypes.prefix(2).joined(separator: " • ") + " • +\(blockTypes.count - 2) more"
+            return blockTypes.prefix(2).joined(separator: " • ") + " • " + String.localizedStringWithFormat(
+                String(localized: "routine.more.blocks.format"),
+                blockTypes.count - 2
+            )
         }
     }
     
@@ -198,7 +201,10 @@ struct RoutineCard: View {
                         .foregroundColor(.white)
                         .lineLimit(2)
                     
-                    Text("⏱ Duration: \(totalDuration) min")
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "routine.duration.format"),
+                        totalDuration
+                    ))
                         .font(AppTheme.Typography.bodyFont)
                         .foregroundColor(AppTheme.lightGrey)
                 }
@@ -289,13 +295,13 @@ struct EmptyStateView: View {
             }
             
             VStack(spacing: AppTheme.Spacing.small) {
-                Text(searchText.isEmpty ? "No Routines Yet" : "No Results Found")
+                Text(LocalizedStringKey(searchText.isEmpty ? "empty.no.routines" : "empty.no.results"))
                     .font(.system(size: 20, weight: .semibold, design: .rounded))
                     .foregroundColor(.white)
                 
-                Text(searchText.isEmpty 
-                     ? "Create your first meditation routine to get started"
-                     : "Try adjusting your search terms")
+                Text(LocalizedStringKey(searchText.isEmpty 
+                     ? "empty.create.first.routine"
+                     : "empty.adjust.search.terms"))
                     .font(AppTheme.Typography.bodyFont)
                     .foregroundColor(AppTheme.lightGrey)
                     .multilineTextAlignment(.center)
@@ -321,23 +327,26 @@ struct RoutinePlayerView: View {
                     Text("🧘‍♀️")
                         .font(.system(size: 80))
                     
-                    Text("Playing: \(routine.name)")
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "player.playing.format"),
+                        routine.name
+                    ))
                         .font(AppTheme.Typography.headlineFont)
                         .foregroundColor(.white)
                         .multilineTextAlignment(.center)
                     
-                    Text("Player functionality coming soon...")
+                    Text(LocalizedStringKey("player.coming.soon"))
                         .font(AppTheme.Typography.bodyFont)
                         .foregroundColor(AppTheme.lightGrey)
                         .multilineTextAlignment(.center)
                 }
                 .padding()
             }
-            .navigationTitle("Routine Player")
+            .navigationTitle(LocalizedStringKey("player.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                    Button(LocalizedStringKey("button.done")) {
                         dismiss()
                     }
                     .foregroundColor(AppTheme.accentColor)
@@ -371,7 +380,7 @@ struct RoutinePlayerView: View {
                         Image(systemName: "books.vertical.fill")
                             .foregroundColor(AppTheme.accentColor)
                             .font(.system(size: 28, weight: .bold))
-                        Text("Routine Library")
+                        Text(LocalizedStringKey("routine.library.title"))
                             .font(AppTheme.Typography.titleFont)
                             .foregroundColor(.white)
                         Spacer()
@@ -386,7 +395,7 @@ struct RoutinePlayerView: View {
                             .foregroundColor(AppTheme.accentColor)
                             .font(.system(size: 16, weight: .medium))
                         
-                        TextField("Search routines...", text: $searchText)
+                        TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
                             .foregroundColor(.white)
                             .font(AppTheme.Typography.bodyFont)
                     }

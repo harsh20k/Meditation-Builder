@@ -1,0 +1,97 @@
+/* 
+  Localizable.strings
+  Meditation Builder
+
+  Created by harsh on 09/07/25.
+  
+*/
+
+// MARK: - Tab Bar
+"tab.library" = "Library";
+"tab.music" = "Music";
+"tab.timer" = "Timer";
+"tab.tools" = "Tools";
+"tab.settings" = "Settings";
+
+// MARK: - Tab Descriptions
+"tab.music.description" = "Background music and sounds coming soon...";
+"tab.tools.description" = "Meditation tools and utilities coming soon...";
+"tab.settings.description" = "App settings and preferences coming soon...";
+
+// MARK: - Common UI
+"coming.soon" = "Coming Soon";
+
+// MARK: - Routine Library
+"routine.library.title" = "Routine Library";
+"search.routines.placeholder" = "Search routines...";
+"empty.no.routines" = "No Routines Yet";
+"empty.no.results" = "No Results Found";
+"empty.create.first.routine" = "Create your first meditation routine to get started";
+"empty.adjust.search.terms" = "Try adjusting your search terms";
+"routine.duration.format" = "⏱ Duration: %d min";
+"routine.more.blocks.format" = "+%d more";
+
+// MARK: - Routine Builder
+"routine.builder.title" = "Routine";
+"total.time.format" = "Total: %d min";
+
+// MARK: - Player
+"player.title" = "Routine Player";
+"player.playing.format" = "Playing: %@";
+"player.coming.soon" = "Player functionality coming soon...";
+
+// MARK: - Add Block View
+"block.add.title" = "Add Block";
+"blocks.tab.default" = "Default Blocks";
+"blocks.tab.custom" = "Custom Block";
+"search.blocks.placeholder" = "Search blocks...";
+"block.name.placeholder" = "Name";
+"block.create.custom" = "Create Custom Block";
+
+// MARK: - Edit Block View
+"block.edit.title" = "Edit Block";
+"duration.with.value.format" = "Duration: %d min";
+
+// MARK: - Bell Picker View
+"bell.picker.title" = "Select Bell";
+
+// MARK: - Block Types
+"block.type.silence" = "Silence";
+"block.type.breathwork" = "Breathwork";
+"block.type.chanting" = "Chanting";
+"block.type.visualization" = "Visualization";
+"block.type.body_scan" = "Body Scan";
+"block.type.walking" = "Walking";
+"block.type.custom" = "Custom";
+
+// MARK: - Bell Types
+"bell.silent" = "Silent";
+"bell.soft" = "Soft Bell";
+"bell.tibetan" = "Tibetan Bowl";
+"bell.digital" = "Digital Chime";
+
+// MARK: - Content Types
+"content.type.bell" = "Bell";
+"content.type.audio" = "Audio";
+"content.type.video" = "Video";
+"content.type.ambient" = "Ambient";
+
+// MARK: - Common Buttons
+"button.save" = "Save";
+"button.done" = "Done";
+"button.cancel" = "Cancel";
+"button.delete" = "Delete";
+"button.edit" = "Edit";
+"button.add" = "Add";
+"button.back" = "Back";
+
+// MARK: - Alert Messages
+"alert.unsaved.changes.title" = "Unsaved Changes";
+"alert.unsaved.changes.message" = "You have unsaved changes. What would you like to do?";
+"button.discard" = "Discard";
+"button.save.and.exit" = "Save & Exit";
+
+// MARK: - Error Messages
+"error.title" = "Error";
+"error.message" = "Something went wrong. Please try again.";
+"button.try.again" = "Try Again"; 

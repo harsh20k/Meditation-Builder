@@ -20,22 +20,22 @@ struct MainTabView: View {
                 case .music:
                     PlaceholderView(
                         icon: "music.note",
-                        title: "Music",
-                        description: "Background music and sounds coming soon..."
+                        title: String(localized: "tab.music"),
+                        description: String(localized: "tab.music.description")
                     )
                 case .timer:
                     RoutineBuilderView()
                 case .tools:
                     PlaceholderView(
                         icon: "hammer",
-                        title: "Tools",
-                        description: "Meditation tools and utilities coming soon..."
+                        title: String(localized: "tab.tools"),
+                        description: String(localized: "tab.tools.description")
                     )
                 case .settings:
                     PlaceholderView(
                         icon: "gearshape",
-                        title: "Settings",
-                        description: "App settings and preferences coming soon..."
+                        title: String(localized: "tab.settings"),
+                        description: String(localized: "tab.settings.description")
                     )
                 }
             }
@@ -89,7 +89,7 @@ struct PlaceholderView: View {
                     }
                     
                     VStack(spacing: AppTheme.Spacing.medium) {
-                        Text("Coming Soon")
+                        Text(LocalizedStringKey("coming.soon"))
                             .font(.system(size: 24, weight: .bold, design: .rounded))
                             .foregroundColor(.white)
                         
