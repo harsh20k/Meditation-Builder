@@ -8,7 +8,7 @@
 import SwiftUI
 
 struct TimelineBlockCard: View {
-    let block: MeditationBlock
+    let block: RoutineBlock
     let isLast: Bool
     var onEdit: () -> Void
     let index: Int
@@ -102,7 +102,7 @@ struct TimelineBlockCard: View {
         VStack(spacing: 20) {
             // Preview first block (no bell shown since index 0)
             TimelineBlockCard(
-                block: MeditationBlock(
+                block: RoutineBlock(
                     name: "Breathwork",
                     durationInMinutes: 5,
                     type: .breathwork,
@@ -116,7 +116,7 @@ struct TimelineBlockCard: View {
             
             // Preview middle block (shows bell)
             TimelineBlockCard(
-                block: MeditationBlock(
+                block: RoutineBlock(
                     name: "Silence",
                     durationInMinutes: 10,
                     type: .silence,
@@ -130,7 +130,7 @@ struct TimelineBlockCard: View {
             
             // Preview last block
             TimelineBlockCard(
-                block: MeditationBlock(
+                block: RoutineBlock(
                     name: "Very Long Meditation Block Name That Might Wrap",
                     durationInMinutes: 15,
                     type: .visualization,
@@ -144,7 +144,7 @@ struct TimelineBlockCard: View {
             
             // Preview with silent bell
             TimelineBlockCard(
-                block: MeditationBlock(
+                block: RoutineBlock(
                     name: "Custom Block",
                     durationInMinutes: 8,
                     type: .custom,
@@ -168,7 +168,7 @@ struct TimelineBlockCard: View {
             VStack(spacing: 16) {
                 ForEach(Array(MeditationBlock.BlockType.allCases.enumerated()), id: \.element) { index, blockType in
                     TimelineBlockCard(
-                        block: MeditationBlock(
+                        block: RoutineBlock(
                             name: blockType.rawValue,
                             durationInMinutes: blockType.defaultDuration,
                             type: blockType,
@@ -191,7 +191,7 @@ struct TimelineBlockCard: View {
         AppTheme.backgroundColor.ignoresSafeArea()
         
         TimelineBlockCard(
-            block: MeditationBlock(
+            block: RoutineBlock(
                 name: "Body Scan",
                 durationInMinutes: 12,
                 type: .bodyScan,

@@ -6,22 +6,51 @@
 //
 
 import SwiftUI
+import SwiftData
 import Dragula
 
 struct RoutineBuilderView: View {
-    @State private var routine = Routine(
-        name: "New Routine",
-        blocks: [
-            MeditationBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
-            MeditationBlock(name: "Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .softBell),
-            MeditationBlock(name: "Chanting", durationInMinutes: 4, type: .chanting, blockStartBell: .tibetanBowl)
-        ],
-        openingBell: .softBell,
-        closingBell: .digitalChime
-    )
-    @State private var editBlock: MeditationBlock? = nil
+    let savedRoutineToEdit: SavedRoutine?
+    
+    @State private var routine: Routine
+    @State private var editBlock: RoutineBlock? = nil
     @State private var showAddBlock = false
     @State private var isSaving = false
+    @State private var showingSaveAlert = false
+    @State private var routineName: String
+    @State private var isEditMode: Bool
+    
+    @Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+    
+    private var dataManager: RoutineDataManager {
+        RoutineDataManager(context: modelContext)
+    }
+    
+    // Initializer for creating new routine
+    init() {
+        self.savedRoutineToEdit = nil
+        self._routine = State(initialValue: Routine(
+            name: "New Routine",
+            blocks: [
+                RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                RoutineBlock(name: "Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .softBell),
+                RoutineBlock(name: "Chanting", durationInMinutes: 4, type: .chanting, blockStartBell: .tibetanBowl)
+            ],
+            openingBell: .softBell,
+            closingBell: .digitalChime
+        ))
+        self._routineName = State(initialValue: "New Routine")
+        self._isEditMode = State(initialValue: false)
+    }
+    
+    // Initializer for editing existing routine
+    init(editingRoutine: SavedRoutine) {
+        self.savedRoutineToEdit = editingRoutine
+        self._routine = State(initialValue: editingRoutine.getRoutine())
+        self._routineName = State(initialValue: editingRoutine.name)
+        self._isEditMode = State(initialValue: true)
+    }
     
     var totalTime: Int {
         routine.blocks.map { $0.durationInMinutes }.reduce(0, +)
@@ -40,7 +69,7 @@ struct RoutineBuilderView: View {
                     Image(systemName: "sun.max.fill")
                         .foregroundColor(AppTheme.accentColor)
                         .font(.system(size: 28, weight: .bold))
-                    Text(LocalizedStringKey("routine.builder.title"))
+                    Text(LocalizedStringKey(isEditMode ? "routine.edit.title" : "routine.builder.title"))
                         .font(AppTheme.Typography.titleFont)
                         .foregroundColor(.white)
                     Spacer()
@@ -99,8 +128,8 @@ struct RoutineBuilderView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal)
                     
-                    Button(action: { isSaving = true }) {
-                        Text(LocalizedStringKey("button.save"))
+                    Button(action: { showingSaveAlert = true }) {
+                        Text(LocalizedStringKey(isEditMode ? "button.update" : "button.save"))
                             .font(AppTheme.Typography.buttonFont)
                             .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
@@ -144,12 +173,50 @@ struct RoutineBuilderView: View {
                 showAddBlock = false
             }
         }
+        .alert(isEditMode ? "Update Routine" : "Save Routine", isPresented: $showingSaveAlert) {
+            if !isEditMode {
+                TextField("Routine Name", text: $routineName)
+            }
+            Button(isEditMode ? "Update" : "Save") {
+                saveRoutine()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(isEditMode ? "Update this routine?" : "Enter a name for your routine")
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func saveRoutine() {
+        Task {
+            isSaving = true
+            do {
+                var routineToSave = routine
+                routineToSave.name = routineName
+                
+                if isEditMode, let savedRoutine = savedRoutineToEdit {
+                    // Update existing routine
+                    try await dataManager.updateRoutine(savedRoutine, with: routineToSave)
+                } else {
+                    // Create new routine
+                    try await dataManager.saveRoutine(routineToSave, name: routineName)
+                }
+                
+                await MainActor.run {
+                    dismiss()
+                }
+            } catch {
+                print("Failed to save routine: \(error)")
+            }
+            isSaving = false
+        }
     }
 }
 
 // MARK: - Drop Indicator View
 struct DropIndicatorView: View {
-    let block: MeditationBlock
+    let block: RoutineBlock
     
     var body: some View {
         Rectangle()

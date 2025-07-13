@@ -6,74 +6,32 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct RoutineLibraryView: View {
-    @State private var savedRoutines: [SavedRoutine] = [
-        SavedRoutine(
-            name: "Morning Meditation",
-            routine: Routine(
-                name: "Morning Meditation",
-                blocks: [
-                    MeditationBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
-                    MeditationBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
-                    MeditationBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl)
-                ],
-                openingBell: .softBell,
-                closingBell: .tibetanBowl
-            ),
-            playCount: 12,
-            lastPlayed: Date().addingTimeInterval(-3600) // 1 hour ago
-        ),
-        SavedRoutine(
-            name: "Evening Wind Down",
-            routine: Routine(
-                name: "Evening Wind Down",
-                blocks: [
-                    MeditationBlock(name: "Body Scan", durationInMinutes: 15, type: .bodyScan, blockStartBell: .silent),
-                    MeditationBlock(name: "Silence", durationInMinutes: 10, type: .silence, blockStartBell: .digitalChime)
-                ],
-                openingBell: .digitalChime,
-                closingBell: .silent
-            ),
-            createdAt: Date().addingTimeInterval(-86400),
-            lastModified: Date().addingTimeInterval(-3600),
-            playCount: 8,
-            lastPlayed: Date().addingTimeInterval(-7200) // 2 hours ago
-        ),
-        SavedRoutine(
-            name: "Quick Focus",
-            routine: Routine(
-                name: "Quick Focus",
-                blocks: [
-                    MeditationBlock(name: "Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .silent),
-                    MeditationBlock(name: "Silence", durationInMinutes: 2, type: .silence, blockStartBell: .softBell)
-                ],
-                openingBell: .softBell,
-                closingBell: .softBell
-            ),
-            createdAt: Date().addingTimeInterval(-172800),
-            lastModified: Date().addingTimeInterval(-7200),
-            playCount: 25,
-            lastPlayed: Date().addingTimeInterval(-1800) // 30 minutes ago
-        )
-    ]
+    @Query(sort: \SavedRoutine.lastModified, order: .reverse) private var savedRoutines: [SavedRoutine]
+    @Environment(\.modelContext) private var modelContext
     
     @State private var searchText = ""
     @State private var showingRoutineBuilder = false
     @State private var editingRoutine: SavedRoutine? = nil
     @State private var playingRoutine: SavedRoutine? = nil
     
+    private var dataManager: RoutineDataManager {
+        RoutineDataManager(context: modelContext)
+    }
+    
     var filteredRoutines: [SavedRoutine] {
         if searchText.isEmpty {
-            return savedRoutines.sorted { $0.lastModified > $1.lastModified }
+            return savedRoutines
         }
         return savedRoutines.filter { routine in
             routine.name.localizedCaseInsensitiveContains(searchText) ||
-            routine.routine.blocks.contains { block in
+            routine.getRoutine().blocks.contains { block in
                 block.name.localizedCaseInsensitiveContains(searchText) ||
                 block.type.displayName.localizedCaseInsensitiveContains(searchText)
             }
-        }.sorted { $0.lastModified > $1.lastModified }
+        }
     }
     
     var body: some View {
@@ -120,7 +78,10 @@ struct RoutineLibraryView: View {
                             ForEach(filteredRoutines) { routine in
                                 RoutineCard(
                                     routine: routine,
-                                    onPlay: { playingRoutine = routine },
+                                    onPlay: { 
+                                        playingRoutine = routine
+                                        recordPlay(for: routine)
+                                    },
                                     onEdit: { editingRoutine = routine }
                                 )
                             }
@@ -152,11 +113,22 @@ struct RoutineLibraryView: View {
             RoutineBuilderView()
         }
         .sheet(item: $editingRoutine) { routine in
-            // TODO: Pass the routine to edit to RoutineBuilderView
-            RoutineBuilderView()
+            RoutineBuilderView(editingRoutine: routine)
         }
         .sheet(item: $playingRoutine) { routine in
             RoutinePlayerView(routine: routine)
+        }
+    }
+    
+    // MARK: - Private Methods
+    
+    private func recordPlay(for routine: SavedRoutine) {
+        Task {
+            do {
+                try await dataManager.recordPlay(for: routine)
+            } catch {
+                print("Failed to record play: \(error)")
+            }
         }
     }
 }
@@ -168,11 +140,11 @@ struct RoutineCard: View {
     var onEdit: () -> Void
     
     private var totalDuration: Int {
-        routine.routine.blocks.map(\.durationInMinutes).reduce(0, +)
+        routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
     }
     
     private var blocksSummary: String {
-        let blockTypes = routine.routine.blocks.map(\.type.displayName)
+        let blockTypes = routine.getRoutine().blocks.map(\.type.displayName)
         if blockTypes.count <= 3 {
             return blockTypes.joined(separator: " • ")
         } else {
@@ -447,10 +419,10 @@ struct RoutinePlayerView: View {
                 routine: Routine(
                     name: "Morning Meditation",
                     blocks: [
-                        MeditationBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
-                        MeditationBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
-                        MeditationBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl),
-                        MeditationBlock(name: "Body Scan", durationInMinutes: 12, type: .bodyScan, blockStartBell: .digitalChime)
+                        RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                        RoutineBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
+                        RoutineBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl),
+                        RoutineBlock(name: "Body Scan", durationInMinutes: 12, type: .bodyScan, blockStartBell: .digitalChime)
                     ],
                     openingBell: .softBell,
                     closingBell: .tibetanBowl

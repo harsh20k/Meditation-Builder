@@ -12,7 +12,7 @@ struct AddBlockView: View {
     @State private var searchText = ""
     @State private var customName = ""
     @State private var customDuration = 5
-    var onAdd: (MeditationBlock) -> Void
+    var onAdd: (RoutineBlock) -> Void
     @Environment(\.dismiss) var dismiss
     
     var filteredDefaultBlocks: [MeditationBlock.BlockType] {
@@ -109,7 +109,7 @@ struct AddBlockView: View {
                                             }
                                             Spacer()
                                             Button(action: {
-                                                let newBlock = MeditationBlock(
+                                                let newBlock = RoutineBlock(
                                                     id: UUID(),
                                                     name: blockType.displayName,
                                                     durationInMinutes: blockType.defaultDuration,
@@ -172,7 +172,7 @@ struct AddBlockView: View {
                                     .foregroundColor(AppTheme.lightGrey)
                             }
                             Button(action: {
-                                let newBlock = MeditationBlock(
+                                let newBlock = RoutineBlock(
                                     id: UUID(),
                                     name: customName.isEmpty ? String(localized: "block.type.custom") : customName,
                                     durationInMinutes: customDuration,

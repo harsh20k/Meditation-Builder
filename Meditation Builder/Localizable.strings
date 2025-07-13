@@ -33,6 +33,7 @@
 
 // MARK: - Routine Builder
 "routine.builder.title" = "Routine";
+"routine.edit.title" = "Edit Routine";
 "total.time.format" = "Total: %d min";
 
 // MARK: - Player
@@ -78,6 +79,7 @@
 
 // MARK: - Common Buttons
 "button.save" = "Save";
+"button.update" = "Update";
 "button.done" = "Done";
 "button.cancel" = "Cancel";
 "button.delete" = "Delete";

@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct EditBlockView: View {
-    @State var block: MeditationBlock
-    var onSave: (MeditationBlock) -> Void
+    @State var block: RoutineBlock
+    var onSave: (RoutineBlock) -> Void
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
