@@ -149,6 +149,9 @@ struct RoutineLibraryView: View {
     // MARK: - Private Methods
     
     private func recordPlay(for routine: SavedRoutine) {
+        // Debug logging: Print routine blocks
+        logRoutineBlocks(routine)
+        
         Task {
             do {
                 try await dataManager.recordPlay(for: routine)
@@ -156,6 +159,34 @@ struct RoutineLibraryView: View {
                 print("Failed to record play: \(error)")
             }
         }
+    }
+    
+    private func logRoutineBlocks(_ routine: SavedRoutine) {
+        let routineData = routine.getRoutine()
+        
+        print("🧘‍♀️ DEBUG: Playing routine '\(routine.routineName)'")
+        print("📋 Routine blocks in order:")
+        
+        for (index, block) in routineData.blocks.enumerated() {
+            let blockNumber = index + 1
+            let blockName = block.name
+            let duration = "\(block.durationInMinutes) min"
+            
+            if index == 0 {
+                // First block - don't show bell
+                print("  \(blockNumber). \(blockName) (\(duration))")
+            } else {
+                // Other blocks - show bell
+                let bell = block.blockStartBell.displayName
+                print("  \(blockNumber). \(blockName) (\(duration)) - Bell: \(bell)")
+            }
+        }
+        
+        let totalDuration = routineData.blocks.map(\.durationInMinutes).reduce(0, +)
+        print("⏱️ Total duration: \(totalDuration) minutes")
+        print("🔔 Opening bell: \(routineData.openingBell.displayName)")
+        print("🔔 Closing bell: \(routineData.closingBell.displayName)")
+        print("---")
     }
     
     private func deleteRoutine(_ routine: SavedRoutine) {
