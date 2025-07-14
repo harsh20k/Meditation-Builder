@@ -21,9 +21,13 @@ class RoutineDataManager: ObservableObject {
     
     /// Save a new routine
     func saveRoutine(_ routine: Routine, name: String? = nil) throws {
+        var routineToSave = routine
+        if let name = name {
+            routineToSave.name = name
+        }
+        
         let savedRoutine = SavedRoutine(
-            name: name ?? routine.name,
-            routine: routine
+            routine: routineToSave
         )
         
         context.insert(savedRoutine)
@@ -52,12 +56,14 @@ class RoutineDataManager: ObservableObject {
     
     /// Duplicate a routine
     func duplicateRoutine(_ savedRoutine: SavedRoutine) throws {
-        let duplicatedRoutine = SavedRoutine(
-            name: "\(savedRoutine.name) Copy",
-            routine: savedRoutine.getRoutine()
+        var duplicatedRoutine = savedRoutine.getRoutine()
+        duplicatedRoutine.name = "\(savedRoutine.routineName) Copy"
+        
+        let savedDuplicatedRoutine = SavedRoutine(
+            routine: duplicatedRoutine
         )
         
-        context.insert(duplicatedRoutine)
+        context.insert(savedDuplicatedRoutine)
         try context.save()
     }
     
@@ -91,55 +97,57 @@ class RoutineDataManager: ObservableObject {
     // MARK: - Private Helper Methods
     
     private static func createSampleRoutines() -> [SavedRoutine] {
-        [
-            SavedRoutine(
+        let morningMeditation = SavedRoutine(
+            routine: Routine(
                 name: "Morning Meditation",
-                routine: Routine(
-                    name: "Morning Meditation",
-                    blocks: [
-                        RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
-                        RoutineBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
-                        RoutineBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl)
-                    ],
-                    openingBell: .softBell,
-                    closingBell: .tibetanBowl
-                ),
-                playCount: 12,
-                lastPlayed: Date().addingTimeInterval(-3600) // 1 hour ago
-            ),
-            SavedRoutine(
-                name: "Evening Wind Down",
-                routine: Routine(
-                    name: "Evening Wind Down",
-                    blocks: [
-                        RoutineBlock(name: "Body Scan", durationInMinutes: 15, type: .bodyScan, blockStartBell: .silent),
-                        RoutineBlock(name: "Silence", durationInMinutes: 10, type: .silence, blockStartBell: .digitalChime)
-                    ],
-                    openingBell: .digitalChime,
-                    closingBell: .silent
-                ),
-                createdAt: Date().addingTimeInterval(-86400),
-                lastModified: Date().addingTimeInterval(-3600),
-                playCount: 8,
-                lastPlayed: Date().addingTimeInterval(-7200) // 2 hours ago
-            ),
-            SavedRoutine(
-                name: "Quick Focus",
-                routine: Routine(
-                    name: "Quick Focus",
-                    blocks: [
-                        RoutineBlock(name: "Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .silent),
-                        RoutineBlock(name: "Silence", durationInMinutes: 2, type: .silence, blockStartBell: .softBell)
-                    ],
-                    openingBell: .softBell,
-                    closingBell: .softBell
-                ),
-                createdAt: Date().addingTimeInterval(-172800),
-                lastModified: Date().addingTimeInterval(-7200),
-                playCount: 25,
-                lastPlayed: Date().addingTimeInterval(-1800) // 30 minutes ago
+                icon: "sunrise.fill",
+                blocks: [
+                    RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                    RoutineBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
+                    RoutineBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl)
+                ],
+                openingBell: .softBell,
+                closingBell: .tibetanBowl
             )
-        ]
+        )
+        morningMeditation.playCount = 12
+        morningMeditation.lastPlayed = Date().addingTimeInterval(-3600) // 1 hour ago
+        
+        let eveningWindDown = SavedRoutine(
+            routine: Routine(
+                name: "Evening Wind Down",
+                icon: "moon.fill",
+                blocks: [
+                    RoutineBlock(name: "Body Scan", durationInMinutes: 15, type: .bodyScan, blockStartBell: .silent),
+                    RoutineBlock(name: "Silence", durationInMinutes: 10, type: .silence, blockStartBell: .digitalChime)
+                ],
+                openingBell: .digitalChime,
+                closingBell: .silent
+            ),
+            createdAt: Date().addingTimeInterval(-86400),
+            lastModified: Date().addingTimeInterval(-3600)
+        )
+        eveningWindDown.playCount = 8
+        eveningWindDown.lastPlayed = Date().addingTimeInterval(-7200) // 2 hours ago
+        
+        let quickFocus = SavedRoutine(
+            routine: Routine(
+                name: "Quick Focus",
+                icon: "target",
+                blocks: [
+                    RoutineBlock(name: "Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .silent),
+                    RoutineBlock(name: "Silence", durationInMinutes: 2, type: .silence, blockStartBell: .softBell)
+                ],
+                openingBell: .softBell,
+                closingBell: .softBell
+            ),
+            createdAt: Date().addingTimeInterval(-172800),
+            lastModified: Date().addingTimeInterval(-7200)
+        )
+        quickFocus.playCount = 25
+        quickFocus.lastPlayed = Date().addingTimeInterval(-1800) // 30 minutes ago
+        
+        return [morningMeditation, eveningWindDown, quickFocus]
     }
 }
 

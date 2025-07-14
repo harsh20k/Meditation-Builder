@@ -26,7 +26,7 @@ struct RoutineLibraryView: View {
             return savedRoutines
         }
         return savedRoutines.filter { routine in
-            routine.name.localizedCaseInsensitiveContains(searchText) ||
+            routine.routineName.localizedCaseInsensitiveContains(searchText) ||
             routine.getRoutine().blocks.contains { block in
                 block.name.localizedCaseInsensitiveContains(searchText) ||
                 block.type.displayName.localizedCaseInsensitiveContains(searchText)
@@ -157,18 +157,19 @@ struct RoutineCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
-            // Header with lotus icon and name
+            // Header with custom icon and name
             HStack(spacing: AppTheme.Spacing.medium) {
                 ZStack {
                     Circle()
                         .fill(AppTheme.accentColor.opacity(0.2))
                         .frame(width: 48, height: 48)
-                    Text("🪷")
-                        .font(.system(size: 24))
+                    Image(systemName: routine.routineIcon)
+                        .font(.system(size: 24, weight: .medium))
+                        .foregroundColor(AppTheme.accentColor)
                 }
                 
                 VStack(alignment: .leading, spacing: 4) {
-                    Text(routine.name)
+                    Text(routine.routineName)
                         .font(AppTheme.Typography.headlineFont)
                         .foregroundColor(.white)
                         .lineLimit(2)
@@ -301,7 +302,7 @@ struct RoutinePlayerView: View {
                     
                     Text(String.localizedStringWithFormat(
                         String(localized: "player.playing.format"),
-                        routine.name
+                        routine.routineName
                     ))
                         .font(AppTheme.Typography.headlineFont)
                         .foregroundColor(.white)
@@ -413,23 +414,25 @@ struct RoutinePlayerView: View {
     ZStack {
         AppTheme.backgroundColor.ignoresSafeArea()
         
-        RoutineCard(
-            routine: SavedRoutine(
+        let sampleRoutine = SavedRoutine(
+            routine: Routine(
                 name: "Morning Meditation",
-                routine: Routine(
-                    name: "Morning Meditation",
-                    blocks: [
-                        RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
-                        RoutineBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
-                        RoutineBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl),
-                        RoutineBlock(name: "Body Scan", durationInMinutes: 12, type: .bodyScan, blockStartBell: .digitalChime)
-                    ],
-                    openingBell: .softBell,
-                    closingBell: .tibetanBowl
-                ),
-                playCount: 15,
-                lastPlayed: Date().addingTimeInterval(-900) // 15 minutes ago
-            ),
+                icon: "sun.max.fill",
+                blocks: [
+                    RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                    RoutineBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
+                    RoutineBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl),
+                    RoutineBlock(name: "Body Scan", durationInMinutes: 12, type: .bodyScan, blockStartBell: .digitalChime)
+                ],
+                openingBell: .softBell,
+                closingBell: .tibetanBowl
+            )
+        )
+        sampleRoutine.playCount = 15
+        sampleRoutine.lastPlayed = Date().addingTimeInterval(-900) // 15 minutes ago
+        
+        return RoutineCard(
+            routine: sampleRoutine,
             onPlay: {},
             onEdit: {}
         )

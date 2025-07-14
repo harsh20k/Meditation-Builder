@@ -18,6 +18,8 @@ struct RoutineBuilderView: View {
     @State private var isSaving = false
     @State private var showingSaveAlert = false
     @State private var routineName: String
+    @State private var routineIcon: String
+    @State private var showIconPicker = false
     @State private var isEditMode: Bool
     
     @Environment(\.modelContext) private var modelContext
@@ -32,6 +34,7 @@ struct RoutineBuilderView: View {
         self.savedRoutineToEdit = nil
         self._routine = State(initialValue: Routine(
             name: "New Routine",
+            icon: "sun.max.fill",
             blocks: [
                 RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
                 RoutineBlock(name: "Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .softBell),
@@ -41,6 +44,7 @@ struct RoutineBuilderView: View {
             closingBell: .digitalChime
         ))
         self._routineName = State(initialValue: "New Routine")
+        self._routineIcon = State(initialValue: "sun.max.fill")
         self._isEditMode = State(initialValue: false)
     }
     
@@ -48,7 +52,8 @@ struct RoutineBuilderView: View {
     init(editingRoutine: SavedRoutine) {
         self.savedRoutineToEdit = editingRoutine
         self._routine = State(initialValue: editingRoutine.getRoutine())
-        self._routineName = State(initialValue: editingRoutine.name)
+        self._routineName = State(initialValue: editingRoutine.routineName)
+        self._routineIcon = State(initialValue: editingRoutine.routineIcon)
         self._isEditMode = State(initialValue: true)
     }
     
@@ -66,12 +71,20 @@ struct RoutineBuilderView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Image(systemName: "sun.max.fill")
-                        .foregroundColor(AppTheme.accentColor)
-                        .font(.system(size: 28, weight: .bold))
-                    Text(LocalizedStringKey(isEditMode ? "routine.edit.title" : "routine.builder.title"))
+                    Button(action: { showIconPicker = true }) {
+                        Image(systemName: routineIcon)
+                            .foregroundColor(AppTheme.accentColor)
+                            .font(.system(size: 28, weight: .bold))
+                            .frame(width: 32, height: 32)
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                    
+                    TextField("Routine Name", text: $routineName)
                         .font(AppTheme.Typography.titleFont)
                         .foregroundColor(.white)
+                        .textFieldStyle(PlainTextFieldStyle())
+                        .multilineTextAlignment(.leading)
+                    
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -136,9 +149,10 @@ struct RoutineBuilderView: View {
                             .frame(height: 48)
                             .background(
                                 Capsule()
-                                    .fill(AppTheme.accentColor)
+                                    .fill(routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? AppTheme.accentColor.opacity(0.5) : AppTheme.accentColor)
                             )
                     }
+                    .disabled(routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                     .padding(.horizontal)
                 }
                 .padding(.bottom, 112) // Account for tab bar
@@ -173,16 +187,16 @@ struct RoutineBuilderView: View {
                 showAddBlock = false
             }
         }
+        .sheet(isPresented: $showIconPicker) {
+            IconPickerView(selectedIcon: $routineIcon)
+        }
         .alert(isEditMode ? "Update Routine" : "Save Routine", isPresented: $showingSaveAlert) {
-            if !isEditMode {
-                TextField("Routine Name", text: $routineName)
-            }
             Button(isEditMode ? "Update" : "Save") {
                 saveRoutine()
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text(isEditMode ? "Update this routine?" : "Enter a name for your routine")
+            Text(isEditMode ? "Update this routine?" : "Save this routine?")
         }
     }
     
@@ -194,6 +208,7 @@ struct RoutineBuilderView: View {
             do {
                 var routineToSave = routine
                 routineToSave.name = routineName
+                routineToSave.icon = routineIcon
                 
                 if isEditMode, let savedRoutine = savedRoutineToEdit {
                     // Update existing routine

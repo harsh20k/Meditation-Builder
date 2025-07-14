@@ -225,13 +225,15 @@ struct RoutineBlock: Identifiable, Equatable, Codable, DragulaItem {
 // MARK: - Routine
 struct Routine: Equatable, Codable {
 	var name: String
+	var icon: String  // SF Symbol icon name
 	var blocks: [RoutineBlock]
 	var openingBell: BellSound
 	var closingBell: BellSound
 	var media: [MediaInfo]  // ← empty for MVP, uplevel later
 	
-	init(name: String, blocks: [RoutineBlock], openingBell: BellSound = .softBell, closingBell: BellSound = .softBell, media: [MediaInfo] = []) {
+	init(name: String, icon: String = "sun.max.fill", blocks: [RoutineBlock], openingBell: BellSound = .softBell, closingBell: BellSound = .softBell, media: [MediaInfo] = []) {
 		self.name = name
+		self.icon = icon
 		self.blocks = blocks
 		self.openingBell = openingBell
 		self.closingBell = closingBell
@@ -240,6 +242,7 @@ struct Routine: Equatable, Codable {
 	
 	static func == (lhs: Routine, rhs: Routine) -> Bool {
 		lhs.name == rhs.name &&
+		lhs.icon == rhs.icon &&
 		lhs.blocks == rhs.blocks &&
 		lhs.openingBell == rhs.openingBell &&
 		lhs.closingBell == rhs.closingBell &&
@@ -251,10 +254,10 @@ struct Routine: Equatable, Codable {
 @Model
 final class SavedRoutine: Identifiable {
 	var id: UUID
-	var name: String
 	
-		// Instead of embedding Routine, we'll store its properties directly
+	// Instead of embedding Routine, we'll store its properties directly
 	var routineName: String
+	var routineIcon: String = "sun.max.fill"  // SF Symbol icon name with default value
 	@Relationship(deleteRule: .cascade) var blocks: [MeditationBlock]
 	var openingBell: BellSound
 	var closingBell: BellSound
@@ -266,10 +269,11 @@ final class SavedRoutine: Identifiable {
 	var playCount: Int
 	var lastPlayed: Date?
 	
-		    // Helper method to get routine (instead of computed property)
+	// Helper method to get routine (instead of computed property)
     func getRoutine() -> Routine {
         Routine(
             name: routineName,
+            icon: routineIcon,
             blocks: blocks.sorted(by: { $0.orderIndex < $1.orderIndex }).map { block in
                 RoutineBlock(
                     id: block.id,
@@ -302,9 +306,10 @@ final class SavedRoutine: Identifiable {
         )
     }
 	
-		    // Helper method to update from routine (preserves order and identity)
+	// Helper method to update from routine (preserves order and identity)
     func updateFromRoutine(_ routine: Routine) {
         routineName = routine.name
+        routineIcon = routine.icon
         
         // Smart update of blocks to preserve order and identity
         updateBlocks(from: routine.blocks)
@@ -339,14 +344,14 @@ final class SavedRoutine: Identifiable {
                 newBlocks.append(existingBlock)
                 existingBlocksDict.removeValue(forKey: routineBlock.id)
             } else {
-                // Create new block (this is a newly added block)
+                // Create new block
                 let newBlock = MeditationBlock(
                     id: routineBlock.id,
                     name: routineBlock.name,
                     durationInMinutes: routineBlock.durationInMinutes,
                     type: routineBlock.type,
                     blockStartBell: routineBlock.blockStartBell,
-                    orderIndex: index,  // Set the order based on position
+                    orderIndex: index,
                     media: routineBlock.media.enumerated().map { (mediaIndex, mediaInfo) in
                         MediaResource(
                             id: mediaInfo.id,
@@ -362,7 +367,7 @@ final class SavedRoutine: Identifiable {
             }
         }
         
-        // Update the blocks array while preserving order
+        // Update the blocks array
         blocks = newBlocks
     }
     
@@ -375,7 +380,7 @@ final class SavedRoutine: Identifiable {
         
         for (index, mediaInfo) in mediaInfos.enumerated() {
             if let existingMedia = existingMediaDict[mediaInfo.id] {
-                // Update existing media in place
+                // Update existing media in place (preserves SwiftData identity)
                 existingMedia.type = mediaInfo.type
                 existingMedia.name = mediaInfo.name
                 existingMedia.fileName = mediaInfo.fileName
@@ -411,7 +416,7 @@ final class SavedRoutine: Identifiable {
         
         for (index, mediaInfo) in mediaInfos.enumerated() {
             if let existingMedia = existingMediaDict[mediaInfo.id] {
-                // Update existing media in place
+                // Update existing media in place (preserves SwiftData identity)
                 existingMedia.type = mediaInfo.type
                 existingMedia.name = mediaInfo.name
                 existingMedia.fileName = mediaInfo.fileName
@@ -440,7 +445,6 @@ final class SavedRoutine: Identifiable {
 	
 	init(
 		id: UUID = UUID(),
-		name: String,
 		routine: Routine,
 		createdAt: Date = Date(),
 		lastModified: Date = Date(),
@@ -449,9 +453,9 @@ final class SavedRoutine: Identifiable {
 		lastPlayed: Date? = nil
 	) {
 		self.id = id
-		self.name = name
 		self.routineName = routine.name
-		        self.blocks = routine.blocks.enumerated().map { (blockIndex, routineBlock) in
+		self.routineIcon = routine.icon
+		self.blocks = routine.blocks.enumerated().map { (blockIndex, routineBlock) in
 			MeditationBlock(
 				id: routineBlock.id,
 				name: routineBlock.name,
@@ -473,7 +477,7 @@ final class SavedRoutine: Identifiable {
 		}
 		self.openingBell = routine.openingBell
 		self.closingBell = routine.closingBell
-		        self.media = routine.media.enumerated().map { (index, mediaInfo) in
+		self.media = routine.media.enumerated().map { (index, mediaInfo) in
             MediaResource(
                 id: mediaInfo.id,
                 type: mediaInfo.type,
@@ -490,7 +494,7 @@ final class SavedRoutine: Identifiable {
 		self.lastPlayed = lastPlayed
 	}
 	
-		// Helper method to increment play count
+	// Helper method to increment play count
 	func recordPlay() {
 		self.playCount += 1
 		self.lastPlayed = Date()
