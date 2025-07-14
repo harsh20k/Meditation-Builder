@@ -9,6 +9,8 @@ import SwiftUI
 
 struct EditBlockView: View {
     @State var block: RoutineBlock
+    @State private var showIconPicker = false
+    @State private var showBellPicker = false
     var onSave: (RoutineBlock) -> Void
     @Environment(\.dismiss) var dismiss
     
@@ -19,14 +21,18 @@ struct EditBlockView: View {
                 VStack(spacing: AppTheme.Spacing.section) {
                     VStack(spacing: AppTheme.Spacing.extraLarge) {
                         HStack(spacing: AppTheme.Spacing.medium) {
-                            ZStack {
-                                Circle()
-                                    .fill(AppTheme.accentColor)
-                                    .frame(width: 40, height: 40)
-                                Image(systemName: block.type.icon)
-                                    .foregroundColor(.white)
-                                    .font(.system(size: 22, weight: .bold))
+                            Button(action: { showIconPicker = true }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(AppTheme.accentColor)
+                                        .frame(width: 40, height: 40)
+                                    Image(systemName: block.blockIcon)
+                                        .foregroundColor(.white)
+                                        .font(.system(size: 22, weight: .bold))
+                                }
                             }
+                            .buttonStyle(PlainButtonStyle())
+                            
                             TextField(LocalizedStringKey("block.name.placeholder"), text: $block.name)
                                 .font(AppTheme.Typography.headlineFont)
                                 .foregroundColor(.white)
@@ -45,6 +51,24 @@ struct EditBlockView: View {
                                 .foregroundColor(AppTheme.lightGrey)
                         }
                         .padding(.horizontal, AppTheme.Spacing.small)
+                        
+                        // Bell Selection
+                        Button(action: { showBellPicker = true }) {
+                            HStack(spacing: AppTheme.Spacing.medium) {
+                                Image(systemName: block.blockStartBell.icon)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                Text("Start Bell: \(block.blockStartBell.displayName)")
+                                    .font(AppTheme.Typography.bodyFont)
+                                    .foregroundColor(AppTheme.lightGrey)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .font(.system(size: 14, weight: .medium))
+                                    .foregroundColor(AppTheme.lightGrey)
+                            }
+                            .padding(.horizontal, AppTheme.Spacing.small)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                     .padding(.vertical, AppTheme.Spacing.extraLarge)
                     .padding(.horizontal, AppTheme.Spacing.medium)
@@ -84,6 +108,14 @@ struct EditBlockView: View {
                         dismiss()
                     }
                     .foregroundColor(AppTheme.accentColor)
+                }
+            }
+            .sheet(isPresented: $showIconPicker) {
+                IconPickerView(selectedIcon: $block.blockIcon)
+            }
+            .sheet(isPresented: $showBellPicker) {
+                BellPickerView(selected: block.blockStartBell) { selectedBell in
+                    block.blockStartBell = selectedBell
                 }
             }
         }

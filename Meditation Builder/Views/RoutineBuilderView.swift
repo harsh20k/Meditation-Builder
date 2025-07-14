@@ -21,6 +21,7 @@ struct RoutineBuilderView: View {
     @State private var routineIcon: String
     @State private var showIconPicker = false
     @State private var isEditMode: Bool
+    @State private var refreshID = UUID()
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -61,8 +62,17 @@ struct RoutineBuilderView: View {
         routine.blocks.map { $0.durationInMinutes }.reduce(0, +)
     }
     
-    func deleteBlock(at index: Int) {
-        routine.blocks.remove(at: index)
+    var canSave: Bool {
+        !routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && !routine.blocks.isEmpty
+    }
+    
+    func deleteBlock(_ block: RoutineBlock) {
+        if let index = routine.blocks.firstIndex(where: { $0.id == block.id }) {
+            withAnimation(.easeInOut(duration: 0.3)) {
+                routine.blocks.remove(at: index)
+                refreshID = UUID() // Force view refresh
+            }
+        }
     }
     
     var body: some View {
@@ -93,53 +103,93 @@ struct RoutineBuilderView: View {
                 
                 // Timeline + Block List with Dragula
                 ScrollView(showsIndicators: false) {
-                    ZStack(alignment: .leading) {
-                        // Timeline vertical line (scrolls with blocks)
-                        if routine.blocks.count > 1 {
-                            GeometryReader { geo in
-                                let blockHeight: CGFloat = 76 // Approximate block height (padding + card)
-                                let spacing: CGFloat = 20
-                                let totalHeight = CGFloat(routine.blocks.count) * blockHeight + CGFloat(routine.blocks.count - 1) * spacing
-                                Rectangle()
-                                    .fill(AppTheme.lightGrey.opacity(AppTheme.Opacity.timeline))
-                                    .frame(width: 2, height: totalHeight - blockHeight/2)
-                                    .offset(x: 54, y: blockHeight/2)
-                            }
-                        }
-                        
-                        LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
-                            DragulaView(items: $routine.blocks) { block in
-                                TimelineBlockCard(
-                                    block: block,
-                                    isLast: block.id == routine.blocks.last?.id,
-                                    onEdit: { editBlock = block },
-                                    index: routine.blocks.firstIndex(where: { $0.id == block.id }) ?? 0,
-                                    blocksCount: routine.blocks.count
+                    if routine.blocks.isEmpty {
+                        // Empty state
+                        VStack(spacing: AppTheme.Spacing.large) {
+                            Spacer()
+                            
+                            Button(action: { showAddBlock = true }) {
+                                VStack(spacing: AppTheme.Spacing.medium) {
+                                    ZStack {
+                                        Circle()
+                                            .fill(AppTheme.accentColor.opacity(0.2))
+                                            .frame(width: 48, height: 48)
+                                        Image(systemName: "plus")
+                                            .font(.system(size: 24, weight: .medium))
+                                            .foregroundColor(AppTheme.accentColor)
+                                    }
+                                    
+                                    Text("+ Add Meditation Block")
+                                        .font(AppTheme.Typography.headlineFont)
+                                        .foregroundColor(AppTheme.lightGrey)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, AppTheme.Spacing.extraLarge)
+                                .background(
+                                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
+                                        .stroke(style: StrokeStyle(lineWidth: 2, dash: [8, 4]))
+                                        .foregroundColor(AppTheme.lightGrey.opacity(0.5))
                                 )
-                                .frame(height: 76)
-                            } dropView: { block in
-                                DropIndicatorView(block: block)
-                            } dropCompleted: {
-                                // Drag and drop completed
+                                .padding(.horizontal, AppTheme.Spacing.large)
                             }
-                            .environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.large)
+                            .buttonStyle(PlainButtonStyle())
+                            
+                            Spacer()
                         }
-                        .padding(.vertical, AppTheme.Spacing.extraLarge)
-                        .padding(.bottom, 120) // Account for floating button and tab bar
+                        .frame(minHeight: 200)
+                    } else {
+                        ZStack(alignment: .leading) {
+                            // Timeline vertical line (scrolls with blocks)
+                            if routine.blocks.count > 1 {
+                                GeometryReader { geo in
+                                    let blockHeight: CGFloat = 76 // Approximate block height (padding + card)
+                                    let spacing: CGFloat = 20
+                                    let totalHeight = CGFloat(routine.blocks.count) * blockHeight + CGFloat(routine.blocks.count - 1) * spacing
+                                    Rectangle()
+                                        .fill(AppTheme.lightGrey.opacity(AppTheme.Opacity.timeline))
+                                        .frame(width: 2, height: totalHeight - blockHeight/2)
+                                        .offset(x: 54, y: blockHeight/2)
+                                }
+                            }
+                            
+                            LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
+                                DragulaView(items: $routine.blocks) { block in
+                                    TimelineBlockCard(
+                                        block: block,
+                                        isLast: block.id == routine.blocks.last?.id,
+                                        onEdit: { editBlock = block },
+                                        onDelete: { deleteBlock(block) },
+                                        index: routine.blocks.firstIndex(where: { $0.id == block.id }) ?? 0,
+                                        blocksCount: routine.blocks.count
+                                    )
+                                    .frame(height: 76)
+                                } dropView: { block in
+                                    DropIndicatorView(block: block)
+                                } dropCompleted: {
+                                    // Drag and drop completed
+                                }
+                                .environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.large)
+                            }
+                            .id(refreshID)
+                            .padding(.vertical, AppTheme.Spacing.extraLarge)
+                            .padding(.bottom, 120) // Account for floating button and tab bar
+                        }
                     }
                 }
                 .frame(maxHeight: .infinity)
                 
                 // Total Time & Save Button
                 VStack(spacing: AppTheme.Spacing.medium) {
-                    Text(String.localizedStringWithFormat(
-                        String(localized: "total.time.format"),
-                        totalTime
-                    ))
-                        .font(AppTheme.Typography.captionFont)
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding(.horizontal)
+                    if !routine.blocks.isEmpty {
+                        Text(String.localizedStringWithFormat(
+                            String(localized: "total.time.format"),
+                            totalTime
+                        ))
+                            .font(.system(size: 14, weight: .medium, design: .rounded))
+                            .foregroundColor(.white.opacity(0.6))
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.horizontal)
+                    }
                     
                     Button(action: { showingSaveAlert = true }) {
                         Text(LocalizedStringKey(isEditMode ? "button.update" : "button.save"))
@@ -149,13 +199,13 @@ struct RoutineBuilderView: View {
                             .frame(height: 48)
                             .background(
                                 Capsule()
-                                    .fill(routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? AppTheme.accentColor.opacity(0.5) : AppTheme.accentColor)
+                                    .fill(canSave ? AppTheme.accentColor : AppTheme.accentColor.opacity(0.5))
                             )
                     }
-                    .disabled(routineName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                    .padding(.horizontal)
+                    .disabled(!canSave)
+                    .padding(.horizontal, 40)
                 }
-                .padding(.bottom, 112) // Account for tab bar
+                .padding(.bottom, 80) // Account for tab bar
             }
             
             // Floating Add Button
@@ -170,20 +220,29 @@ struct RoutineBuilderView: View {
                 }
             }
             .padding(.trailing, AppTheme.Spacing.extraLarge)
-            .padding(.bottom, 112)
+            .padding(.bottom, 160)
             .shadow(radius: 8)
         }
         .sheet(item: $editBlock) { block in
             EditBlockView(block: block) { updatedBlock in
-                if let idx = routine.blocks.firstIndex(where: { $0.id == updatedBlock.id }) {
-                    routine.blocks[idx] = updatedBlock
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    // Force UI update by creating a new array
+                    var updatedBlocks = routine.blocks
+                    if let idx = updatedBlocks.firstIndex(where: { $0.id == updatedBlock.id }) {
+                        updatedBlocks[idx] = updatedBlock
+                    }
+                    routine.blocks = updatedBlocks
+                    refreshID = UUID() // Force view refresh
                 }
                 editBlock = nil
             }
         }
         .sheet(isPresented: $showAddBlock) {
             AddBlockView { newBlock in
-                routine.blocks.append(newBlock)
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    routine.blocks.append(newBlock)
+                    refreshID = UUID() // Force view refresh
+                }
                 showAddBlock = false
             }
         }

@@ -113,7 +113,8 @@ struct AddBlockView: View {
                                                     id: UUID(),
                                                     name: blockType.displayName,
                                                     durationInMinutes: blockType.defaultDuration,
-                                                    type: blockType
+                                                    type: blockType,
+                                                    blockStartBell: .softBell
                                                 )
                                                 onAdd(newBlock)
                                                 dismiss()
@@ -176,7 +177,8 @@ struct AddBlockView: View {
                                     id: UUID(),
                                     name: customName.isEmpty ? String(localized: "block.type.custom") : customName,
                                     durationInMinutes: customDuration,
-                                    type: .custom
+                                    type: .custom,
+                                    blockStartBell: .softBell
                                 )
                                 onAdd(newBlock)
                                 dismiss()

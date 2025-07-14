@@ -11,6 +11,7 @@ struct TimelineBlockCard: View {
     let block: RoutineBlock
     let isLast: Bool
     var onEdit: () -> Void
+    var onDelete: () -> Void
     let index: Int
     let blocksCount: Int
     
@@ -34,7 +35,7 @@ struct TimelineBlockCard: View {
                     Circle()
                         .fill(AppTheme.accentColor)
                         .frame(width: 40, height: 40)
-                    Image(systemName: block.type.icon)
+                    Image(systemName: block.blockIcon)
                         .foregroundColor(.white)
                         .font(.system(size: 22, weight: .bold))
                 }
@@ -66,15 +67,28 @@ struct TimelineBlockCard: View {
                 }
                 Spacer()
                 
-                Button(action: onEdit) {
-                    Image(systemName: "pencil")
-                        .foregroundColor(.white)
-                        .font(.system(size: 16, weight: .medium))
-                        .frame(width: 32, height: 32)
-                        .background(
-                            Circle()
-                                .fill(Color.white.opacity(AppTheme.Opacity.overlay))
-                        )
+                HStack(spacing: AppTheme.Spacing.small) {
+                    Button(action: onEdit) {
+                        Image(systemName: "pencil")
+                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .medium))
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Circle()
+                                    .fill(Color.white.opacity(AppTheme.Opacity.overlay))
+                            )
+                    }
+                    
+                    Button(action: onDelete) {
+                        Image(systemName: "trash")
+                            .foregroundColor(.white)
+                            .font(.system(size: 16, weight: .medium))
+                            .frame(width: 32, height: 32)
+                            .background(
+                                Circle()
+                                    .fill(Color.red.opacity(0.7))
+                            )
+                    }
                 }
             }
             .padding(.vertical, 18)
@@ -110,20 +124,22 @@ struct TimelineBlockCard: View {
                 ),
                 isLast: false,
                 onEdit: {},
+                onDelete: {},
                 index: 0,
                 blocksCount: 3
             )
             
-            // Preview middle block (shows bell)
+            // Preview second block (shows bell since index > 0)
             TimelineBlockCard(
                 block: RoutineBlock(
-                    name: "Silence",
-                    durationInMinutes: 10,
-                    type: .silence,
+                    name: "Visualization",
+                    durationInMinutes: 8,
+                    type: .visualization,
                     blockStartBell: .tibetanBowl
                 ),
                 isLast: false,
                 onEdit: {},
+                onDelete: {},
                 index: 1,
                 blocksCount: 3
             )
@@ -131,13 +147,14 @@ struct TimelineBlockCard: View {
             // Preview last block
             TimelineBlockCard(
                 block: RoutineBlock(
-                    name: "Very Long Meditation Block Name That Might Wrap",
-                    durationInMinutes: 15,
-                    type: .visualization,
+                    name: "Body Scan",
+                    durationInMinutes: 12,
+                    type: .bodyScan,
                     blockStartBell: .digitalChime
                 ),
                 isLast: true,
                 onEdit: {},
+                onDelete: {},
                 index: 2,
                 blocksCount: 3
             )
@@ -152,6 +169,7 @@ struct TimelineBlockCard: View {
                 ),
                 isLast: false,
                 onEdit: {},
+                onDelete: {},
                 index: 1,
                 blocksCount: 4
             )
@@ -176,6 +194,7 @@ struct TimelineBlockCard: View {
                         ),
                         isLast: blockType == .custom,
                         onEdit: {},
+                        onDelete: {},
                         index: index,
                         blocksCount: MeditationBlock.BlockType.allCases.count
                     )
@@ -199,6 +218,7 @@ struct TimelineBlockCard: View {
             ),
             isLast: true,
             onEdit: {},
+            onDelete: {},
             index: 1,
             blocksCount: 1
         )

@@ -16,6 +16,8 @@ struct RoutineLibraryView: View {
     @State private var showingRoutineBuilder = false
     @State private var editingRoutine: SavedRoutine? = nil
     @State private var playingRoutine: SavedRoutine? = nil
+    @State private var routineToDelete: SavedRoutine? = nil
+    @State private var showingDeleteAlert = false
     
     private var dataManager: RoutineDataManager {
         RoutineDataManager(context: modelContext)
@@ -62,6 +64,17 @@ struct RoutineLibraryView: View {
                     TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
                         .foregroundColor(.white)
                         .font(AppTheme.Typography.bodyFont)
+                    
+                    if !searchText.isEmpty {
+                        Button(action: {
+                            searchText = ""
+                        }) {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(AppTheme.lightGrey)
+                                .font(.system(size: 16, weight: .medium))
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
                 }
                 .padding(AppTheme.Spacing.medium)
                 .background(AppTheme.cardColor)
@@ -82,7 +95,8 @@ struct RoutineLibraryView: View {
                                         playingRoutine = routine
                                         recordPlay(for: routine)
                                     },
-                                    onEdit: { editingRoutine = routine }
+                                    onEdit: { editingRoutine = routine },
+                                    onDelete: { deleteRoutine(routine) }
                                 )
                             }
                         }
@@ -118,6 +132,18 @@ struct RoutineLibraryView: View {
         .sheet(item: $playingRoutine) { routine in
             RoutinePlayerView(routine: routine)
         }
+        .alert("Delete Routine", isPresented: $showingDeleteAlert) {
+            Button("Cancel", role: .cancel) { 
+                routineToDelete = nil
+            }
+            Button("Delete", role: .destructive) {
+                confirmDeleteRoutine()
+            }
+        } message: {
+            if let routine = routineToDelete {
+                Text("Are you sure you want to delete '\(routine.routineName)'? This action cannot be undone.")
+            }
+        }
     }
     
     // MARK: - Private Methods
@@ -131,6 +157,28 @@ struct RoutineLibraryView: View {
             }
         }
     }
+    
+    private func deleteRoutine(_ routine: SavedRoutine) {
+        routineToDelete = routine
+        showingDeleteAlert = true
+    }
+    
+    private func confirmDeleteRoutine() {
+        guard let routine = routineToDelete else { return }
+        
+        withAnimation(.easeInOut(duration: 0.3)) {
+            Task {
+                do {
+                    try dataManager.deleteRoutine(routine)
+                } catch {
+                    print("Failed to delete routine: \(error)")
+                }
+            }
+        }
+        
+        routineToDelete = nil
+        showingDeleteAlert = false
+    }
 }
 
 // MARK: - Routine Card
@@ -138,19 +186,20 @@ struct RoutineCard: View {
     let routine: SavedRoutine
     var onPlay: () -> Void
     var onEdit: () -> Void
+    var onDelete: () -> Void
     
     private var totalDuration: Int {
         routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
     }
     
     private var blocksSummary: String {
-        let blockTypes = routine.getRoutine().blocks.map(\.type.displayName)
-        if blockTypes.count <= 3 {
-            return blockTypes.joined(separator: " • ")
+        let blockNames = routine.getRoutine().blocks.map(\.name)
+        if blockNames.count <= 3 {
+            return blockNames.joined(separator: " • ")
         } else {
-            return blockTypes.prefix(2).joined(separator: " • ") + " • " + String.localizedStringWithFormat(
+            return blockNames.prefix(2).joined(separator: " • ") + " • " + String.localizedStringWithFormat(
                 String(localized: "routine.more.blocks.format"),
-                blockTypes.count - 2
+                blockNames.count - 2
             )
         }
     }
@@ -225,6 +274,19 @@ struct RoutineCard: View {
                         Capsule()
                             .fill(AppTheme.cardColor.opacity(0.8))
                     )
+                }
+                
+                // Delete button
+                Button(action: onDelete) {
+                    Image(systemName: "trash")
+                        .font(.system(size: 14, weight: .medium))
+                        .foregroundColor(.white)
+                        .padding(.horizontal, AppTheme.Spacing.medium)
+                        .padding(.vertical, AppTheme.Spacing.small)
+                        .background(
+                            Capsule()
+                                .fill(Color.red.opacity(0.8))
+                        )
                 }
                 
                 Spacer()
@@ -434,7 +496,8 @@ struct RoutinePlayerView: View {
         return RoutineCard(
             routine: sampleRoutine,
             onPlay: {},
-            onEdit: {}
+            onEdit: {},
+            onDelete: {}
         )
         .padding()
     }

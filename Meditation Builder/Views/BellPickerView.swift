@@ -8,8 +8,8 @@
 import SwiftUI
 
 struct BellPickerView: View {
-    @State var selected: TransitionBell?
-    var onSelect: (TransitionBell?) -> Void
+    @State var selected: BellSound
+    var onSelect: (BellSound) -> Void
     @Environment(\.dismiss) var dismiss
     let bells = BellSound.allCases
     
@@ -47,7 +47,7 @@ struct BellPickerView: View {
                                             .foregroundColor(.white)
                                     }
                                     Spacer()
-                                    if selected?.soundName == bellSound.displayName || (selected == nil && bellSound == .silent) {
+                                    if selected == bellSound {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundColor(AppTheme.accentColor)
                                             .font(.system(size: 24, weight: .bold))
@@ -66,7 +66,7 @@ struct BellPickerView: View {
                                 .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
                                 .frame(height: 76)
                                 .onTapGesture {
-                                    onSelect(bellSound == .silent ? nil : TransitionBell(soundName: bellSound.displayName))
+                                    onSelect(bellSound)
                                     dismiss()
                                 }
                             }

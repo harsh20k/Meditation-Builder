@@ -100,7 +100,7 @@ enum BellSound: String, CaseIterable, Equatable, Codable {
 	}
 	
 	static var `default`: BellSound {
-		return .silent
+		return .softBell
 	}
 }
 
@@ -112,15 +112,17 @@ final class MeditationBlock: Identifiable, DragulaItem {
     var durationInMinutes: Int
     var type: BlockType
     var blockStartBell: BellSound
+    var blockIcon: String = "circle.fill"  // SF Symbol icon name with default value
     var orderIndex: Int = 0  // Add explicit ordering with default value
     @Relationship(deleteRule: .cascade) var media: [MediaResource]  // ← empty for MVP, uplevel later
     
-    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: BlockType, blockStartBell: BellSound = .default, orderIndex: Int = 0, media: [MediaResource] = []) {
+    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, orderIndex: Int = 0, media: [MediaResource] = []) {
         self.id = id
         self.name = name
         self.durationInMinutes = durationInMinutes
         self.type = type
         self.blockStartBell = blockStartBell
+        self.blockIcon = blockIcon ?? type.icon
         self.orderIndex = orderIndex
         self.media = media
     }
@@ -210,14 +212,16 @@ struct RoutineBlock: Identifiable, Equatable, Codable, DragulaItem {
 	var durationInMinutes: Int
 	var type: MeditationBlock.BlockType
 	var blockStartBell: BellSound
+	var blockIcon: String  // SF Symbol icon name
 	var media: [MediaInfo]
 	
-	init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: MeditationBlock.BlockType, blockStartBell: BellSound = .default, media: [MediaInfo] = []) {
+	init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: MeditationBlock.BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, media: [MediaInfo] = []) {
 		self.id = id
 		self.name = name
 		self.durationInMinutes = durationInMinutes
 		self.type = type
 		self.blockStartBell = blockStartBell
+		self.blockIcon = blockIcon ?? type.icon
 		self.media = media
 	}
 }
@@ -281,6 +285,7 @@ final class SavedRoutine: Identifiable {
                     durationInMinutes: block.durationInMinutes,
                     type: block.type,
                     blockStartBell: block.blockStartBell,
+                    blockIcon: block.blockIcon,
                     media: block.media.sorted(by: { $0.orderIndex < $1.orderIndex }).map { media in
                         MediaInfo(
                             id: media.id,
@@ -336,6 +341,7 @@ final class SavedRoutine: Identifiable {
                 existingBlock.durationInMinutes = routineBlock.durationInMinutes
                 existingBlock.type = routineBlock.type
                 existingBlock.blockStartBell = routineBlock.blockStartBell
+                existingBlock.blockIcon = routineBlock.blockIcon
                 existingBlock.orderIndex = index  // Set the order based on position
                 
                 // Update media for this block
@@ -351,6 +357,7 @@ final class SavedRoutine: Identifiable {
                     durationInMinutes: routineBlock.durationInMinutes,
                     type: routineBlock.type,
                     blockStartBell: routineBlock.blockStartBell,
+                    blockIcon: routineBlock.blockIcon,
                     orderIndex: index,
                     media: routineBlock.media.enumerated().map { (mediaIndex, mediaInfo) in
                         MediaResource(
@@ -462,6 +469,7 @@ final class SavedRoutine: Identifiable {
 				durationInMinutes: routineBlock.durationInMinutes,
 				type: routineBlock.type,
 				blockStartBell: routineBlock.blockStartBell,
+				blockIcon: routineBlock.blockIcon,
 				orderIndex: blockIndex,
 				media: routineBlock.media.enumerated().map { (mediaIndex, mediaInfo) in
 					MediaResource(
