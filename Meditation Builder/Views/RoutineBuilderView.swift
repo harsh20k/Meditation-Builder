@@ -8,6 +8,7 @@
 import SwiftUI
 import SwiftData
 import Dragula
+import os.log
 
 struct RoutineBuilderView: View {
     let savedRoutineToEdit: SavedRoutine?
@@ -67,11 +68,16 @@ struct RoutineBuilderView: View {
     }
     
     func deleteBlock(_ block: RoutineBlock) {
+        logger.info("Deleting block: \(block.name)", category: "RoutineBuilder")
+        
         if let index = routine.blocks.firstIndex(where: { $0.id == block.id }) {
             withAnimation(.easeInOut(duration: 0.3)) {
                 routine.blocks.remove(at: index)
                 refreshID = UUID() // Force view refresh
             }
+            logger.info("Block deleted successfully: \(block.name)", category: "RoutineBuilder")
+        } else {
+            logger.warning("Block not found for deletion: \(block.name)", category: "RoutineBuilder")
         }
     }
     
@@ -225,6 +231,7 @@ struct RoutineBuilderView: View {
         }
         .sheet(item: $editBlock) { block in
             EditBlockView(block: block) { updatedBlock in
+                logger.info("Block updated: \(block.name) -> \(updatedBlock.name)", category: "RoutineBuilder")
                 withAnimation(.easeInOut(duration: 0.2)) {
                     // Force UI update by creating a new array
                     var updatedBlocks = routine.blocks
@@ -239,6 +246,7 @@ struct RoutineBuilderView: View {
         }
         .sheet(isPresented: $showAddBlock) {
             AddBlockView { newBlock in
+                logger.info("New block added: \(newBlock.name) (\(newBlock.type))", category: "RoutineBuilder")
                 withAnimation(.easeInOut(duration: 0.2)) {
                     routine.blocks.append(newBlock)
                     refreshID = UUID() // Force view refresh
@@ -262,6 +270,8 @@ struct RoutineBuilderView: View {
     // MARK: - Private Methods
     
     private func saveRoutine() {
+        logger.info("Saving routine: \(routineName) (\(routine.blocks.count) blocks)", category: "RoutineBuilder")
+        
         Task {
             isSaving = true
             do {
@@ -271,17 +281,20 @@ struct RoutineBuilderView: View {
                 
                 if isEditMode, let savedRoutine = savedRoutineToEdit {
                     // Update existing routine
+                    logger.info("Updating existing routine: \(savedRoutine.routineName)", category: "RoutineBuilder")
                     try await dataManager.updateRoutine(savedRoutine, with: routineToSave)
                 } else {
                     // Create new routine
+                    logger.info("Creating new routine: \(routineName)", category: "RoutineBuilder")
                     try await dataManager.saveRoutine(routineToSave, name: routineName)
                 }
                 
+                logger.info("Routine saved successfully", category: "RoutineBuilder")
                 await MainActor.run {
                     dismiss()
                 }
             } catch {
-                print("Failed to save routine: \(error)")
+                logger.error("Failed to save routine: \(error)", category: "RoutineBuilder")
             }
             isSaving = false
         }

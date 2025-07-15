@@ -8,22 +8,64 @@
 import SwiftUI
 import SwiftData
 
+// Import our logging utility
+import os.log
+
 @main
 struct Meditation_BuilderApp: App {
+    // Initialize logger at app startup
+    @StateObject private var appLogger = AppLogger.shared
+    
+    init() {
+        print("Meditation_BuilderApp: init() called")
+        // Test logger immediately
+        logger.info("App initialization started", category: "AppLifecycle")
+    }
+    
     var body: some Scene {
         WindowGroup {
             ContentView()
                 .onAppear {
+                    // Test if logger is accessible
+                    print("Testing logger accessibility...")
+                    logger.info("App launched", category: "AppLifecycle")
+                    print("Logger test completed")
+                    
                     // Initialize sample data if needed
                     Task {
                         await initializeSampleDataIfNeeded()
                     }
                 }
+                .onDisappear {
+                    logger.info("App will disappear", category: "AppLifecycle")
+                }
         }
         .modelContainer(createModelContainer())
+        .onChange(of: scenePhase) { _, newPhase in
+            handleScenePhaseChange(newPhase)
+        }
+    }
+    
+    @Environment(\.scenePhase) private var scenePhase
+    
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        switch phase {
+        case .active:
+            logger.info("App became active", category: "AppLifecycle")
+        case .inactive:
+            logger.info("App became inactive", category: "AppLifecycle")
+        case .background:
+            logger.info("App entered background", category: "AppLifecycle")
+            // Save logger settings when app goes to background
+            appLogger.saveSettings()
+        @unknown default:
+            logger.warning("Unknown scene phase: \(phase)", category: "AppLifecycle")
+        }
     }
     
     private func createModelContainer() -> ModelContainer {
+        logger.info("Creating SwiftData model container", category: "Data")
+        
         let schema = Schema([
             SavedRoutine.self,
             MeditationBlock.self, 
@@ -36,28 +78,35 @@ struct Meditation_BuilderApp: App {
         )
         
         do {
-            return try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            logger.info("SwiftData model container created successfully", category: "Data")
+            return container
         } catch {
             // If container creation fails due to schema changes, clear and recreate
-            print("Failed to create model container: \(error)")
-            print("Creating fresh container...")
+            logger.error("Failed to create model container: \(error)", category: "Data")
+            logger.info("Attempting to create fresh container...", category: "Data")
             
             // Try to clear the existing database files
             clearDatabaseFiles()
             
             do {
-                return try ModelContainer(for: schema, configurations: [modelConfiguration])
+                let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+                logger.info("Fresh model container created successfully", category: "Data")
+                return container
             } catch {
                 // Last resort: use in-memory store for this session
-                print("Still failed, using in-memory store: \(error)")
+                logger.error("Still failed, using in-memory store: \(error)", category: "Data")
                 let memoryConfiguration = ModelConfiguration(
                     schema: schema,
                     isStoredInMemoryOnly: true
                 )
                 
                 do {
-                    return try ModelContainer(for: schema, configurations: [memoryConfiguration])
+                    let container = try ModelContainer(for: schema, configurations: [memoryConfiguration])
+                    logger.warning("Using in-memory model container as fallback", category: "Data")
+                    return container
                 } catch {
+                    logger.critical("Could not create ModelContainer: \(error)", category: "Data")
                     fatalError("Could not create ModelContainer: \(error)")
                 }
             }
@@ -69,21 +118,23 @@ struct Meditation_BuilderApp: App {
             let url = URL.applicationSupportDirectory.appending(path: "default.store")
             if FileManager.default.fileExists(atPath: url.path) {
                 try FileManager.default.removeItem(at: url)
-                print("Cleared existing database at: \(url)")
+                logger.info("Cleared existing database at: \(url)", category: "Data")
             }
         } catch {
-            print("Failed to clear database files: \(error)")
+            logger.error("Failed to clear database files: \(error)", category: "Data")
         }
     }
     
     @MainActor
     private func initializeSampleDataIfNeeded() async {
+        logger.info("Initializing sample data if needed", category: "Data")
         do {
             let context = ModelContext(createModelContainer())
             let dataManager = RoutineDataManager(context: context)
             try dataManager.initializeSampleDataIfNeeded()
+            logger.info("Sample data initialization completed", category: "Data")
         } catch {
-            print("Failed to initialize sample data: \(error)")
+            logger.error("Failed to initialize sample data: \(error)", category: "Data")
         }
     }
 }

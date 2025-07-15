@@ -7,6 +7,7 @@
 
 import SwiftUI
 import SwiftData
+import os.log
 
 struct RoutineLibraryView: View {
     @Query(sort: \SavedRoutine.lastModified, order: .reverse) private var savedRoutines: [SavedRoutine]
@@ -129,7 +130,7 @@ struct RoutineLibraryView: View {
         .sheet(item: $editingRoutine) { routine in
             RoutineBuilderView(editingRoutine: routine)
         }
-        .sheet(item: $playingRoutine) { routine in
+        .fullScreenCover(item: $playingRoutine) { routine in
             RoutinePlayerView(routine: routine)
         }
         .alert("Delete Routine", isPresented: $showingDeleteAlert) {
@@ -149,14 +150,17 @@ struct RoutineLibraryView: View {
     // MARK: - Private Methods
     
     private func recordPlay(for routine: SavedRoutine) {
+        logger.info("Starting routine playback: \(routine.routineName)", category: "RoutineLibrary")
+        
         // Debug logging: Print routine blocks
         logRoutineBlocks(routine)
         
         Task {
             do {
                 try await dataManager.recordPlay(for: routine)
+                logger.info("Play recorded for routine: \(routine.routineName)", category: "RoutineLibrary")
             } catch {
-                print("Failed to record play: \(error)")
+                logger.error("Failed to record play: \(error)", category: "RoutineLibrary")
             }
         }
     }
@@ -164,8 +168,8 @@ struct RoutineLibraryView: View {
     private func logRoutineBlocks(_ routine: SavedRoutine) {
         let routineData = routine.getRoutine()
         
-        print("🧘‍♀️ DEBUG: Playing routine '\(routine.routineName)'")
-        print("📋 Routine blocks in order:")
+        logger.debug("Playing routine '\(routine.routineName)'", category: "RoutineLibrary")
+        logger.debug("Routine blocks in order:", category: "RoutineLibrary")
         
         for (index, block) in routineData.blocks.enumerated() {
             let blockNumber = index + 1
@@ -174,19 +178,18 @@ struct RoutineLibraryView: View {
             
             if index == 0 {
                 // First block - don't show bell
-                print("  \(blockNumber). \(blockName) (\(duration))")
+                logger.debug("  \(blockNumber). \(blockName) (\(duration))", category: "RoutineLibrary")
             } else {
                 // Other blocks - show bell
                 let bell = block.blockStartBell.displayName
-                print("  \(blockNumber). \(blockName) (\(duration)) - Bell: \(bell)")
+                logger.debug("  \(blockNumber). \(blockName) (\(duration)) - Bell: \(bell)", category: "RoutineLibrary")
             }
         }
         
         let totalDuration = routineData.blocks.map(\.durationInMinutes).reduce(0, +)
-        print("⏱️ Total duration: \(totalDuration) minutes")
-        print("🔔 Opening bell: \(routineData.openingBell.displayName)")
-        print("🔔 Closing bell: \(routineData.closingBell.displayName)")
-        print("---")
+        logger.debug("Total duration: \(totalDuration) minutes", category: "RoutineLibrary")
+        logger.debug("Opening bell: \(routineData.openingBell.displayName)", category: "RoutineLibrary")
+        logger.debug("Closing bell: \(routineData.closingBell.displayName)", category: "RoutineLibrary")
     }
     
     private func deleteRoutine(_ routine: SavedRoutine) {
@@ -197,12 +200,15 @@ struct RoutineLibraryView: View {
     private func confirmDeleteRoutine() {
         guard let routine = routineToDelete else { return }
         
+        logger.info("Confirming deletion of routine: \(routine.routineName)", category: "RoutineLibrary")
+        
         withAnimation(.easeInOut(duration: 0.3)) {
             Task {
                 do {
                     try dataManager.deleteRoutine(routine)
+                    logger.info("Routine deleted successfully: \(routine.routineName)", category: "RoutineLibrary")
                 } catch {
-                    print("Failed to delete routine: \(error)")
+                    logger.error("Failed to delete routine: \(error)", category: "RoutineLibrary")
                 }
             }
         }
@@ -379,48 +385,7 @@ struct EmptyStateView: View {
     }
 }
 
-// MARK: - Placeholder Routine Player View
-struct RoutinePlayerView: View {
-    let routine: SavedRoutine
-    @Environment(\.dismiss) var dismiss
-    
-    var body: some View {
-        NavigationView {
-            ZStack {
-                AppTheme.backgroundColor.ignoresSafeArea()
-                
-                VStack(spacing: AppTheme.Spacing.section) {
-                    Text("🧘‍♀️")
-                        .font(.system(size: 80))
-                    
-                    Text(String.localizedStringWithFormat(
-                        String(localized: "player.playing.format"),
-                        routine.routineName
-                    ))
-                        .font(AppTheme.Typography.headlineFont)
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.center)
-                    
-                    Text(LocalizedStringKey("player.coming.soon"))
-                        .font(AppTheme.Typography.bodyFont)
-                        .foregroundColor(AppTheme.lightGrey)
-                        .multilineTextAlignment(.center)
-                }
-                .padding()
-            }
-            .navigationTitle(LocalizedStringKey("player.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(LocalizedStringKey("button.done")) {
-                        dismiss()
-                    }
-                    .foregroundColor(AppTheme.accentColor)
-                }
-            }
-        }
-    }
-}
+// MARK: - Placeholder Routine Player View (Removed - now using dedicated RoutinePlayerView.swift)
 
 // MARK: - Preview
 #Preview("Routine Library") {

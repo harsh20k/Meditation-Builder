@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import os.log
 
 struct AddBlockView: View {
     @State private var selectedTab = 0
@@ -116,6 +117,7 @@ struct AddBlockView: View {
                                                     type: blockType,
                                                     blockStartBell: .softBell
                                                 )
+                                                logger.info("Adding default block: \(blockType.displayName) (\(blockType.defaultDuration) min)", category: "AddBlock")
                                                 onAdd(newBlock)
                                                 dismiss()
                                             }) {
@@ -180,6 +182,7 @@ struct AddBlockView: View {
                                     type: .custom,
                                     blockStartBell: .softBell
                                 )
+                                logger.info("Adding custom block: \(newBlock.name) (\(customDuration) min)", category: "AddBlock")
                                 onAdd(newBlock)
                                 dismiss()
                             }) {

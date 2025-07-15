@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import os.log
 
 struct MainTabView: View {
     @State private var selectedTab: TabSelection = .timer
@@ -32,11 +33,7 @@ struct MainTabView: View {
                         description: String(localized: "tab.tools.description")
                     )
                 case .settings:
-                    PlaceholderView(
-                        icon: "gearshape",
-                        title: String(localized: "tab.settings"),
-                        description: String(localized: "tab.settings.description")
-                    )
+                    LoggingSettingsView()
                 }
             }
             
@@ -47,7 +44,15 @@ struct MainTabView: View {
             }
         }
         .ignoresSafeArea(.keyboard) // Prevent tab bar from moving with keyboard
+        .onAppear {
+            logger.info("MainTabView appeared", category: "Navigation")
+        }
+        .onChange(of: selectedTab) { _, newTab in
+            logger.info("Tab changed to: \(newTab)", category: "Navigation")
+        }
     }
+    
+
 }
 
 // MARK: - Placeholder View for Unimplemented Tabs

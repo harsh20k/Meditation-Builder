@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import os.log
 
 struct EditBlockView: View {
     @State var block: RoutineBlock
@@ -83,6 +84,7 @@ struct EditBlockView: View {
                     .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
                     
                     Button(action: {
+                        logger.info("Saving edited block: \(block.name) (\(block.durationInMinutes) min, bell: \(block.blockStartBell.displayName))", category: "EditBlock")
                         onSave(block)
                         dismiss()
                     }) {
