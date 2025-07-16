@@ -12,15 +12,18 @@ struct RoutinePlayerView: View {
 	let routine: SavedRoutine
 	@Environment(\.dismiss) private var dismiss
 	@Environment(\.modelContext) private var modelContext
+	@Environment(\.scenePhase) private var scenePhase
 	
 	@State private var currentBlockIndex = 0
-	@State private var timeRemaining = 0
+	@State private var blockStartDate = Date()
+	@State private var blockEndDate = Date()
 	@State private var isPlaying = true
 	@State private var isPaused = false
-	@State private var timer: Timer?
-	@State private var inBlockProgress = 0.0 // 0.0 to 1.0
+	@State private var pausedDate: Date?
+	@State private var totalPausedTime: TimeInterval = 0
 	@State private var showingEndSessionAlert = false
 	@State private var showingDiscardSessionAlert = false
+	@State private var currentTime = Date() // Add this to trigger progress updates
 	
 	private var dataManager: RoutineDataManager {
 		RoutineDataManager(context: modelContext)
@@ -53,157 +56,187 @@ struct RoutinePlayerView: View {
 		max(0, totalBlocks - currentBlockIndex - 1)
 	}
 	
+	// Computed properties for time-based values
+	private var timeRemaining: Int {
+		guard !isPaused else {
+			// When paused, calculate remaining time based on when we paused
+			let elapsedBeforePause = pausedDate?.timeIntervalSince(blockStartDate) ?? 0
+			let adjustedElapsed = elapsedBeforePause - totalPausedTime
+			let blockDuration = Double((currentBlock?.durationInMinutes ?? 0) * 60)
+			return max(0, Int(blockDuration - adjustedElapsed))
+		}
+		
+		let elapsed = currentTime.timeIntervalSince(blockStartDate) - totalPausedTime
+		let blockDuration = Double((currentBlock?.durationInMinutes ?? 0) * 60)
+		return max(0, Int(blockDuration - elapsed))
+	}
+	
+	private var inBlockProgress: Double {
+		guard let block = currentBlock else { return 0.0 }
+		let blockDuration = Double(block.durationInMinutes * 60)
+		
+		let elapsed: TimeInterval
+		if isPaused {
+			elapsed = (pausedDate?.timeIntervalSince(blockStartDate) ?? 0) - totalPausedTime
+		} else {
+			elapsed = currentTime.timeIntervalSince(blockStartDate) - totalPausedTime
+		}
+		
+		let progress = min(1.0, max(0.0, elapsed / blockDuration))
+		
+		// Log progress changes (but limit frequency to avoid spam)
+		if progress > 0.0 && progress < 1.0 {
+			print("⏱️ Timer Progress - Block: \(block.name), Elapsed: \(String(format: "%.1f", elapsed))s, Duration: \(blockDuration)s, Progress: \(String(format: "%.3f", progress))")
+		}
+		
+		return progress
+	}
+
 	var body: some View {
 		GeometryReader { geometry in
 			ZStack {
-					// Pure black background for OLED - spans entire screen
+				// Pure black background for OLED - spans entire screen
 				Color.black
 					.ignoresSafeArea(.all, edges: .all)
 				
-				VStack(spacing: 0) {
-						// Header with close button
-					HStack {
-						Spacer()
-						
-							// Close button
-						Button(action: {
-							stopTimer()
-							dismiss()
-						}) {
-							Image(systemName: "xmark")
-								.foregroundColor(.white)
-								.font(.system(size: 20, weight: .medium))
-								.frame(width: 44, height: 44)
-								.background(Color.black.opacity(0.3))
-								.clipShape(Circle())
-						}
-					}
-					.padding(.horizontal, 20)
-					.padding(.top, 60)
-					
-						// Routine Name
-					Text(routine.routineName)
-						.font(.system(size: 17, weight: .semibold, design: .default))
+				// Close button - positioned at top right
+				Button(action: {
+					endSession(saveProgress: false)
+				}) {
+					Image(systemName: "xmark")
 						.foregroundColor(.white)
-						.lineLimit(2)
-						.multilineTextAlignment(.center)
-						.padding(.horizontal, 20)
-						.padding(.top, 20)
-					
-					Spacer()
-					
-						// Main Timer Display
-					VStack(spacing: 16) {
-							// Large countdown timer
+						.font(.system(size: 20, weight: .medium))
+						.frame(width: 44, height: 44)
+						.background(Color.black.opacity(0.3))
+						.clipShape(Circle())
+				}
+				.position(x: geometry.size.width - 44, y: geometry.safeAreaInsets.top + 60)
+				
+				// Routine Name - positioned at top center
+				Text(routine.routineName)
+					.font(.system(size: 17, weight: .semibold, design: .default))
+					.foregroundColor(.white)
+					.lineLimit(2)
+					.multilineTextAlignment(.center)
+					.frame(width: geometry.size.width - 40)
+					.position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 120)
+				
+				// Main Timer Display - positioned at center
+				VStack(spacing: 16) {
+					// Large countdown timer with TimelineView for efficiency
+					TimelineView(.periodic(from: blockStartDate, by: 1.0)) { context in
 						Text(formatTime(timeRemaining))
 							.font(.system(size: 72, weight: .bold, design: .default))
 							.foregroundColor(.white)
 							.monospacedDigit()
-						
-							// Current → Next block indicator
-						if let current = currentBlock {
-							HStack(spacing: 0) {
-								Text(current.name)
-									.font(.system(size: 17, weight: .regular, design: .default))
-									.foregroundColor(.white)
+							.onChange(of: context.date) { _, newDate in
+								// Update current time to trigger progress recalculation
+								currentTime = newDate
 								
-								if let next = nextBlock {
-									Text(" → ")
-										.font(.system(size: 17, weight: .regular, design: .default))
-										.foregroundColor(.white.opacity(0.6))
-									
-									Text(next.name)
-										.font(.system(size: 17, weight: .regular, design: .default))
-										.foregroundColor(.white.opacity(0.6))
+								// Check if current block is complete on each timeline update
+								if timeRemaining <= 0 && !isPaused {
+									moveToNextBlock()
 								}
 							}
-							.lineLimit(2)
-							.multilineTextAlignment(.center)
-							.padding(.horizontal, 20)
-						}
 					}
 					
-					Spacer()
-					
-						// Play/Pause Control
-					VStack(spacing: 0) {
-							// Play/Pause button - always in the same position
-						Button(action: togglePause) {
-							Text(isPaused ? "▶" : "❙❙")
-								.font(.system(size: 32, weight: .regular, design: .default))
+					// Current → Next block indicator
+					if let current = currentBlock {
+						HStack(spacing: 0) {
+							Text(current.name)
+								.font(.system(size: 17, weight: .regular, design: .default))
 								.foregroundColor(.white)
-						}
-						.buttonStyle(PlainButtonStyle())
-						.padding(.bottom, 20)
-						
-							// Pause state controls - appear below the play button
-						if isPaused {
-							VStack(spacing: 12) {
-									// End Session Button
-								Button(action: { showingEndSessionAlert = true }) {
-									Text("End Session")
-										.font(.system(size: 16, weight: .medium, design: .default))
-										.foregroundColor(.black)
-										.frame(maxWidth: .infinity)
-										.frame(height: 44)
-										.background(Color.white)
-										.cornerRadius(22)
-								}
-								.padding(.horizontal, 40)
+							
+							if let next = nextBlock {
+								Text(" → ")
+									.font(.system(size: 17, weight: .regular, design: .default))
+									.foregroundColor(.white.opacity(0.6))
 								
-									// Discard Session Button
-								Button(action: { showingDiscardSessionAlert = true }) {
-									Text("Discard Session")
-										.font(.system(size: 16, weight: .medium, design: .default))
-										.foregroundColor(.white)
-								}
-								.buttonStyle(PlainButtonStyle())
+								Text(next.name)
+									.font(.system(size: 17, weight: .regular, design: .default))
+									.foregroundColor(.white.opacity(0.6))
 							}
 						}
+						.lineLimit(2)
+						.multilineTextAlignment(.center)
+						.frame(width: geometry.size.width - 40)
 					}
-					.padding(.bottom, 60)
+				}
+				.position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+				
+				// Play/Pause Controls - positioned at bottom with fixed coordinates
+				ZStack {
+					// Play/Pause button - always in the same position
+					Button(action: togglePause) {
+						Text(isPaused ? "▶" : "❙❙")
+							.font(.system(size: 72, weight: .regular, design: .default))
+							.foregroundColor(.white)
+					}
+					.buttonStyle(PlainButtonStyle())
+					.position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 180)
+					
+					// Pause state controls - shown with opacity animation
+					if isPaused {
+						VStack(spacing: 8) {
+							// End Session Button
+							Button(action: { showingEndSessionAlert = true }) {
+								Text("End Session")
+									.font(.system(size: 14, weight: .medium, design: .default))
+									.foregroundColor(.black)
+									.frame(width: 120, height: 36)
+									.background(Color.white)
+									.cornerRadius(18)
+									.padding(8)
+							}
+							
+							// Discard Session Button
+							Button(action: { showingDiscardSessionAlert = true }) {
+								Text("Discard Session")
+									.font(.system(size: 14, weight: .medium, design: .default))
+									.foregroundColor(.red)
+							}
+							.buttonStyle(PlainButtonStyle())
+						}
+						.position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 80)
+						.opacity(isPaused ? 1.0 : 0.0)
+						.animation(.easeInOut(duration: 0.3), value: isPaused)
+					}
 				}
 				
-					// Block Progress Indicator (right edge)
-				VStack(spacing: 12) {
-						// Completed blocks (top)
-					ForEach(0..<completedBlocks, id: \.self) { _ in
-						Circle()
-							.fill(Color.white)
-							.frame(width: 8, height: 8)
-					}
-					
-						// Current block progress (middle)
-					if currentBlock != nil {
-						VStack(spacing: 4) {
-							ForEach(0..<5, id: \.self) { index in
-								let progress = inBlockProgress * 5
-								let isFilled = Double(index) < progress
-								
-								Circle()
-									.fill(isFilled ? Color.white : Color.clear)
-									.stroke(Color.white.opacity(0.3), lineWidth: 1)
-									.frame(width: 6, height: 6)
-							}
-						}
-					}
-					
-						// Remaining blocks (bottom)
-					ForEach(0..<remainingBlocks, id: \.self) { _ in
-						Circle()
-							.stroke(Color.white, lineWidth: 1)
-							.frame(width: 8, height: 8)
-					}
-				}
-				.frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .trailing)
-				.padding(.trailing, 20)
+				// Block Progress Indicator - positioned at right edge
+				BlockProgressIndicator(
+					currentBlockIndex: currentBlockIndex,
+					totalBlocks: totalBlocks,
+					inBlockProgress: inBlockProgress,
+					blockStartDate: blockStartDate
+				)
+				.position(x: geometry.size.width - 20, y: geometry.size.height / 2)
 			}
 		}
 		.onAppear {
 			startTimer()
 		}
 		.onDisappear {
-			stopTimer()
+			cleanup()
+		}
+		.onChange(of: scenePhase) { _, newPhase in
+			switch newPhase {
+			case .background, .inactive:
+				// App is backgrounded, pause if playing
+				if isPlaying && !isPaused {
+					togglePause()
+				}
+			case .active:
+				// App is active again - user can manually resume if desired
+				break
+			@unknown default:
+				break
+			}
+		}
+		.onChange(of: timeRemaining) { _, newValue in
+			if newValue <= 0 && !isPaused {
+				moveToNextBlock()
+			}
 		}
 		.statusBarHidden(true)
 		.preferredColorScheme(.dark)
@@ -211,7 +244,7 @@ struct RoutinePlayerView: View {
 		.alert("End Session", isPresented: $showingEndSessionAlert) {
 			Button("Cancel", role: .cancel) { }
 			Button("End Session", role: .destructive) {
-				endSession()
+				endSession(saveProgress: true)
 			}
 		} message: {
 			Text("Are you sure you want to end this meditation session? Your progress will be saved.")
@@ -219,14 +252,14 @@ struct RoutinePlayerView: View {
 		.alert("Discard Session", isPresented: $showingDiscardSessionAlert) {
 			Button("Cancel", role: .cancel) { }
 			Button("Discard", role: .destructive) {
-				discardSession()
+				endSession(saveProgress: false)
 			}
 		} message: {
 			Text("Are you sure you want to discard this session? Your progress will not be recorded.")
 		}
 	}
 	
-		// MARK: - Timer Functions
+	// MARK: - Timer Functions
 	
 	private func startTimer() {
 		logger.info("Starting timer for routine: \(routine.routineName)", category: "Timer")
@@ -236,67 +269,49 @@ struct RoutinePlayerView: View {
 			return
 		}
 		
-		let block = routineData.blocks[currentBlockIndex]
-		timeRemaining = block.durationInMinutes * 60
-		
-		logger.info("Starting block: \(block.name) (\(block.durationInMinutes) minutes)", category: "Timer")
-		
-		timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-			if !isPaused {
-				timeRemaining -= 1
-				updateInBlockProgress()
-				
-				if timeRemaining <= 0 {
-					moveToNextBlock()
-				}
-			}
-		}
+		startCurrentBlock()
 	}
 	
-	private func stopTimer() {
-		timer?.invalidate()
-		timer = nil
-		logger.info("Timer stopped", category: "Timer")
+	private func startCurrentBlock() {
+		let block = routineData.blocks[currentBlockIndex]
+		blockStartDate = Date()
+		currentTime = Date() // Initialize current time
+		totalPausedTime = 0
+		
+		print("🚀 Block Started - Index: \(currentBlockIndex), Name: \(block.name), Duration: \(block.durationInMinutes) minutes")
+		logger.info("Starting block: \(block.name) (\(block.durationInMinutes) minutes)", category: "Timer")
 	}
 	
 	private func togglePause() {
 		isPaused.toggle()
-		logger.info("Timer \(isPaused ? "paused" : "resumed")", category: "Timer")
-	}
-	
-	private func updateInBlockProgress() {
-		guard let block = currentBlock else { return }
-		let totalSeconds = Double(block.durationInMinutes * 60)
-		let elapsedSeconds = totalSeconds - Double(timeRemaining)
-		inBlockProgress = elapsedSeconds / totalSeconds
+		
+		if isPaused {
+			pausedDate = Date()
+			logger.info("Timer paused", category: "Timer")
+		} else {
+			if let pauseStart = pausedDate {
+				totalPausedTime += Date().timeIntervalSince(pauseStart)
+				pausedDate = nil
+			}
+			logger.info("Timer resumed", category: "Timer")
+		}
 	}
 	
 	private func moveToNextBlock() {
+		print("✅ Block Completed - Index: \(currentBlockIndex), Name: \(currentBlock?.name ?? "Unknown")")
 		logger.info("Block completed: \(currentBlock?.name ?? "Unknown")", category: "Timer")
 		
 		currentBlockIndex += 1
-		inBlockProgress = 0.0
 		
 		if currentBlockIndex >= routineData.blocks.count {
-				// Routine completed
+			// Routine completed
+			print("🎉 Routine Completed - \(routine.routineName)")
 			logger.info("Routine completed: \(routine.routineName)", category: "Timer")
-			
-				// Record the completed session
-			Task {
-				do {
-					try await dataManager.recordPlay(for: routine)
-					logger.info("Completed session recorded successfully", category: "Timer")
-				} catch {
-					logger.error("Failed to record completed session: \(error)", category: "Timer")
-				}
-			}
-			
-			stopTimer()
-			dismiss()
+			endSession(saveProgress: true)
 		} else {
-				// Start next block
+			// Start next block
+			startCurrentBlock()
 			let nextBlock = routineData.blocks[currentBlockIndex]
-			timeRemaining = nextBlock.durationInMinutes * 60
 			logger.info("Starting next block: \(nextBlock.name)", category: "Timer")
 		}
 	}
@@ -307,48 +322,47 @@ struct RoutinePlayerView: View {
 		return String(format: "%d:%02d", minutes, remainingSeconds)
 	}
 	
-		// MARK: - Session Management
+	// MARK: - Session Management
 	
-	private func endSession() {
-		logger.info("User ended session for routine: \(routine.routineName)", category: "Timer")
+	private func endSession(saveProgress: Bool) {
+		logger.info("Session \(saveProgress ? "ended" : "discarded") for routine: \(routine.routineName)", category: "Timer")
 		
-			// Record the session as completed
-		Task {
-			do {
-				try await dataManager.recordPlay(for: routine)
-				logger.info("Session recorded successfully", category: "Timer")
-			} catch {
-				logger.error("Failed to record session: \(error)", category: "Timer")
+		if saveProgress {
+			// Record the session
+			Task {
+				do {
+					try await dataManager.recordPlay(for: routine)
+					logger.info("Session recorded successfully", category: "Timer")
+				} catch {
+					logger.error("Failed to record session: \(error)", category: "Timer")
+				}
 			}
 		}
 		
-		stopTimer()
+		cleanup()
 		dismiss()
 	}
 	
-	private func discardSession() {
-		logger.info("User discarded session for routine: \(routine.routineName)", category: "Timer")
-		
-			// Don't record the session - just stop and dismiss
-		stopTimer()
-		dismiss()
+	private func cleanup() {
+		// Ensure all timers and resources are cleaned up
+		logger.info("Cleaning up timer resources", category: "Timer")
 	}
 }
 
 #Preview {
-	// Create a sample routine for preview
+		// Create a sample routine for preview
 	let sampleRoutine = SavedRoutine(
-	routine: Routine(
-	name: "Morning Meditation",
-	icon: "sunrise.fill",
-	blocks: [
-	RoutineBlock(name: "Breathwork", durationInMinutes: 5, type: .breathwork, blockStartBell: .softBell),
-	RoutineBlock(name: "Chanting", durationInMinutes: 10, type: .chanting, blockStartBell: .tibetanBowl),
-	RoutineBlock(name: "Silence", durationInMinutes: 15, type: .silence, blockStartBell: .silent)
-	],
-	openingBell: .softBell,
-	closingBell: .digitalChime
-	)
+		routine: Routine(
+			name: "Morning Meditation",
+			icon: "sunrise.fill",
+			blocks: [
+				RoutineBlock(name: "Breathwork", durationInMinutes: 1, type: .breathwork, blockStartBell: .softBell),
+				RoutineBlock(name: "Chanting", durationInMinutes: 1, type: .chanting, blockStartBell: .tibetanBowl),
+				RoutineBlock(name: "Silence", durationInMinutes: 1, type: .silence, blockStartBell: .silent)
+			],
+			openingBell: .softBell,
+			closingBell: .digitalChime
+		)
 	)
 	
 	RoutinePlayerView(routine: sampleRoutine)

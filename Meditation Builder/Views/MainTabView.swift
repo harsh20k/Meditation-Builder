@@ -27,11 +27,7 @@ struct MainTabView: View {
                 case .timer:
                     RoutineBuilderView()
                 case .tools:
-                    PlaceholderView(
-                        icon: "hammer",
-                        title: String(localized: "tab.tools"),
-                        description: String(localized: "tab.tools.description")
-                    )
+                    AnimationPlaygroundView()
                 case .settings:
                     LoggingSettingsView()
                 }
