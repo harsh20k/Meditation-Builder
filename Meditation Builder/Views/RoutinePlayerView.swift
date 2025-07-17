@@ -29,13 +29,15 @@ struct RoutinePlayerView: View {
 	@State private var isPaused = false
 	@State private var pausedDate: Date?
 	@State private var totalPausedTime: TimeInterval = 0
+	@State private var blockPausedTime: TimeInterval = 0
+	@State private var actualMeditationTimeAtPause: Int = 0
 	@State private var showingEndSessionAlert = false
 	@State private var showingDiscardSessionAlert = false
 	@State private var showingFinishAlert = false
 	@State private var currentTime = Date() // Add this to trigger progress updates
 	
-	// Session tracking
-	@State private var currentSession: MeditationSession?
+	// Session tracking - Event-based approach
+	@State private var sessionRecord: SessionRecord?
 	@State private var sessionStarted = false
 	
 	private var dataManager: RoutineDataManager {
@@ -72,10 +74,9 @@ struct RoutinePlayerView: View {
 	// Computed properties for time-based values
 	private var elapsedTime: Int {
 		guard !isPaused else {
-			// When paused, calculate elapsed time based on when we paused
+			// When paused, return the elapsed time at the moment of pausing
 			let elapsedBeforePause = pausedDate?.timeIntervalSince(routineStartDate) ?? 0
-			let adjustedElapsed = elapsedBeforePause - totalPausedTime
-			return max(0, Int(adjustedElapsed))
+			return max(0, Int(elapsedBeforePause))
 		}
 		
 		let elapsed = currentTime.timeIntervalSince(routineStartDate) - totalPausedTime
@@ -95,9 +96,11 @@ struct RoutinePlayerView: View {
 		
 		let elapsed: TimeInterval
 		if isPaused {
-			elapsed = (pausedDate?.timeIntervalSince(blockStartDate) ?? 0) - totalPausedTime
+			// When paused, use the time when we paused minus block paused time
+			elapsed = (pausedDate?.timeIntervalSince(blockStartDate) ?? 0) - blockPausedTime
 		} else {
-			elapsed = currentTime.timeIntervalSince(blockStartDate) - totalPausedTime
+			// When not paused, use current time minus block paused time
+			elapsed = currentTime.timeIntervalSince(blockStartDate) - blockPausedTime
 		}
 		
 		let progress = min(1.0, max(0.0, elapsed / blockDuration))
@@ -322,13 +325,14 @@ struct RoutinePlayerView: View {
 		routineStartDate = Date()
 		currentTime = Date()
 		
-		// Create session for tracking
-		currentSession = dataManager.createSession(for: routine, startTime: routineStartDate)
+		// Create lightweight session record for event tracking
+		sessionRecord = SessionRecord(routineID: routine.id)
+		sessionRecord?.addEvent(.start(routineStartDate))
 		sessionStarted = true
 		
 		print("🚀 MEDITATION STARTED")
 		print("   Routine: \(routine.routineName)")
-		print("   Session ID: \(currentSession?.id ?? UUID())")
+		print("   Session ID: \(sessionRecord?.id ?? UUID())")
 		print("   Start Time: \(routineStartDate)")
 		
 		guard currentBlockIndex < routineData.blocks.count else {
@@ -343,7 +347,7 @@ struct RoutinePlayerView: View {
 		let block = routineData.blocks[currentBlockIndex]
 		blockStartDate = Date()
 		currentTime = Date() // Initialize current time
-		totalPausedTime = 0
+		blockPausedTime = 0
 		
 		// MARK: - Debug Mode: Log actual duration being used
 		let actualDuration: String
@@ -361,16 +365,7 @@ struct RoutinePlayerView: View {
 		print("   Duration: \(actualDuration)")
 		print("   Start Time: \(blockStartDate)")
 		
-		// Record block start in session
-		if let session = currentSession {
-			Task {
-				do {
-					try await dataManager.startBlock(block.id, in: session, startTime: blockStartDate)
-				} catch {
-					logger.error("Failed to record block start: \(error)", category: "Session")
-				}
-			}
-		}
+		// No immediate database writes - events are recorded at session end
 	}
 	
 	private func togglePause() {
@@ -378,39 +373,66 @@ struct RoutinePlayerView: View {
 		
 		if isPaused {
 			pausedDate = Date()
+			// Store the actual meditation time at the moment of pausing (excluding previous paused time)
+			actualMeditationTimeAtPause = Int(pausedDate!.timeIntervalSince(routineStartDate) - totalPausedTime)
+			
+			// Record pause event
+			sessionRecord?.addEvent(.pause(pausedDate!))
+			
 			logger.info("Timer paused", category: "Timer")
 			print("⏸️ MEDITATION PAUSED")
 			print("   Pause Time: \(pausedDate ?? Date())")
-			print("   Elapsed Before Pause: \(formatTime(elapsedTime))")
+			print("   Elapsed Before Pause: \(formatTime(actualMeditationTimeAtPause))")
+			print("   Current Block Elapsed: \(formatTime(max(0, Int(pausedDate!.timeIntervalSince(blockStartDate) - blockPausedTime))))")
 		} else {
 			if let pauseStart = pausedDate {
-				totalPausedTime += Date().timeIntervalSince(pauseStart)
+				let resumeTime = Date()
+				let pauseDuration = resumeTime.timeIntervalSince(pauseStart)
+				// Ensure pause duration is positive and reasonable (not more than 24 hours)
+				guard pauseDuration > 0 && pauseDuration < 86400 else {
+					logger.warning("Invalid pause duration: \(pauseDuration)s - resetting pause state", category: "Timer")
+					pausedDate = nil
+					return
+				}
+				
+				totalPausedTime += pauseDuration
+				blockPausedTime += pauseDuration
 				pausedDate = nil
+				
+				// Record resume event
+				sessionRecord?.addEvent(.resume(resumeTime))
+				
+				logger.info("Timer resumed", category: "Timer")
+				print("▶️ MEDITATION RESUMED")
+				print("   Resume Time: \(resumeTime)")
+				print("   Pause Duration: \(String(format: "%.1f", pauseDuration))s")
+				print("   Total Paused Time: \(String(format: "%.1f", totalPausedTime))s")
+				print("   Block Paused Time: \(String(format: "%.1f", blockPausedTime))s")
+			} else {
+				logger.warning("Resume called but no pause start time recorded", category: "Timer")
 			}
-			logger.info("Timer resumed", category: "Timer")
-			print("▶️ MEDITATION RESUMED")
-			print("   Resume Time: \(Date())")
-			print("   Total Paused Time: \(String(format: "%.1f", totalPausedTime))s")
 		}
 	}
 	
 	private func moveToNextBlock() {
 		logger.info("Block completed: \(currentBlock?.name ?? "Unknown")", category: "Timer")
 		
-		print("✅ BLOCK COMPLETED - Index: \(currentBlockIndex + 1)/\(totalBlocks)")
-		print("   Block: \(currentBlock?.name ?? "Unknown")")
-		print("   Completion Time: \(Date())")
+		// CRITICAL: Capture timing values for logging
+		let completionTime = Date()
+		let capturedBlockStartDate = blockStartDate
+		let capturedBlockPausedTime = blockPausedTime
+		let capturedCurrentBlock = currentBlock
 		
-		// Record block completion in session
-		if let session = currentSession, let block = currentBlock {
-			Task {
-				do {
-					try await dataManager.endBlock(block.id, in: session, endTime: Date(), wasSkipped: false)
-				} catch {
-					logger.error("Failed to record block completion: \(error)", category: "Session")
-				}
-			}
-		}
+		// Calculate actual block duration (excluding paused time)
+		let blockDuration = max(0, Int(completionTime.timeIntervalSince(capturedBlockStartDate) - capturedBlockPausedTime))
+		
+		print("✅ BLOCK COMPLETED - Index: \(currentBlockIndex + 1)/\(totalBlocks)")
+		print("   Block: \(capturedCurrentBlock?.name ?? "Unknown")")
+		print("   Duration: \(formatTime(blockDuration))")
+		print("   Block Paused Time: \(String(format: "%.1f", capturedBlockPausedTime))s")
+		print("   Completion Time: \(completionTime)")
+		
+		// No immediate database writes - detailed block timing will be reconstructed from events
 		
 		currentBlockIndex += 1
 		
@@ -432,33 +454,57 @@ struct RoutinePlayerView: View {
 		return String(format: "%d:%02d", minutes, remainingSeconds)
 	}
 	
+	// MARK: - Timing Validation
+	
+	/// Validates and returns the current actual meditation time, ensuring consistency
+	private func getValidatedActualMeditationTime() -> Int {
+		let currentTime = Date()
+		let rawSessionDuration = currentTime.timeIntervalSince(routineStartDate)
+		
+		if isPaused {
+			// If currently paused, use the stored time at pause
+			return actualMeditationTimeAtPause
+		} else {
+			// If not paused, calculate current time minus total paused time
+			let calculatedTime = Int(rawSessionDuration - totalPausedTime)
+			
+			// Validation: ensure calculated time is non-negative and reasonable
+			guard calculatedTime >= 0 && calculatedTime < 86400 else {
+				logger.warning("Invalid meditation time calculated: \(calculatedTime)s - using fallback", category: "Timer")
+				return max(0, Int(rawSessionDuration)) // Fallback to raw duration if negative
+			}
+			
+			return calculatedTime
+		}
+	}
+	
 	// MARK: - Session Management
 	
 	private func endSession(saveProgress: Bool) {
 		logger.info("Session \(saveProgress ? "ended" : "discarded") for routine: \(routine.routineName)", category: "Timer")
 		
+		// Record finish event
+		let finishTime = Date()
+		sessionRecord?.addEvent(.finish(finishTime))
+		
+		// Calculate actual meditation time using validated method
+		let actualMeditationTime = getValidatedActualMeditationTime()
+		
 		let action = saveProgress ? "FINISH" : "DISCARD"
 		print("🛑 SESSION \(action)")
 		print("   Routine: \(routine.routineName)")
 		print("   Current Block: \(currentBlockIndex + 1)/\(totalBlocks)")
-		print("   Elapsed Time: \(formatTime(elapsedTime))")
-		print("   End Time: \(Date())")
+		print("   Duration: \(formatTime(actualMeditationTime))")
+		print("   Total Paused Time: \(String(format: "%.1f", totalPausedTime))s")
+		print("   Is Paused: \(isPaused)")
+		print("   End Time: \(finishTime)")
 		
-		// Complete the session tracking
-		if let session = currentSession {
+		// Complete the session using deferred event-based approach
+		if let sessionRecord = sessionRecord {
 			Task {
 				do {
-					// Record any remaining blocks as skipped if session is discarded
-					if !saveProgress && currentBlockIndex < routineData.blocks.count {
-						print("   Skipping remaining blocks: \(currentBlockIndex + 1) to \(totalBlocks)")
-						for i in currentBlockIndex..<routineData.blocks.count {
-							let block = routineData.blocks[i]
-							try await dataManager.endBlock(block.id, in: session, endTime: Date(), wasSkipped: true)
-						}
-					}
-					
-					// Complete the session
-					try await dataManager.completeSession(session, endTime: Date(), wasDiscarded: !saveProgress)
+					// Single call to complete session using event record
+					try await dataManager.completeSession(using: sessionRecord, routine: routine, wasDiscarded: !saveProgress)
 					logger.info("Session \(saveProgress ? "saved" : "discarded") successfully", category: "Session")
 				} catch {
 					logger.error("Failed to complete session: \(error)", category: "Session")

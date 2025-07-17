@@ -10,7 +10,7 @@ import SwiftData
 import os.log
 
 struct RoutineLibraryView: View {
-    @Query(sort: \SavedRoutine.lastModified, order: .reverse) private var savedRoutines: [SavedRoutine]
+    @Query(sort: \SavedRoutine.lastModified, order: .reverse) private var allSavedRoutines: [SavedRoutine]
     @Environment(\.modelContext) private var modelContext
     
     @State private var searchText = ""
@@ -22,6 +22,11 @@ struct RoutineLibraryView: View {
     
     private var dataManager: RoutineDataManager {
         RoutineDataManager(context: modelContext)
+    }
+    
+    // Filter out soft-deleted routines
+    private var savedRoutines: [SavedRoutine] {
+        allSavedRoutines.filter { !$0.isDeleted }
     }
     
     var filteredRoutines: [SavedRoutine] {
@@ -151,6 +156,12 @@ struct RoutineLibraryView: View {
     
     private func recordPlay(for routine: SavedRoutine) {
         logger.info("Starting routine playback: \(routine.routineName)", category: "RoutineLibrary")
+        
+        // Validate that the routine is not soft-deleted
+        guard !routine.isDeleted else {
+            logger.error("Cannot play soft-deleted routine: \(routine.routineName)", category: "RoutineLibrary")
+            return
+        }
         
         // Debug logging: Print routine blocks
         logRoutineBlocks(routine)

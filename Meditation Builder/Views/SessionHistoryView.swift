@@ -12,7 +12,6 @@ struct SessionHistoryView: View {
     @Environment(\.modelContext) private var modelContext
     @Query(sort: \MeditationSession.sessionStartTime, order: .reverse) private var sessions: [MeditationSession]
     @State private var selectedSession: MeditationSession?
-    @State private var showingSessionDetail = false
     @State private var showingStatistics = false
     @State private var searchText = ""
     @State private var selectedFilter: SessionFilter = .all
@@ -97,7 +96,6 @@ struct SessionHistoryView: View {
                         SessionRowView(session: session) {
                             print("👆 Session tapped: \(session.routineName)")
                             selectedSession = session
-                            showingSessionDetail = true
                         }
                     }
                     .listStyle(PlainListStyle())
@@ -118,14 +116,8 @@ struct SessionHistoryView: View {
                 }
             )
         }
-        .sheet(isPresented: $showingSessionDetail) {
-            if let session = selectedSession {
-//                print("📱 Presenting SessionDetailView for: \(session.routineName)")
-                SessionDetailView(session: session)
-            } else {
-//                print("❌ selectedSession is nil!")
-                Text("Error: No session selected")
-            }
+        .sheet(item: $selectedSession) { session in
+            SessionDetailView(session: session)
         }
         .sheet(isPresented: $showingStatistics) {
             SessionStatisticsView()
@@ -178,18 +170,18 @@ struct SessionRowView: View {
                     Text(session.getSessionSummary())
                         .font(.subheadline)
                         .foregroundColor(.secondary)
-                        .lineLimit(2)
                 }
                 
                 Spacer()
                 
                 // Status indicator
                 VStack(alignment: .trailing, spacing: 4) {
-                    StatusBadge(session: session)
-                    
                     Text(session.sessionDurationFormatted)
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        .font(.subheadline)
+                        .fontWeight(.medium)
+                        .foregroundColor(.primary)
+                    
+                    StatusBadge(session: session)
                 }
             }
             .padding(.vertical, 4)
@@ -349,10 +341,44 @@ struct SessionDetailView: View {
             print("📋 SessionDetailView appeared")
             print("   Session ID: \(session.id)")
             print("   Routine: \(session.routineName)")
-            print("   Block Records: \(session.blockRecords.count)")
             print("   Session Duration: \(session.sessionDurationFormatted)")
             print("   Was Discarded: \(session.wasDiscarded)")
             print("   Completion Rate: \(session.completionRatePercentage)%")
+            print("   Total Blocks: \(session.totalBlocksCount) | Completed: \(session.completedBlocksCount)")
+            
+            print("   Block Details:")
+            for record in session.blockRecords.sorted(by: { $0.orderIndex < $1.orderIndex }) {
+                let blockStatus: String
+                if record.wasSkipped {
+                    blockStatus = "SKIPPED"
+                } else if record.endTime == nil {
+                    blockStatus = "NOT_STARTED"
+                } else {
+                    // Use the same completion criteria as in MeditationSession
+                    let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10) // 10 seconds or 10% of planned, whichever is smaller
+                    if record.actualDurationInSeconds >= minimumDurationForCompletion {
+                        blockStatus = "COMPLETED"
+                    } else if record.actualDurationInSeconds > 0 {
+                        blockStatus = "STARTED_ONLY"
+                    } else {
+                        blockStatus = "INTERRUPTED"
+                    }
+                }
+                
+                let blockDuration = String(format: "%d:%02d", record.actualDurationInSeconds / 60, record.actualDurationInSeconds % 60)
+                let plannedDuration = String(format: "%d:%02d", record.plannedDurationInMinutes, 0)
+                
+                print("     \(record.orderIndex + 1). \(record.blockName)")
+                print("        Type: \(record.blockType.displayName)")
+                print("        Planned: \(plannedDuration) | Actual: \(blockDuration)")
+                print("        Status: \(blockStatus)")
+                
+                if record.endTime != nil {
+                    let startTimeFormatted = String(format: "%d:%02d", Int(record.startTime.timeIntervalSince(session.sessionStartTime)) / 60, Int(record.startTime.timeIntervalSince(session.sessionStartTime)) % 60)
+                    let endTimeFormatted = String(format: "%d:%02d", Int(record.endTime!.timeIntervalSince(session.sessionStartTime)) / 60, Int(record.endTime!.timeIntervalSince(session.sessionStartTime)) % 60)
+                    print("        Start: +\(startTimeFormatted) | End: +\(endTimeFormatted)")
+                }
+            }
         }
     }
     
@@ -367,6 +393,76 @@ struct SessionDetailView: View {
 // MARK: - Block Record Row
 struct BlockRecordRow: View {
     let record: SessionBlockRecord
+    
+    private var blockStatus: String {
+        if record.wasSkipped {
+            return "Skipped"
+        } else if record.endTime == nil {
+            return "Not Started"
+        } else {
+            // Use consistent completion criteria
+            let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10)
+			
+			#if DEBUG
+			let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
+			#else
+			let isDebugMode = false
+			#endif
+			
+			if isDebugMode {
+				if record.actualDurationInSeconds >= 5 {
+					return "Completed"
+				} else if record.actualDurationInSeconds > 0 {
+					return "Started Only"
+				} else {
+					return "Interrupted"
+				}
+			} else {
+				if record.actualDurationInSeconds >= minimumDurationForCompletion {
+					return "Completed"
+				} else if record.actualDurationInSeconds > 0 {
+					return "Started Only"
+				} else {
+					return "Interrupted"
+				}
+			}
+        }
+    }
+   
+    private var statusColor: Color {
+        if record.wasSkipped {
+            return .red
+        } else if record.endTime == nil {
+            return .orange
+        } else {
+            // Use consistent completion criteria for color
+            let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10)
+			
+			#if DEBUG
+			let isDebugMode = true // Set to true for 5-seconds blocks, false for normal duration
+			#else
+			let isDebugMode = false
+			#endif
+			
+			if isDebugMode {
+				if record.actualDurationInSeconds >= 5 {
+					return .green  // Completed
+				} else if record.actualDurationInSeconds > 0 {
+					return .yellow  // Started Only
+				} else {
+					return .red  // Interrupted
+				}
+			} else {
+				if record.actualDurationInSeconds >= minimumDurationForCompletion {
+					return .green  // Completed
+				} else if record.actualDurationInSeconds > 0 {
+					return .yellow  // Started Only
+				} else {
+					return .red  // Interrupted
+				}
+			}
+        }
+    }
     
     var body: some View {
         HStack {
@@ -387,9 +483,9 @@ struct BlockRecordRow: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 
-                Text(record.wasSkipped ? "Skipped" : "Completed")
+                Text(blockStatus)
                     .font(.caption)
-                    .foregroundColor(record.wasSkipped ? .red : .green)
+                    .foregroundColor(statusColor)
             }
         }
         .padding(.vertical, 4)
