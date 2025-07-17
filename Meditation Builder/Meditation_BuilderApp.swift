@@ -69,7 +69,9 @@ struct Meditation_BuilderApp: App {
         let schema = Schema([
             SavedRoutine.self,
             MeditationBlock.self, 
-            MediaResource.self
+            MediaResource.self,
+            MeditationSession.self,
+            SessionBlockRecord.self
         ])
         
         let modelConfiguration = ModelConfiguration(

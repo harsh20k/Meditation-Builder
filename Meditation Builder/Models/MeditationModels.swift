@@ -510,6 +510,257 @@ final class SavedRoutine: Identifiable {
 	}
 }
 
+// MARK: - Meditation Session Tracking
+
+// MARK: - Session Block Record
+@Model
+final class SessionBlockRecord: Identifiable {
+    var id: UUID
+    var blockId: UUID
+    var blockName: String
+    var blockType: MeditationBlock.BlockType
+    var plannedDurationInMinutes: Int
+    var actualDurationInSeconds: Int
+    var wasSkipped: Bool
+    var orderIndex: Int
+    var startTime: Date
+    var endTime: Date?
+    
+    init(
+        id: UUID = UUID(),
+        blockId: UUID,
+        blockName: String,
+        blockType: MeditationBlock.BlockType,
+        plannedDurationInMinutes: Int,
+        actualDurationInSeconds: Int = 0,
+        wasSkipped: Bool = false,
+        orderIndex: Int,
+        startTime: Date,
+        endTime: Date? = nil
+    ) {
+        self.id = id
+        self.blockId = blockId
+        self.blockName = blockName
+        self.blockType = blockType
+        self.plannedDurationInMinutes = plannedDurationInMinutes
+        self.actualDurationInSeconds = actualDurationInSeconds
+        self.wasSkipped = wasSkipped
+        self.orderIndex = orderIndex
+        self.startTime = startTime
+        self.endTime = endTime
+    }
+}
+
+// MARK: - Meditation Session
+@Model
+final class MeditationSession: Identifiable {
+    var id: UUID
+    var routineId: UUID
+    var routineName: String
+    var routineIcon: String
+    var sessionStartTime: Date
+    var sessionEndTime: Date?
+    var totalPlannedDurationInMinutes: Int
+    var totalActualDurationInSeconds: Int
+    var wasCompleted: Bool
+    var wasDiscarded: Bool
+    var completedBlocksCount: Int
+    var totalBlocksCount: Int
+    var overshootTimeInSeconds: Int // Time spent beyond all blocks completion
+    @Relationship(deleteRule: .cascade) var blockRecords: [SessionBlockRecord]
+    
+    init(
+        id: UUID = UUID(),
+        routineId: UUID,
+        routineName: String,
+        routineIcon: String,
+        sessionStartTime: Date,
+        sessionEndTime: Date? = nil,
+        totalPlannedDurationInMinutes: Int,
+        totalActualDurationInSeconds: Int = 0,
+        wasCompleted: Bool = false,
+        wasDiscarded: Bool = false,
+        completedBlocksCount: Int = 0,
+        totalBlocksCount: Int,
+        overshootTimeInSeconds: Int = 0,
+        blockRecords: [SessionBlockRecord] = []
+    ) {
+        self.id = id
+        self.routineId = routineId
+        self.routineName = routineName
+        self.routineIcon = routineIcon
+        self.sessionStartTime = sessionStartTime
+        self.sessionEndTime = sessionEndTime
+        self.totalPlannedDurationInMinutes = totalPlannedDurationInMinutes
+        self.totalActualDurationInSeconds = totalActualDurationInSeconds
+        self.wasCompleted = wasCompleted
+        self.wasDiscarded = wasDiscarded
+        self.completedBlocksCount = completedBlocksCount
+        self.totalBlocksCount = totalBlocksCount
+        self.overshootTimeInSeconds = overshootTimeInSeconds
+        self.blockRecords = blockRecords
+    }
+    
+    // MARK: - Computed Properties
+    
+    var sessionDurationInSeconds: Int {
+        guard let endTime = sessionEndTime else { return 0 }
+        return Int(endTime.timeIntervalSince(sessionStartTime))
+    }
+    
+    var sessionDurationFormatted: String {
+        let duration = sessionDurationInSeconds
+        let minutes = duration / 60
+        let seconds = duration % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    var completionRate: Double {
+        guard totalBlocksCount > 0 else { return 0.0 }
+        return Double(completedBlocksCount) / Double(totalBlocksCount)
+    }
+    
+    var completionRatePercentage: Int {
+        return Int(completionRate * 100)
+    }
+    
+    var wasFullyCompleted: Bool {
+        return completedBlocksCount == totalBlocksCount
+    }
+    
+    var hasOvershoot: Bool {
+        return overshootTimeInSeconds > 0
+    }
+    
+    var overshootTimeFormatted: String {
+        let minutes = overshootTimeInSeconds / 60
+        let seconds = overshootTimeInSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    // MARK: - Helper Methods
+    
+    func addBlockRecord(_ record: SessionBlockRecord) {
+        blockRecords.append(record)
+        blockRecords.sort { $0.orderIndex < $1.orderIndex }
+    }
+    
+    func completeSession(endTime: Date, wasDiscarded: Bool = false) {
+        self.sessionEndTime = endTime
+        self.wasDiscarded = wasDiscarded
+        self.wasCompleted = !wasDiscarded
+        
+        // Calculate total actual duration
+        self.totalActualDurationInSeconds = sessionDurationInSeconds
+        
+        // Calculate overshoot time
+        let plannedDurationInSeconds = totalPlannedDurationInMinutes * 60
+        self.overshootTimeInSeconds = max(0, totalActualDurationInSeconds - plannedDurationInSeconds)
+        
+        // Count completed blocks
+        self.completedBlocksCount = blockRecords.filter { !$0.wasSkipped }.count
+    }
+    
+    func updateBlockRecord(_ blockId: UUID, actualDuration: Int, wasSkipped: Bool, endTime: Date) {
+        if let record = blockRecords.first(where: { $0.blockId == blockId }) {
+            record.actualDurationInSeconds = actualDuration
+            record.wasSkipped = wasSkipped
+            record.endTime = endTime
+        }
+    }
+    
+    // MARK: - User-Friendly Display Methods
+    
+    func getSessionSummary() -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .medium
+        dateFormatter.timeStyle = .short
+        
+        let startDateString = dateFormatter.string(from: sessionStartTime)
+        let durationString = sessionDurationFormatted
+        
+        if wasDiscarded {
+            return "Discarded session on \(startDateString) (\(durationString))"
+        } else if wasFullyCompleted {
+            return "Completed session on \(startDateString) (\(durationString))"
+        } else {
+            return "Partial session on \(startDateString) (\(durationString), \(completionRatePercentage)% complete)"
+        }
+    }
+    
+    func getDetailedSummary() -> String {
+        let dateFormatter = DateFormatter()
+        dateFormatter.dateStyle = .full
+        dateFormatter.timeStyle = .short
+        
+        var summary = "Session: \(routineName)\n"
+        summary += "Date: \(dateFormatter.string(from: sessionStartTime))\n"
+        summary += "Duration: \(sessionDurationFormatted)\n"
+        summary += "Completion: \(completedBlocksCount)/\(totalBlocksCount) blocks (\(completionRatePercentage)%)\n"
+        
+        if hasOvershoot {
+            summary += "Overshoot: \(overshootTimeFormatted)\n"
+        }
+        
+        if wasDiscarded {
+            summary += "Status: Discarded"
+        } else if wasFullyCompleted {
+            summary += "Status: Fully completed"
+        } else {
+            summary += "Status: Partially completed"
+        }
+        
+        return summary
+    }
+    
+    func getBlockSummary() -> String {
+        var summary = "Block Details:\n"
+        
+        for record in blockRecords.sorted(by: { $0.orderIndex < $1.orderIndex }) {
+            let status = record.wasSkipped ? "Skipped" : "Completed"
+            let actualDuration = record.actualDurationInSeconds
+            let minutes = actualDuration / 60
+            let seconds = actualDuration % 60
+            let durationString = String(format: "%d:%02d", minutes, seconds)
+            
+            summary += "• \(record.blockName): \(durationString) (\(status))\n"
+        }
+        
+        return summary
+    }
+}
+
+// MARK: - Session Statistics
+struct SessionStatistics {
+    let totalSessions: Int
+    let totalDurationInSeconds: Int
+    let averageDurationInSeconds: Int
+    let completionRate: Double
+    let totalOvershootTimeInSeconds: Int
+    
+    var totalDurationFormatted: String {
+        let minutes = totalDurationInSeconds / 60
+        let seconds = totalDurationInSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    var averageDurationFormatted: String {
+        let minutes = averageDurationInSeconds / 60
+        let seconds = averageDurationInSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+    
+    var completionRatePercentage: Int {
+        return Int(completionRate * 100)
+    }
+    
+    var totalOvershootTimeFormatted: String {
+        let minutes = totalOvershootTimeInSeconds / 60
+        let seconds = totalOvershootTimeInSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
 // MARK: - Sample Media Resources (for future use)
 extension MediaInfo {
 	static func sampleBellSounds() -> [MediaInfo] {

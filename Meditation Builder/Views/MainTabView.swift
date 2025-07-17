@@ -26,8 +26,8 @@ struct MainTabView: View {
                     )
                 case .timer:
                     RoutineBuilderView()
-                case .tools:
-                    AnimationPlaygroundView()
+                case .history:
+                    SessionHistoryView()
                 case .settings:
                     LoggingSettingsView()
                 }

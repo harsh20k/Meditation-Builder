@@ -11,7 +11,7 @@ enum TabSelection: Int, CaseIterable {
     case library = 0
     case music = 1
     case timer = 2
-    case tools = 3
+    case history = 3
     case settings = 4
     
     var icon: String {
@@ -19,7 +19,7 @@ enum TabSelection: Int, CaseIterable {
         case .library: return "books.vertical.fill"
         case .music: return "music.note"
         case .timer: return "timer"
-        case .tools: return "hammer"
+        case .history: return "clock.arrow.circlepath"
         case .settings: return "gearshape"
         }
     }
@@ -29,7 +29,7 @@ enum TabSelection: Int, CaseIterable {
         case .library: return String(localized: "tab.library")
         case .music: return String(localized: "tab.music")
         case .timer: return String(localized: "tab.timer")
-        case .tools: return String(localized: "tab.tools")
+        case .history: return "History"
         case .settings: return String(localized: "tab.settings")
         }
     }
@@ -39,7 +39,7 @@ enum TabSelection: Int, CaseIterable {
         case .library: return LocalizedStringKey("tab.library")
         case .music: return LocalizedStringKey("tab.music")
         case .timer: return LocalizedStringKey("tab.timer")
-        case .tools: return LocalizedStringKey("tab.tools")
+        case .history: return LocalizedStringKey("History")
         case .settings: return LocalizedStringKey("tab.settings")
         }
     }

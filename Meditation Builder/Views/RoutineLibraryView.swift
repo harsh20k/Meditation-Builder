@@ -85,7 +85,7 @@ struct RoutineLibraryView: View {
                 
                 // Routines List
                 if filteredRoutines.isEmpty {
-                    EmptyStateView(searchText: searchText)
+                    LibraryEmptyStateView(searchText: searchText)
                 } else {
                     ScrollView(showsIndicators: false) {
                         LazyVStack(spacing: AppTheme.Spacing.large) {
@@ -342,8 +342,8 @@ struct RoutineCard: View {
     }
 }
 
-// MARK: - Empty State View
-struct EmptyStateView: View {
+// MARK: - Library Empty State View
+struct LibraryEmptyStateView: View {
     let searchText: String
     
     var body: some View {
@@ -436,7 +436,7 @@ struct EmptyStateView: View {
                     .padding(.horizontal)
                     .padding(.bottom, AppTheme.Spacing.large)
                     
-                    EmptyStateView(searchText: searchText)
+                    LibraryEmptyStateView(searchText: searchText)
                     
                     Spacer()
                 }

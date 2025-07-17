@@ -89,6 +89,223 @@ class RoutineDataManager: ObservableObject {
         logger.info("Routine duplicated successfully: \(savedDuplicatedRoutine.routineName)", category: "Routine")
     }
     
+    // MARK: - Session Management
+    
+    /// Create a new meditation session
+    func createSession(for routine: SavedRoutine, startTime: Date = Date()) -> MeditationSession {
+        logger.info("Creating new session for routine: \(routine.routineName)", category: "Session")
+        
+        let routineData = routine.getRoutine()
+        let totalPlannedDuration = routineData.blocks.reduce(0) { $0 + $1.durationInMinutes }
+        
+        let session = MeditationSession(
+            routineId: routine.id,
+            routineName: routine.routineName,
+            routineIcon: routine.routineIcon,
+            sessionStartTime: startTime,
+            totalPlannedDurationInMinutes: totalPlannedDuration,
+            totalBlocksCount: routineData.blocks.count
+        )
+        
+        // Pre-create block records for all blocks
+        for (index, block) in routineData.blocks.enumerated() {
+            let blockRecord = SessionBlockRecord(
+                blockId: block.id,
+                blockName: block.name,
+                blockType: block.type,
+                plannedDurationInMinutes: block.durationInMinutes,
+                orderIndex: index,
+                startTime: startTime // Will be updated when block actually starts
+            )
+            session.addBlockRecord(blockRecord)
+        }
+        
+        context.insert(session)
+        
+        // Console logging for session creation
+        print("🧘‍♀️ SESSION CREATED")
+        print("   Routine: \(routine.routineName)")
+        print("   Session ID: \(session.id)")
+        print("   Start Time: \(startTime)")
+        print("   Planned Duration: \(totalPlannedDuration) minutes")
+        print("   Total Blocks: \(routineData.blocks.count)")
+        print("   Blocks:")
+        for (index, block) in routineData.blocks.enumerated() {
+            print("     \(index + 1). \(block.name) (\(block.durationInMinutes) min) - \(block.type.displayName)")
+        }
+        
+        // Verify session was inserted
+        do {
+            try context.save()
+            print("✅ Session saved to database successfully")
+        } catch {
+            print("❌ Failed to save session to database: \(error)")
+        }
+        
+        logger.info("Session created: \(session.id)", category: "Session")
+        return session
+    }
+    
+    /// Update block record when block starts
+    func startBlock(_ blockId: UUID, in session: MeditationSession, startTime: Date) async throws {
+        logger.info("Starting block \(blockId) in session \(session.id)", category: "Session")
+        
+        if let record = session.blockRecords.first(where: { $0.blockId == blockId }) {
+            record.startTime = startTime
+            try context.save()
+            
+            // Console logging for block start
+            print("▶️ BLOCK STARTED")
+            print("   Session: \(session.routineName)")
+            print("   Block: \(record.blockName)")
+            print("   Type: \(record.blockType.displayName)")
+            print("   Planned Duration: \(record.plannedDurationInMinutes) minutes")
+            print("   Start Time: \(startTime)")
+            
+            logger.debug("Block start time updated", category: "Session")
+        }
+    }
+    
+    /// Update block record when block ends
+    func endBlock(_ blockId: UUID, in session: MeditationSession, endTime: Date, wasSkipped: Bool = false) async throws {
+        logger.info("Ending block \(blockId) in session \(session.id) (skipped: \(wasSkipped))", category: "Session")
+        
+        if let record = session.blockRecords.first(where: { $0.blockId == blockId }) {
+            let actualDuration = Int(endTime.timeIntervalSince(record.startTime))
+            session.updateBlockRecord(blockId, actualDuration: actualDuration, wasSkipped: wasSkipped, endTime: endTime)
+            try context.save()
+            
+            // Console logging for block end
+            let status = wasSkipped ? "SKIPPED" : "COMPLETED"
+            let durationFormatted = String(format: "%d:%02d", actualDuration / 60, actualDuration % 60)
+            let plannedFormatted = String(format: "%d:%02d", record.plannedDurationInMinutes, 0)
+            
+            print("⏹️ BLOCK \(status)")
+            print("   Session: \(session.routineName)")
+            print("   Block: \(record.blockName)")
+            print("   Planned: \(plannedFormatted) | Actual: \(durationFormatted)")
+            print("   End Time: \(endTime)")
+            
+            logger.debug("Block end time and duration updated: \(actualDuration)s", category: "Session")
+        }
+    }
+    
+    /// Complete and save a meditation session
+    func completeSession(_ session: MeditationSession, endTime: Date, wasDiscarded: Bool = false) async throws {
+        logger.info("Completing session \(session.id) (discarded: \(wasDiscarded))", category: "Session")
+        
+        session.completeSession(endTime: endTime, wasDiscarded: wasDiscarded)
+        
+        if !wasDiscarded {
+            // Also record the play for the routine
+            if let routine = try? fetchRoutine(by: session.routineId) {
+                routine.recordPlay()
+            }
+        }
+        
+        try context.save()
+        
+        // Console logging for session completion
+        let status = wasDiscarded ? "DISCARDED" : "COMPLETED"
+        let durationFormatted = session.sessionDurationFormatted
+        let completionRate = session.completionRatePercentage
+        let overshootInfo = session.hasOvershoot ? " (Overshoot: \(session.overshootTimeFormatted))" : ""
+        
+        print("🏁 SESSION \(status)")
+        print("   Routine: \(session.routineName)")
+        print("   Duration: \(durationFormatted)")
+        print("   Completion: \(session.completedBlocksCount)/\(session.totalBlocksCount) blocks (\(completionRate)%)")
+        print("   End Time: \(endTime)\(overshootInfo)")
+        
+        // Log block summary
+        print("   Block Summary:")
+        for record in session.blockRecords.sorted(by: { $0.orderIndex < $1.orderIndex }) {
+            let blockStatus = record.wasSkipped ? "SKIPPED" : "COMPLETED"
+            let blockDuration = String(format: "%d:%02d", record.actualDurationInSeconds / 60, record.actualDurationInSeconds % 60)
+            print("     \(record.orderIndex + 1). \(record.blockName): \(blockDuration) (\(blockStatus))")
+        }
+        
+        logger.info("Session completed successfully: \(session.sessionDurationFormatted)", category: "Session")
+    }
+    
+    /// Fetch all sessions for a specific routine
+    func fetchSessions(for routineId: UUID) throws -> [MeditationSession] {
+        let descriptor = FetchDescriptor<MeditationSession>(
+            predicate: #Predicate<MeditationSession> { session in
+                session.routineId == routineId
+            },
+            sortBy: [SortDescriptor(\.sessionStartTime, order: .reverse)]
+        )
+        
+        return try context.fetch(descriptor)
+    }
+    
+    /// Fetch all sessions (for history view)
+    func fetchAllSessions() throws -> [MeditationSession] {
+        let descriptor = FetchDescriptor<MeditationSession>(
+            sortBy: [SortDescriptor(\.sessionStartTime, order: .reverse)]
+        )
+        
+        return try context.fetch(descriptor)
+    }
+    
+    /// Fetch sessions within a date range
+    func fetchSessions(from startDate: Date, to endDate: Date) throws -> [MeditationSession] {
+        let descriptor = FetchDescriptor<MeditationSession>(
+            predicate: #Predicate<MeditationSession> { session in
+                session.sessionStartTime >= startDate && session.sessionStartTime <= endDate
+            },
+            sortBy: [SortDescriptor(\.sessionStartTime, order: .reverse)]
+        )
+        
+        return try context.fetch(descriptor)
+    }
+    
+    /// Delete a session
+    func deleteSession(_ session: MeditationSession) throws {
+        logger.info("Deleting session: \(session.id)", category: "Session")
+        
+        context.delete(session)
+        try context.save()
+        
+        logger.info("Session deleted successfully", category: "Session")
+    }
+    
+    /// Get session statistics
+    func getSessionStatistics() async throws -> SessionStatistics {
+        let allSessions = try fetchAllSessions()
+        let completedSessions = allSessions.filter { !$0.wasDiscarded }
+        
+        let totalSessions = completedSessions.count
+        let totalDuration = completedSessions.reduce(0) { $0 + $1.sessionDurationInSeconds }
+        let averageDuration = totalSessions > 0 ? totalDuration / totalSessions : 0
+        
+        let fullyCompletedSessions = completedSessions.filter { $0.wasFullyCompleted }
+        let completionRate = totalSessions > 0 ? Double(fullyCompletedSessions.count) / Double(totalSessions) : 0
+        
+        let totalOvershootTime = completedSessions.reduce(0) { $0 + $1.overshootTimeInSeconds }
+        
+        return SessionStatistics(
+            totalSessions: totalSessions,
+            totalDurationInSeconds: totalDuration,
+            averageDurationInSeconds: averageDuration,
+            completionRate: completionRate,
+            totalOvershootTimeInSeconds: totalOvershootTime
+        )
+    }
+    
+    // MARK: - Private Helper Methods
+    
+    private func fetchRoutine(by id: UUID) throws -> SavedRoutine? {
+        let descriptor = FetchDescriptor<SavedRoutine>(
+            predicate: #Predicate<SavedRoutine> { routine in
+                routine.id == id
+            }
+        )
+        
+        return try context.fetch(descriptor).first
+    }
+    
     // MARK: - Sample Data
     
     /// Add sample routines for first-time users
@@ -124,8 +341,6 @@ class RoutineDataManager: ObservableObject {
             logger.debug("Sample data already exists, skipping initialization", category: "Data")
         }
     }
-    
-    // MARK: - Private Helper Methods
     
     private static func createSampleRoutines() -> [SavedRoutine] {
         let morningMeditation = SavedRoutine(

@@ -14,7 +14,15 @@ struct RoutinePlayerView: View {
 	@Environment(\.modelContext) private var modelContext
 	@Environment(\.scenePhase) private var scenePhase
 	
+	// MARK: - Debug Configuration
+	#if DEBUG
+	private let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
+	#else
+	private let isDebugMode = false
+	#endif
+	
 	@State private var currentBlockIndex = 0
+	@State private var routineStartDate = Date() // Track when routine started
 	@State private var blockStartDate = Date()
 	@State private var blockEndDate = Date()
 	@State private var isPlaying = true
@@ -23,7 +31,12 @@ struct RoutinePlayerView: View {
 	@State private var totalPausedTime: TimeInterval = 0
 	@State private var showingEndSessionAlert = false
 	@State private var showingDiscardSessionAlert = false
+	@State private var showingFinishAlert = false
 	@State private var currentTime = Date() // Add this to trigger progress updates
+	
+	// Session tracking
+	@State private var currentSession: MeditationSession?
+	@State private var sessionStarted = false
 	
 	private var dataManager: RoutineDataManager {
 		RoutineDataManager(context: modelContext)
@@ -57,23 +70,28 @@ struct RoutinePlayerView: View {
 	}
 	
 	// Computed properties for time-based values
-	private var timeRemaining: Int {
+	private var elapsedTime: Int {
 		guard !isPaused else {
-			// When paused, calculate remaining time based on when we paused
-			let elapsedBeforePause = pausedDate?.timeIntervalSince(blockStartDate) ?? 0
+			// When paused, calculate elapsed time based on when we paused
+			let elapsedBeforePause = pausedDate?.timeIntervalSince(routineStartDate) ?? 0
 			let adjustedElapsed = elapsedBeforePause - totalPausedTime
-			let blockDuration = Double((currentBlock?.durationInMinutes ?? 0) * 60)
-			return max(0, Int(blockDuration - adjustedElapsed))
+			return max(0, Int(adjustedElapsed))
 		}
 		
-		let elapsed = currentTime.timeIntervalSince(blockStartDate) - totalPausedTime
-		let blockDuration = Double((currentBlock?.durationInMinutes ?? 0) * 60)
-		return max(0, Int(blockDuration - elapsed))
+		let elapsed = currentTime.timeIntervalSince(routineStartDate) - totalPausedTime
+		return max(0, Int(elapsed))
 	}
 	
 	private var inBlockProgress: Double {
 		guard let block = currentBlock else { return 0.0 }
-		let blockDuration = Double(block.durationInMinutes * 60)
+		
+		// MARK: - Debug Mode: Use 5 seconds for all blocks
+		let blockDuration: Double
+		if isDebugMode {
+			blockDuration = 5.0 // 5 seconds for debugging
+		} else {
+			blockDuration = Double(block.durationInMinutes * 60)
+		}
 		
 		let elapsed: TimeInterval
 		if isPaused {
@@ -85,11 +103,16 @@ struct RoutinePlayerView: View {
 		let progress = min(1.0, max(0.0, elapsed / blockDuration))
 		
 		// Log progress changes (but limit frequency to avoid spam)
-		if progress > 0.0 && progress < 1.0 {
-			print("⏱️ Timer Progress - Block: \(block.name), Elapsed: \(String(format: "%.1f", elapsed))s, Duration: \(blockDuration)s, Progress: \(String(format: "%.3f", progress))")
-		}
+		// if progress > 0.0 && progress < 1.0 {
+		// 	print("⏱️ Timer Progress - Block: \(block.name), Elapsed: \(String(format: "%.1f", elapsed))s, Duration: \(blockDuration)s, Progress: \(String(format: "%.3f", progress))")
+		// }
 		
 		return progress
+	}
+	
+	// Check if all blocks are completed
+	private var isRoutineComplete: Bool {
+		currentBlockIndex >= routineData.blocks.count
 	}
 
 	var body: some View {
@@ -123,9 +146,9 @@ struct RoutinePlayerView: View {
 				
 				// Main Timer Display - positioned at center
 				VStack(spacing: 16) {
-					// Large countdown timer with TimelineView for efficiency
-					TimelineView(.periodic(from: blockStartDate, by: 1.0)) { context in
-						Text(formatTime(timeRemaining))
+					// Large elapsed timer with TimelineView for efficiency
+					TimelineView(.periodic(from: routineStartDate, by: 1.0)) { context in
+						Text(formatTime(elapsedTime))
 							.font(.system(size: 72, weight: .bold, design: .default))
 							.foregroundColor(.white)
 							.monospacedDigit()
@@ -134,14 +157,21 @@ struct RoutinePlayerView: View {
 								currentTime = newDate
 								
 								// Check if current block is complete on each timeline update
-								if timeRemaining <= 0 && !isPaused {
+								if !isRoutineComplete && inBlockProgress >= 1.0 && !isPaused {
 									moveToNextBlock()
 								}
 							}
 					}
 					
-					// Current → Next block indicator
-					if let current = currentBlock {
+					// Current block indicator or completion message
+					if isRoutineComplete {
+						Text("Routine Complete")
+							.font(.system(size: 17, weight: .regular, design: .default))
+							.foregroundColor(.white.opacity(0.8))
+							.lineLimit(2)
+							.multilineTextAlignment(.center)
+							.frame(width: geometry.size.width - 40)
+					} else if let current = currentBlock {
 						HStack(spacing: 0) {
 							Text(current.name)
 								.font(.system(size: 17, weight: .regular, design: .default))
@@ -201,13 +231,29 @@ struct RoutinePlayerView: View {
 						.opacity(isPaused ? 1.0 : 0.0)
 						.animation(.easeInOut(duration: 0.3), value: isPaused)
 					}
+					
+					// Finish button - shown when routine is complete
+					if isRoutineComplete {
+						Button(action: { showingFinishAlert = true }) {
+							Text("Finish")
+								.font(.system(size: 14, weight: .medium, design: .default))
+								.foregroundColor(.black)
+								.frame(width: 120, height: 36)
+								.background(Color.white)
+								.cornerRadius(18)
+								.padding(8)
+						}
+						.position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 80)
+						.opacity(isRoutineComplete ? 1.0 : 0.0)
+						.animation(.easeInOut(duration: 0.3), value: isRoutineComplete)
+					}
 				}
 				
 				// Block Progress Indicator - positioned at right edge
 				BlockProgressIndicator(
 					currentBlockIndex: currentBlockIndex,
 					totalBlocks: totalBlocks,
-					inBlockProgress: inBlockProgress,
+					inBlockProgress: isRoutineComplete ? 1.0 : inBlockProgress,
 					blockStartDate: blockStartDate
 				)
 				.position(x: geometry.size.width - 20, y: geometry.size.height / 2)
@@ -233,8 +279,8 @@ struct RoutinePlayerView: View {
 				break
 			}
 		}
-		.onChange(of: timeRemaining) { _, newValue in
-			if newValue <= 0 && !isPaused {
+		.onChange(of: inBlockProgress) { _, newValue in
+			if !isRoutineComplete && newValue >= 1.0 && !isPaused {
 				moveToNextBlock()
 			}
 		}
@@ -257,12 +303,33 @@ struct RoutinePlayerView: View {
 		} message: {
 			Text("Are you sure you want to discard this session? Your progress will not be recorded.")
 		}
+		.alert("Finish Session", isPresented: $showingFinishAlert) {
+			Button("Cancel", role: .cancel) { }
+			Button("Finish", role: .destructive) {
+				endSession(saveProgress: true)
+			}
+		} message: {
+			Text("Are you sure you want to finish this meditation session? Your session will be recorded.")
+		}
 	}
 	
 	// MARK: - Timer Functions
 	
 	private func startTimer() {
 		logger.info("Starting timer for routine: \(routine.routineName)", category: "Timer")
+		
+		// Initialize routine start time
+		routineStartDate = Date()
+		currentTime = Date()
+		
+		// Create session for tracking
+		currentSession = dataManager.createSession(for: routine, startTime: routineStartDate)
+		sessionStarted = true
+		
+		print("🚀 MEDITATION STARTED")
+		print("   Routine: \(routine.routineName)")
+		print("   Session ID: \(currentSession?.id ?? UUID())")
+		print("   Start Time: \(routineStartDate)")
 		
 		guard currentBlockIndex < routineData.blocks.count else {
 			logger.info("Timer completed - no more blocks", category: "Timer")
@@ -278,8 +345,32 @@ struct RoutinePlayerView: View {
 		currentTime = Date() // Initialize current time
 		totalPausedTime = 0
 		
-		print("🚀 Block Started - Index: \(currentBlockIndex), Name: \(block.name), Duration: \(block.durationInMinutes) minutes")
-		logger.info("Starting block: \(block.name) (\(block.durationInMinutes) minutes)", category: "Timer")
+		// MARK: - Debug Mode: Log actual duration being used
+		let actualDuration: String
+		if isDebugMode {
+			actualDuration = "5 seconds (debug mode)"
+		} else {
+			actualDuration = "\(block.durationInMinutes) minutes"
+		}
+		
+		logger.info("Starting block: \(block.name) (\(actualDuration))", category: "Timer")
+		
+		print("▶️ BLOCK STARTED - Index: \(currentBlockIndex + 1)/\(totalBlocks)")
+		print("   Block: \(block.name)")
+		print("   Type: \(block.type.displayName)")
+		print("   Duration: \(actualDuration)")
+		print("   Start Time: \(blockStartDate)")
+		
+		// Record block start in session
+		if let session = currentSession {
+			Task {
+				do {
+					try await dataManager.startBlock(block.id, in: session, startTime: blockStartDate)
+				} catch {
+					logger.error("Failed to record block start: \(error)", category: "Session")
+				}
+			}
+		}
 	}
 	
 	private func togglePause() {
@@ -288,26 +379,45 @@ struct RoutinePlayerView: View {
 		if isPaused {
 			pausedDate = Date()
 			logger.info("Timer paused", category: "Timer")
+			print("⏸️ MEDITATION PAUSED")
+			print("   Pause Time: \(pausedDate ?? Date())")
+			print("   Elapsed Before Pause: \(formatTime(elapsedTime))")
 		} else {
 			if let pauseStart = pausedDate {
 				totalPausedTime += Date().timeIntervalSince(pauseStart)
 				pausedDate = nil
 			}
 			logger.info("Timer resumed", category: "Timer")
+			print("▶️ MEDITATION RESUMED")
+			print("   Resume Time: \(Date())")
+			print("   Total Paused Time: \(String(format: "%.1f", totalPausedTime))s")
 		}
 	}
 	
 	private func moveToNextBlock() {
-		print("✅ Block Completed - Index: \(currentBlockIndex), Name: \(currentBlock?.name ?? "Unknown")")
 		logger.info("Block completed: \(currentBlock?.name ?? "Unknown")", category: "Timer")
+		
+		print("✅ BLOCK COMPLETED - Index: \(currentBlockIndex + 1)/\(totalBlocks)")
+		print("   Block: \(currentBlock?.name ?? "Unknown")")
+		print("   Completion Time: \(Date())")
+		
+		// Record block completion in session
+		if let session = currentSession, let block = currentBlock {
+			Task {
+				do {
+					try await dataManager.endBlock(block.id, in: session, endTime: Date(), wasSkipped: false)
+				} catch {
+					logger.error("Failed to record block completion: \(error)", category: "Session")
+				}
+			}
+		}
 		
 		currentBlockIndex += 1
 		
 		if currentBlockIndex >= routineData.blocks.count {
-			// Routine completed
-			print("🎉 Routine Completed - \(routine.routineName)")
-			logger.info("Routine completed: \(routine.routineName)", category: "Timer")
-			endSession(saveProgress: true)
+			// Routine completed - but timer keeps running
+			logger.info("Routine completed: \(routine.routineName) - Timer continues", category: "Timer")
+			print("🎉 ROUTINE COMPLETED - Timer continues for overshoot tracking")
 		} else {
 			// Start next block
 			startCurrentBlock()
@@ -327,14 +437,31 @@ struct RoutinePlayerView: View {
 	private func endSession(saveProgress: Bool) {
 		logger.info("Session \(saveProgress ? "ended" : "discarded") for routine: \(routine.routineName)", category: "Timer")
 		
-		if saveProgress {
-			// Record the session
+		let action = saveProgress ? "FINISH" : "DISCARD"
+		print("🛑 SESSION \(action)")
+		print("   Routine: \(routine.routineName)")
+		print("   Current Block: \(currentBlockIndex + 1)/\(totalBlocks)")
+		print("   Elapsed Time: \(formatTime(elapsedTime))")
+		print("   End Time: \(Date())")
+		
+		// Complete the session tracking
+		if let session = currentSession {
 			Task {
 				do {
-					try await dataManager.recordPlay(for: routine)
-					logger.info("Session recorded successfully", category: "Timer")
+					// Record any remaining blocks as skipped if session is discarded
+					if !saveProgress && currentBlockIndex < routineData.blocks.count {
+						print("   Skipping remaining blocks: \(currentBlockIndex + 1) to \(totalBlocks)")
+						for i in currentBlockIndex..<routineData.blocks.count {
+							let block = routineData.blocks[i]
+							try await dataManager.endBlock(block.id, in: session, endTime: Date(), wasSkipped: true)
+						}
+					}
+					
+					// Complete the session
+					try await dataManager.completeSession(session, endTime: Date(), wasDiscarded: !saveProgress)
+					logger.info("Session \(saveProgress ? "saved" : "discarded") successfully", category: "Session")
 				} catch {
-					logger.error("Failed to record session: \(error)", category: "Timer")
+					logger.error("Failed to complete session: \(error)", category: "Session")
 				}
 			}
 		}

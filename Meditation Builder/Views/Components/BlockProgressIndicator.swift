@@ -38,6 +38,7 @@ struct BlockProgressIndicator: View {
 	private let dotSpacing: CGFloat = 6
 	private let travelDuration: Double = 0.8
 	private let travelBounce: Double = 0.4
+	private let maxVisibleBalls = 4 // Maximum balls to show before using stacked symbol
 	
 	// Model for animated balls
 	private struct Ball: Identifiable, Equatable {
@@ -55,6 +56,18 @@ struct BlockProgressIndicator: View {
 		currentBlockIndex
 	}
 	
+	private var remainingBlocks: Int {
+		// Include current block in remaining count for visual representation
+		max(0, totalBlocks - currentBlockIndex)
+	}
+	
+	// Get balls that represent current and future blocks (not yet completed)
+	private var remainingBalls: [Ball] {
+		balls.filter { !$0.atTop }
+	}
+	
+
+	
 	private var currentTicksFromProgress: Int {
 		let calculated = Int(floor(inBlockProgress * Double(ticksPerBlock)))
 		return min(calculated, ticksPerBlock)
@@ -64,13 +77,54 @@ struct BlockProgressIndicator: View {
 		.spring(duration: travelDuration, bounce: travelBounce)
 	}
 	
+	// Helper computed properties for stacked display
+	private var shouldUseStackedCompleted: Bool {
+		completedBlocks > maxVisibleBalls
+	}
+	
+	private var shouldUseStackedRemaining: Bool {
+		remainingBlocks > maxVisibleBalls
+	}
+	
+	private var visibleCompletedBalls: Int {
+		shouldUseStackedCompleted ? maxVisibleBalls : completedBlocks
+	}
+	
+	private var visibleRemainingBalls: Int {
+		shouldUseStackedRemaining ? maxVisibleBalls : remainingBlocks
+	}
+	
 	var body: some View {
 		VStack(spacing: 0) {
-			// Top pile - completed blocks (filled circles)
+			// Top pile - completed blocks (filled circles or stacked symbol)
 			VStack(spacing: pileSpacing) {
-				ForEach(balls.filter(\.atTop)) { ball in
-					FilledCircle()
-						.matchedGeometryEffect(id: ball.id, in: ballNamespace)
+				if shouldUseStackedCompleted {
+					// Show stack symbol with some individual balls for animation
+					ZStack {
+						StackedCompletedCircles()
+						
+						// Count text positioned to the left
+						Text("\(completedBlocks)")
+							.font(.system(size: 8, weight: .bold))
+							.foregroundColor(.white)
+							.background(Color.black.opacity(0.7))
+							.clipShape(Circle())
+							.frame(width: 12, height: 12)
+							.offset(x: -8, y: 0)
+					}
+					
+					// Show last few individual balls for animation continuity
+					ForEach(Array(balls.filter(\.atTop).suffix(2)), id: \.id) { ball in
+						FilledCircle()
+							.matchedGeometryEffect(id: ball.id, in: ballNamespace)
+							.opacity(0.0) // Invisible but maintains animation
+					}
+				} else {
+					// Individual balls for few completed blocks
+					ForEach(Array(balls.filter(\.atTop).reversed().prefix(visibleCompletedBalls)), id: \.id) { ball in
+						FilledCircle()
+							.matchedGeometryEffect(id: ball.id, in: ballNamespace)
+					}
 				}
 			}
 			.frame(maxHeight: .infinity, alignment: .bottom)
@@ -87,11 +141,35 @@ struct BlockProgressIndicator: View {
 				.padding(.vertical, 24)
 			}
 			
-			// Bottom pile - remaining blocks (outline circles)
+			// Bottom pile - remaining blocks (outline circles or stacked symbol)
 			VStack(spacing: pileSpacing) {
-				ForEach(balls.filter { !$0.atTop }) { ball in
-					OutlineCircle()
-						.matchedGeometryEffect(id: ball.id, in: ballNamespace)
+				if shouldUseStackedRemaining {
+					// Show stack symbol with some individual balls for animation
+					ZStack {
+						StackedRemainingCircles()
+						
+						// Count text positioned to the left
+						Text("\(remainingBlocks)")
+							.font(.system(size: 8, weight: .bold))
+							.foregroundColor(.white)
+							.background(Color.black.opacity(0.7))
+							.clipShape(Circle())
+							.frame(width: 12, height: 12)
+							.offset(x: -8, y: 0)
+					}
+					
+					// Show first few individual balls for animation continuity  
+					ForEach(Array(remainingBalls.prefix(2)), id: \.id) { ball in
+						OutlineCircle()
+							.matchedGeometryEffect(id: ball.id, in: ballNamespace)
+							.opacity(0.0) // Invisible but maintains animation
+					}
+				} else {
+					// Individual balls for few remaining blocks
+					ForEach(Array(remainingBalls.prefix(visibleRemainingBalls)), id: \.id) { ball in
+						OutlineCircle()
+							.matchedGeometryEffect(id: ball.id, in: ballNamespace)
+					}
 				}
 			}
 			.frame(maxHeight: .infinity, alignment: .top)
@@ -105,7 +183,7 @@ struct BlockProgressIndicator: View {
 			initializeBalls()
 		}
 		.onChange(of: currentBlockIndex) { oldValue, newValue in
-			if newValue > oldValue && !isTravelling {
+			if newValue > oldValue && !isTravelling && newValue > 0 {
 				// Block completed - trigger ball travel animation
 				moveBallToTop()
 			}
@@ -147,6 +225,38 @@ struct BlockProgressIndicator: View {
 			.frame(width: 6, height: 6)
 	}
 	
+	private func StackedCompletedCircles() -> some View {
+		ZStack {
+			// Bottom circle (slightly larger)
+			Circle()
+				.fill(Color.white.opacity(0.6))
+				.frame(width: ballSize + 2, height: ballSize + 2)
+				.offset(y: 1)
+			
+			// Top circle (normal size)
+			Circle()
+				.fill(Color.white)
+				.frame(width: ballSize, height: ballSize)
+				.offset(y: -1)
+		}
+	}
+	
+	private func StackedRemainingCircles() -> some View {
+		ZStack {
+			// Bottom circle (slightly larger)
+			Circle()
+				.stroke(Color.white.opacity(0.6), lineWidth: 2)
+				.frame(width: ballSize + 2, height: ballSize + 2)
+				.offset(y: 1)
+			
+			// Top circle (normal size)
+			Circle()
+				.stroke(Color.white, lineWidth: 2)
+				.frame(width: ballSize, height: ballSize)
+				.offset(y: -1)
+		}
+	}
+	
 	// MARK: - Animation Logic
 	
 	private func initializeBalls() {
@@ -164,7 +274,6 @@ struct BlockProgressIndicator: View {
 		
 		// Always update tick progress when not travelling
 		if !isTravelling {
-			print("🔄 Progress Update - inBlockProgress: \(String(format: "%.3f", inBlockProgress)), Ticks: \(newTicks)")
 			withAnimation(.easeInOut(duration: 0.2)) {
 				tickProgress = newTicks
 			}
@@ -172,7 +281,8 @@ struct BlockProgressIndicator: View {
 	}
 	
 	private func moveBallToTop() {
-		guard let ballIndex = balls.firstIndex(where: { !$0.atTop }) else { return }
+		// Find the current ball that should move to top
+		guard let ballIndex = balls.firstIndex(where: { $0.originalIndex == currentBlockIndex - 1 }) else { return }
 		
 		isTravelling = true
 		
@@ -206,12 +316,39 @@ struct BlockProgressIndicator: View {
 	ZStack {
 		Color.black.ignoresSafeArea()
 		
-		BlockProgressIndicator(
-			currentBlockIndex: 1,
-			totalBlocks: 5,
-			inBlockProgress: 0.6,
-			blockStartDate: Date()
-		)
+		VStack(spacing: 40) {
+			// Scenario 1: Few blocks (normal display)
+			BlockProgressIndicator(
+				currentBlockIndex: 1,
+				totalBlocks: 3,
+				inBlockProgress: 0.6,
+				blockStartDate: Date()
+			)
+			
+			// Scenario 2: Many blocks (stacked display)
+			BlockProgressIndicator(
+				currentBlockIndex: 2,
+				totalBlocks: 8,
+				inBlockProgress: 0.3,
+				blockStartDate: Date()
+			)
+			
+			// Scenario 3: Many completed blocks
+			BlockProgressIndicator(
+				currentBlockIndex: 6,
+				totalBlocks: 8,
+				inBlockProgress: 0.8,
+				blockStartDate: Date()
+			)
+			
+			// Scenario 4: Routine completed
+			BlockProgressIndicator(
+				currentBlockIndex: 8,
+				totalBlocks: 8,
+				inBlockProgress: 1.0,
+				blockStartDate: Date()
+			)
+		}
 		.position(x: 350, y: 400)
 	}
 } 
