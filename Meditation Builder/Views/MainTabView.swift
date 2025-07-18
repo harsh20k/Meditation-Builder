@@ -19,11 +19,12 @@ struct MainTabView: View {
                 case .library:
                     RoutineLibraryView()
                 case .music:
-                    PlaceholderView(
-                        icon: "music.note",
-                        title: String(localized: "tab.music"),
-                        description: String(localized: "tab.music.description")
-                    )
+//                    PlaceholderView(
+//                        icon: "music.note",
+//                        title: String(localized: "tab.music"),
+//                        description: String(localized: "tab.music.description")
+//                    )
+					AudioTestView()
                 case .timer:
                     RoutineBuilderView()
                 case .history:

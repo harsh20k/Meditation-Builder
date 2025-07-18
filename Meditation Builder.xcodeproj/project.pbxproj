@@ -20,6 +20,11 @@
 			path = "Meditation Builder";
 			sourceTree = "<group>";
 		};
+		3AB9E1E32E2A469200AC8916 /* Audio */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Audio;
+			sourceTree = "<group>";
+		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -37,6 +42,7 @@
 		3A41C5382E1E600500DECC0B = {
 			isa = PBXGroup;
 			children = (
+				3AB9E1E32E2A469200AC8916 /* Audio */,
 				3A41C5432E1E600500DECC0B /* Meditation Builder */,
 				3A41C5422E1E600500DECC0B /* Products */,
 			);
@@ -67,6 +73,7 @@
 			);
 			fileSystemSynchronizedGroups = (
 				3A41C5432E1E600500DECC0B /* Meditation Builder */,
+				3AB9E1E32E2A469200AC8916 /* Audio */,
 			);
 			name = "Meditation Builder";
 			packageProductDependencies = (
