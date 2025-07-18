@@ -138,16 +138,19 @@ struct RoutineLibraryView: View {
         .fullScreenCover(item: $playingRoutine) { routine in
             RoutinePlayerView(routine: routine)
         }
-        .alert("Delete Routine", isPresented: $showingDeleteAlert) {
-            Button("Cancel", role: .cancel) { 
+        .alert(LocalizedStringKey("alert.delete.routine.title"), isPresented: $showingDeleteAlert) {
+            Button(LocalizedStringKey("button.cancel"), role: .cancel) { 
                 routineToDelete = nil
             }
-            Button("Delete", role: .destructive) {
+            Button(LocalizedStringKey("button.delete"), role: .destructive) {
                 confirmDeleteRoutine()
             }
         } message: {
             if let routine = routineToDelete {
-                Text("Are you sure you want to delete '\(routine.routineName)'? This action cannot be undone.")
+                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("alert.delete.routine.message", comment: "Delete routine confirmation"),
+                    routine.routineName
+                ))
             }
         }
     }
@@ -295,7 +298,7 @@ struct RoutineCard: View {
                     HStack(spacing: AppTheme.Spacing.small) {
                         Image(systemName: "play.fill")
                             .font(.system(size: 14, weight: .bold))
-                        Text("Play")
+                        Text(LocalizedStringKey("button.play"))
                             .font(.system(size: 16, weight: .semibold, design: .rounded))
                     }
                     .foregroundColor(.white)
@@ -312,7 +315,7 @@ struct RoutineCard: View {
                     HStack(spacing: AppTheme.Spacing.small) {
                         Image(systemName: "pencil")
                             .font(.system(size: 14, weight: .medium))
-                        Text("Edit")
+                        Text(LocalizedStringKey("button.edit"))
                             .font(.system(size: 16, weight: .medium, design: .rounded))
                     }
                     .foregroundColor(AppTheme.lightGrey)

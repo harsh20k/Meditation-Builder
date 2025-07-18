@@ -49,7 +49,10 @@ struct TimelineBlockCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                     
                     HStack(spacing: 8) {
-                        Text("\(block.durationInMinutes) min")
+                        Text(String.localizedStringWithFormat(
+                    NSLocalizedString("component.duration.format", comment: "Block duration"),
+                    block.durationInMinutes
+                ))
                             .font(AppTheme.Typography.bodyFont)
                             .foregroundColor(AppTheme.lightGrey)
                         

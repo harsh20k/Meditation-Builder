@@ -104,7 +104,10 @@ struct BlockProgressIndicator: View {
 						StackedCompletedCircles()
 						
 						// Count text positioned to the left
-						Text("\(completedBlocks)")
+						                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("component.completed.blocks", comment: "Completed blocks count"),
+                    completedBlocks
+                ))
 							.font(.system(size: 8, weight: .bold))
 							.foregroundColor(.white)
 							.background(Color.black.opacity(0.7))
@@ -149,7 +152,10 @@ struct BlockProgressIndicator: View {
 						StackedRemainingCircles()
 						
 						// Count text positioned to the left
-						Text("\(remainingBlocks)")
+						                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("component.remaining.blocks", comment: "Remaining blocks count"),
+                    remainingBlocks
+                ))
 							.font(.system(size: 8, weight: .bold))
 							.foregroundColor(.white)
 							.background(Color.black.opacity(0.7))

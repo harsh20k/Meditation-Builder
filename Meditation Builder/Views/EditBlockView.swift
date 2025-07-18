@@ -59,7 +59,10 @@ struct EditBlockView: View {
                                 Image(systemName: block.blockStartBell.icon)
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(AppTheme.accentColor)
-                                Text("Start Bell: \(block.blockStartBell.displayName)")
+                                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("edit.block.start.bell.format", comment: "Start bell display"),
+                    block.blockStartBell.displayName
+                ))
                                     .font(AppTheme.Typography.bodyFont)
                                     .foregroundColor(AppTheme.lightGrey)
                                 Spacer()

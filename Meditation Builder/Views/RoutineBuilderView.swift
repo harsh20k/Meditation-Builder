@@ -95,7 +95,7 @@ struct RoutineBuilderView: View {
                     }
                     .buttonStyle(PlainButtonStyle())
                     
-                    TextField("Routine Name", text: $routineName)
+                    TextField(LocalizedStringKey("routine.name.placeholder"), text: $routineName)
                         .font(AppTheme.Typography.titleFont)
                         .foregroundColor(.white)
                         .textFieldStyle(PlainTextFieldStyle())
@@ -125,7 +125,7 @@ struct RoutineBuilderView: View {
                                             .foregroundColor(AppTheme.accentColor)
                                     }
                                     
-                                    Text("+ Add Meditation Block")
+                                    Text(LocalizedStringKey("routine.builder.add.block"))
                                         .font(AppTheme.Typography.headlineFont)
                                         .foregroundColor(AppTheme.lightGrey)
                                 }
@@ -261,7 +261,7 @@ struct RoutineBuilderView: View {
             Button(isEditMode ? "Update" : "Save") {
                 saveRoutine()
             }
-            Button("Cancel", role: .cancel) {}
+            Button(LocalizedStringKey("button.cancel"), role: .cancel) {}
         } message: {
             Text(isEditMode ? "Update this routine?" : "Save this routine?")
         }

@@ -63,7 +63,7 @@ struct SessionStatisticsView: View {
                         
                         // Recent activity
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("Recent Activity")
+                            Text(LocalizedStringKey("statistics.recent.activity"))
                                 .font(.headline)
                                 .padding(.horizontal)
                             
@@ -72,7 +72,7 @@ struct SessionStatisticsView: View {
                                     RecentSessionRow(session: session)
                                 }
                             } else {
-                                Text("No recent sessions")
+                                Text(LocalizedStringKey("statistics.no.recent.sessions"))
                                     .foregroundColor(.secondary)
                                     .padding()
                             }
@@ -84,7 +84,7 @@ struct SessionStatisticsView: View {
                         
                         // Insights
                         VStack(alignment: .leading, spacing: 16) {
-                            Text("Insights")
+                            Text(LocalizedStringKey("statistics.insights"))
                                 .font(.headline)
                                 .padding(.horizontal)
                             
@@ -120,7 +120,7 @@ struct SessionStatisticsView: View {
                 }
                 .padding(.vertical)
             }
-            .navigationTitle("Statistics")
+            .navigationTitle(LocalizedStringKey("statistics.title"))
             .navigationBarTitleDisplayMode(.large)
             .onAppear {
                 loadStatistics()
@@ -235,7 +235,10 @@ struct RecentSessionRow: View {
                     .font(.subheadline)
                     .fontWeight(.medium)
                 
-                Text("\(session.completionRatePercentage)%")
+                Text(String.localizedStringWithFormat(
+                    NSLocalizedString("component.completion.percentage", comment: "Completion percentage"),
+                    session.completionRatePercentage
+                ))
                     .font(.caption)
                     .foregroundColor(session.wasFullyCompleted ? .green : .orange)
             }
@@ -287,11 +290,11 @@ struct StatisticsEmptyStateView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
             
-            Text("No Statistics Available")
+            Text(LocalizedStringKey("statistics.empty.title"))
                 .font(.title2)
                 .fontWeight(.semibold)
             
-            Text("Complete some meditation sessions to see your statistics and insights.")
+            Text(LocalizedStringKey("statistics.empty.message"))
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)

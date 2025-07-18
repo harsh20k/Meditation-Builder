@@ -68,6 +68,8 @@ struct RoutinePlayerView: View {
 			return max(0, Int(elapsedBeforePause))
 		}
 		
+		// Timer continues running even when app is backgrounded
+		// This allows seamless background/foreground transitions without interrupting meditation
 		let elapsed = currentTime.timeIntervalSince(routineStartDate) - totalPausedTime
 		return max(0, Int(elapsed))
 	}
@@ -134,6 +136,8 @@ struct RoutinePlayerView: View {
 				// Main Timer Display - positioned at center
 				VStack(spacing: 16) {
 					// Large elapsed timer with TimelineView for efficiency
+					// TimelineView continues running even when app is backgrounded
+					// This ensures seamless meditation experience during background/foreground transitions
 					TimelineView(.periodic(from: routineStartDate, by: 1.0)) { context in
 						Text(formatTime(elapsedTime))
 							.font(.system(size: 72, weight: .bold, design: .default))
@@ -152,7 +156,7 @@ struct RoutinePlayerView: View {
 					
 					// Current block indicator or completion message
 					if isRoutineComplete {
-						Text("Routine Complete")
+						Text(LocalizedStringKey("routine.complete"))
 							.font(.system(size: 17, weight: .regular, design: .default))
 							.foregroundColor(.white.opacity(0.8))
 							.lineLimit(2)
@@ -197,7 +201,7 @@ struct RoutinePlayerView: View {
 						VStack(spacing: 8) {
 							// End Session Button
 							Button(action: { showingEndSessionAlert = true }) {
-								Text("End Session")
+								Text(LocalizedStringKey("button.end.session"))
 									.font(.system(size: 14, weight: .medium, design: .default))
 									.foregroundColor(.black)
 									.frame(width: 120, height: 36)
@@ -208,7 +212,7 @@ struct RoutinePlayerView: View {
 							
 							// Discard Session Button
 							Button(action: { showingDiscardSessionAlert = true }) {
-								Text("Discard Session")
+								Text(LocalizedStringKey("button.discard.session"))
 									.font(.system(size: 14, weight: .medium, design: .default))
 									.foregroundColor(.red)
 							}
@@ -222,7 +226,7 @@ struct RoutinePlayerView: View {
 					// Finish button - shown when routine is complete
 					if isRoutineComplete {
 						Button(action: { showingFinishAlert = true }) {
-							Text("Finish")
+							Text(LocalizedStringKey("button.finish"))
 								.font(.system(size: 14, weight: .medium, design: .default))
 								.foregroundColor(.black)
 								.frame(width: 120, height: 36)
@@ -255,13 +259,12 @@ struct RoutinePlayerView: View {
 		.onChange(of: scenePhase) { _, newPhase in
 			switch newPhase {
 			case .background, .inactive:
-				// App is backgrounded, pause if playing
-				if !isPaused {
-					togglePause()
-				}
+				// App is backgrounded - timer continues running
+				// No automatic pause to allow seamless background/foreground transitions
+				logger.info("App backgrounded - timer continues running", category: "Timer")
 			case .active:
-				// App is active again - user can manually resume if desired
-				break
+				// App is active again - timer continues seamlessly
+				logger.info("App returned to foreground - timer continues running", category: "Timer")
 			@unknown default:
 				break
 			}
@@ -274,29 +277,29 @@ struct RoutinePlayerView: View {
 		.statusBarHidden(true)
 		.preferredColorScheme(.dark)
 		.ignoresSafeArea(.all, edges: .all)
-		.alert("End Session", isPresented: $showingEndSessionAlert) {
-			Button("Cancel", role: .cancel) { }
-			Button("End Session", role: .destructive) {
+		.alert(LocalizedStringKey("alert.end.session.title"), isPresented: $showingEndSessionAlert) {
+			Button(LocalizedStringKey("button.cancel"), role: .cancel) { }
+			Button(LocalizedStringKey("button.end.session"), role: .destructive) {
 				endSession(saveProgress: true)
 			}
 		} message: {
-			Text("Are you sure you want to end this meditation session? Your progress will be saved.")
+			Text(LocalizedStringKey("alert.end.session.message"))
 		}
-		.alert("Discard Session", isPresented: $showingDiscardSessionAlert) {
-			Button("Cancel", role: .cancel) { }
-			Button("Discard", role: .destructive) {
+		.alert(LocalizedStringKey("alert.discard.session.title"), isPresented: $showingDiscardSessionAlert) {
+			Button(LocalizedStringKey("button.cancel"), role: .cancel) { }
+			Button(LocalizedStringKey("button.discard"), role: .destructive) {
 				endSession(saveProgress: false)
 			}
 		} message: {
-			Text("Are you sure you want to discard this session? Your progress will not be recorded.")
+			Text(LocalizedStringKey("alert.discard.session.message"))
 		}
-		.alert("Finish Session", isPresented: $showingFinishAlert) {
-			Button("Cancel", role: .cancel) { }
-			Button("Finish", role: .destructive) {
+		.alert(LocalizedStringKey("alert.finish.session.title"), isPresented: $showingFinishAlert) {
+			Button(LocalizedStringKey("button.cancel"), role: .cancel) { }
+			Button(LocalizedStringKey("button.finish"), role: .destructive) {
 				endSession(saveProgress: true)
 			}
 		} message: {
-			Text("Are you sure you want to finish this meditation session? Your session will be recorded.")
+			Text(LocalizedStringKey("alert.finish.session.message"))
 		}
 	}
 	

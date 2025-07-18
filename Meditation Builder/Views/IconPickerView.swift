@@ -115,11 +115,11 @@ struct IconPickerView: View {
                     Spacer()
                 }
             }
-            .navigationTitle("Choose Icon")
+            .navigationTitle(LocalizedStringKey("icon.picker.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") {
+                    Button(LocalizedStringKey("button.cancel")) {
                         dismiss()
                     }
                     .foregroundColor(AppTheme.accentColor)

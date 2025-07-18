@@ -50,10 +50,16 @@ struct SessionHistoryView: View {
             VStack(spacing: 0) {
                 // Debug info
                 VStack {
-                    Text("Total Sessions: \(sessions.count)")
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("session.history.total.format", comment: "Total sessions count"),
+                        sessions.count
+                    ))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                    Text("Filtered Sessions: \(filteredSessions.count)")
+                    Text(String.localizedStringWithFormat(
+                        NSLocalizedString("session.history.filtered.format", comment: "Filtered sessions count"),
+                        filteredSessions.count
+                    ))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -66,7 +72,7 @@ struct SessionHistoryView: View {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(.secondary)
                         
-                        TextField("Search routines...", text: $searchText)
+                        TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
                             .textFieldStyle(RoundedBorderTextFieldStyle())
                     }
                     .padding(.horizontal)
@@ -101,10 +107,10 @@ struct SessionHistoryView: View {
                     .listStyle(PlainListStyle())
                 }
             }
-            .navigationTitle("Session History")
+            .navigationTitle(LocalizedStringKey("session.history.title"))
             .navigationBarTitleDisplayMode(.large)
             .navigationBarItems(
-                leading: Button("Refresh") {
+                leading: Button(LocalizedStringKey("button.refresh")) {
                     print("🔄 Manual refresh triggered")
                     // Force a refresh by accessing the sessions
                     let _ = sessions.count
@@ -255,7 +261,7 @@ struct SessionDetailView: View {
                 VStack(alignment: .leading, spacing: 20) {
                     // Debug info (temporary)
                     VStack(alignment: .leading, spacing: 8) {
-                        Text("Debug Info")
+                        Text(LocalizedStringKey("session.history.debug.info"))
                             .font(.headline)
                             .foregroundColor(.red)
                         Text(debugInfo)
@@ -290,7 +296,7 @@ struct SessionDetailView: View {
                     
                     // Session details
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Session Details")
+                        Text(LocalizedStringKey("session.history.details"))
                             .font(.headline)
                         
                         DetailRow(title: "Date", value: formatDate(session.sessionStartTime))
@@ -308,11 +314,11 @@ struct SessionDetailView: View {
                     
                     // Block details
                     VStack(alignment: .leading, spacing: 16) {
-                        Text("Block Details")
+                        Text(LocalizedStringKey("session.history.block.details"))
                             .font(.headline)
                         
                         if session.blockRecords.isEmpty {
-                            Text("No block records found")
+                            Text(LocalizedStringKey("session.history.no.blocks"))
                                 .foregroundColor(.secondary)
                                 .italic()
                         } else {
@@ -327,11 +333,11 @@ struct SessionDetailView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Session Details")
+            .navigationTitle(LocalizedStringKey("session.history.details"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
+                    Button(LocalizedStringKey("button.done")) {
                         dismiss()
                     }
                 }
@@ -543,11 +549,11 @@ struct EmptyStateView: View {
                 .font(.system(size: 60))
                 .foregroundColor(.secondary)
             
-            Text("No Sessions Yet")
+            Text(LocalizedStringKey("session.history.empty.title"))
                 .font(.title2)
                 .fontWeight(.semibold)
             
-            Text("Complete your first meditation session to see it here.")
+            Text(LocalizedStringKey("session.history.empty.message"))
                 .font(.body)
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
