@@ -50,7 +50,9 @@ final class AudioTester: ObservableObject {
 	init() {
 		configureAudioSession()
 		preloadAudioFiles([
-			"opening_bell"
+			"opening_bell",
+			"soft_bell",
+			"closing_bell"
 		])
 		setupEngine()
 		print("🔊 Loaded audio files:", audioFiles.keys)
@@ -62,8 +64,8 @@ final class AudioTester: ObservableObject {
 		/// the opening bell sounds at 0s, 10s, and 20s offsets.
 	func startSession() {
 		schedule(sound: "opening_bell", at: 0)
-		schedule(sound: "opening_bell", at: 10)
-		schedule(sound: "opening_bell", at: 20)
+		schedule(sound: "soft_bell", at: 10)
+		schedule(sound: "closing_bell", at: 30)
 	}
 	
 		/// Stops all audio playback and pauses the audio engine.
