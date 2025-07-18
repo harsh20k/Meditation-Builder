@@ -494,7 +494,7 @@ final class MeditationSession: Identifiable {
 				#endif
 				
 				if isDebugMode {
-					if record.actualDurationInSeconds >= 5 {
+					if record.actualDurationInSeconds >= 10 {
 						status = "Completed"
 					} else if record.actualDurationInSeconds > 0 {
 						status = "Started Only"

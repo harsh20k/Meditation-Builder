@@ -416,7 +416,7 @@ struct BlockRecordRow: View {
 			#endif
 			
 			if isDebugMode {
-				if record.actualDurationInSeconds >= 5 {
+				if record.actualDurationInSeconds >= 10 {
 					return "Completed"
 				} else if record.actualDurationInSeconds > 0 {
 					return "Started Only"
@@ -451,7 +451,7 @@ struct BlockRecordRow: View {
 			#endif
 			
 			if isDebugMode {
-				if record.actualDurationInSeconds >= 5 {
+				if record.actualDurationInSeconds >= 10 {
 					return .green  // Completed
 				} else if record.actualDurationInSeconds > 0 {
 					return .yellow  // Started Only

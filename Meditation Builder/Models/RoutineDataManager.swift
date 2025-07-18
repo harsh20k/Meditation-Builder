@@ -221,7 +221,7 @@ class RoutineDataManager: ObservableObject {
             try context.save()
             logger.debug("Legacy block end time and duration updated: \(finalDuration)s", category: "Session")
         }
-    }
+    } 
     
     /// Complete and save a meditation session (legacy method - still used for existing sessions)
     func completeSession(_ session: MeditationSession, endTime: Date, wasDiscarded: Bool = false, actualMeditationTime: Int? = nil) async throws {
@@ -421,7 +421,8 @@ class RoutineDataManager: ObservableObject {
         from events: [SessionEvent],
         routineBlocks: [RoutineBlock],
         sessionStartTime: Date,
-        finishTime: Date) -> [SessionBlockRecord] {
+        finishTime: Date
+    ) -> [SessionBlockRecord] {
         var blockRecords: [SessionBlockRecord] = []
         
         // Virtual clock starts at session start time
