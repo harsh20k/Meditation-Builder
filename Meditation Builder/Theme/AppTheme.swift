@@ -21,6 +21,7 @@ struct AppTheme {
     // MARK: - Typography
     struct Typography {
         static let titleFont = Font.system(size: 32, weight: .bold, design: .rounded)
+		static let headlineFontLarge = Font.system(size: 28, weight: .bold, design: .rounded)
         static let headlineFont = Font.system(size: 17, weight: .bold, design: .rounded)
         static let bodyFont = Font.system(size: 15, weight: .regular, design: .rounded)
         static let buttonFont = Font.system(size: 20, weight: .bold, design: .rounded)
