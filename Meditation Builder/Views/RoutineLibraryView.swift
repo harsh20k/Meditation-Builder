@@ -19,6 +19,7 @@ struct RoutineLibraryView: View {
     @State private var playingRoutine: SavedRoutine? = nil
     @State private var routineToDelete: SavedRoutine? = nil
     @State private var showingDeleteAlert = false
+    @State private var selectedRoutine: SavedRoutine? = nil
     
     private var dataManager: RoutineDataManager {
         RoutineDataManager(context: modelContext)
@@ -97,12 +98,14 @@ struct RoutineLibraryView: View {
                             ForEach(filteredRoutines) { routine in
                                 RoutineCard(
                                     routine: routine,
+                                    isSelected: selectedRoutine?.id == routine.id,
                                     onPlay: { 
                                         playingRoutine = routine
                                         recordPlay(for: routine)
                                     },
                                     onEdit: { editingRoutine = routine },
-                                    onDelete: { deleteRoutine(routine) }
+                                    onDelete: { deleteRoutine(routine) },
+                                    onTap: { selectedRoutine = routine }
                                 )
                             }
                         }
@@ -245,9 +248,11 @@ struct ScalableButtonStyle: ButtonStyle {
 // MARK: - Routine Card
 struct RoutineCard: View {
     let routine: SavedRoutine
+    let isSelected: Bool
     var onPlay: () -> Void
     var onEdit: () -> Void
     var onDelete: () -> Void
+    var onTap: () -> Void
     
     private var totalDuration: Int {
         routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
@@ -361,11 +366,10 @@ struct RoutineCard: View {
         )
         .overlay(
             RoundedRectangle(cornerRadius: AppTheme.CornerRadius.extraLarge)
-				.stroke(Color.white.opacity(AppTheme.Opacity.border), lineWidth: 1)
-//				.stroke(Color.white.opacity(1.0), lineWidth: 1) // For selected Routine accent border.
-
+                .stroke(isSelected ? AppTheme.accentColor : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1)
         )
         .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
+        .onTapGesture(perform: onTap)
     }
 }
 
@@ -518,9 +522,11 @@ struct LibraryEmptyStateView: View {
         
         return RoutineCard(
             routine: sampleRoutine,
+            isSelected: false,
             onPlay: {},
             onEdit: {},
-            onDelete: {}
+            onDelete: {},
+            onTap: {}
         )
         .padding()
     }
