@@ -56,25 +56,26 @@
 "error.message" = "Something went wrong. Please try again.";
 
 // MARK: - Routine Library
-"routine.library.title" = "Routine Library";
-"search.routines.placeholder" = "Search routines...";
-"empty.no.routines" = "No Routines Yet";
+"routine.library.title" = "Rituals";
+"search.routines.placeholder" = "Search";
+"empty.no.routines" = "No Rituals Yet";
 "empty.no.results" = "No Results Found";
-"empty.create.first.routine" = "Create your first meditation routine to get started";
+"empty.create.first.routine" = "Create your first meditation ritual to get started";
 "empty.adjust.search.terms" = "Try adjusting your search terms";
 "routine.duration.format" = "⏱ Duration: %d min";
+"routine.duration.format.simplified" = "%d min";
 "routine.more.blocks.format" = "+%d more";
 
 // MARK: - Routine Builder
-"routine.builder.title" = "Routine";
-"routine.edit.title" = "Edit Routine";
+"routine.builder.title" = "Ritual";
+"routine.edit.title" = "Edit Ritual";
 "total.time.format" = "Total: %d min";
 
 // MARK: - Routine Player
 "player.title" = "Routine Player";
 "player.playing.format" = "Playing: %@";
 "player.coming.soon" = "Player functionality coming soon...";
-"routine.complete" = "Routine Complete";
+"routine.complete" = "Ritual Complete";
 
 // MARK: - Add Block View
 "block.add.title" = "Add Block";
@@ -168,7 +169,7 @@
 "component.completion.percentage" = "%d%%";
 
 // MARK: - Routine Builder
-"routine.builder.add.block" = "+ Add Meditation Block";
+"routine.builder.add.block" = "+ Add a Block";
 
 // MARK: - Edit Block
 "edit.block.start.bell.format" = "Start Bell: %@";

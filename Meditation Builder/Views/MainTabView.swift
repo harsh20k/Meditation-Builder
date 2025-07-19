@@ -9,7 +9,7 @@ import SwiftUI
 import os.log
 
 struct MainTabView: View {
-    @State private var selectedTab: TabSelection = .timer
+    @State private var selectedTab: TabSelection = .library
     
     var body: some View {
         ZStack(alignment: .bottom) {

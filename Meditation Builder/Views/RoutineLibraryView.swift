@@ -49,13 +49,13 @@ struct RoutineLibraryView: View {
             VStack(spacing: 0) {
                 // Header
                 HStack {
-                    Image(systemName: "books.vertical.fill")
-                        .foregroundColor(AppTheme.accentColor)
-                        .font(.system(size: 28, weight: .bold))
+//                    Image(systemName: "books.vertical.fill")
+//                        .foregroundColor(AppTheme.accentColor)
+//                        .font(.system(size: 28, weight: .bold))
                     Text(LocalizedStringKey("routine.library.title"))
                         .font(AppTheme.Typography.titleFont)
                         .foregroundColor(.white)
-                    Spacer()
+//                    Spacer()
                 }
                 .padding(.horizontal)
                 .padding(.top, AppTheme.Spacing.extraLarge)
@@ -83,8 +83,8 @@ struct RoutineLibraryView: View {
                     }
                 }
                 .padding(AppTheme.Spacing.medium)
-                .background(AppTheme.cardColor)
-                .cornerRadius(AppTheme.CornerRadius.large)
+                .background(AppTheme.searchBar)
+                .cornerRadius(AppTheme.CornerRadius.button)
                 .padding(.horizontal)
                 .padding(.bottom, AppTheme.Spacing.large)
                 
@@ -232,6 +232,16 @@ struct RoutineLibraryView: View {
     }
 }
 
+struct ScalableButtonStyle: ButtonStyle {
+	var scaleAmount: CGFloat = 0.95
+	
+	func makeBody(configuration: Configuration) -> some View {
+		configuration.label
+			.scaleEffect(configuration.isPressed ? scaleAmount : 1)
+			.animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+	}
+}
+
 // MARK: - Routine Card
 struct RoutineCard: View {
     let routine: SavedRoutine
@@ -275,7 +285,7 @@ struct RoutineCard: View {
                         .lineLimit(2)
                     
                     Text(String.localizedStringWithFormat(
-                        String(localized: "routine.duration.format"),
+                        String(localized: "routine.duration.format.simplified"),
                         totalDuration
                     ))
                         .font(AppTheme.Typography.bodyFont)
@@ -307,8 +317,9 @@ struct RoutineCard: View {
                     .background(
                         Capsule()
                             .fill(AppTheme.accentColor)
-                    )
+					)
                 }
+//				.buttonStyle(ScalableButtonStyle(scaleAmount: 0.95))
                 
                 // Edit button
                 Button(action: onEdit) {
@@ -345,12 +356,14 @@ struct RoutineCard: View {
         }
         .padding(AppTheme.Spacing.large)
         .background(
-            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.extraLarge)
                 .fill(AppTheme.cardColor)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
-                .stroke(Color.white.opacity(AppTheme.Opacity.border), lineWidth: 1)
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.extraLarge)
+				.stroke(Color.white.opacity(AppTheme.Opacity.border), lineWidth: 1)
+//				.stroke(Color.white.opacity(1.0), lineWidth: 1) // For selected Routine accent border.
+
         )
         .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
     }

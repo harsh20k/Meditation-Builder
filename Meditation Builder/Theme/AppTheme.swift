@@ -10,10 +10,13 @@ import SwiftUI
 // MARK: - App Theme
 struct AppTheme {
     // MARK: - Colors
-    static let backgroundColor = Color(red: 34/255, green: 38/255, blue: 45/255) // #22262D
-    static let cardColor = Color(red: 42/255, green: 46/255, blue: 55/255) // #2A2E37
-    static let accentColor = Color(red: 1.0, green: 122/255, blue: 0) // #FF7A00
-    static let lightGrey = Color(red: 176/255, green: 176/255, blue: 176/255) // #B0B0B0
+    static let backgroundColor = Color(red: 20/255, green: 21/255, blue: 24/255) // #141518
+    static let cardColor = Color(red: 34/255, green: 35/255, blue: 38/255) // #222326
+	static let searchBar = Color(red: 35/255, green: 37/255, blue: 40/255) //232528
+	static let tabBar = Color(red: 35/255, green: 36/255, blue: 39/255) //232427
+
+	static let accentColor = Color(red: 221/255, green: 97/255, blue: 27/255) // #dd611b
+    static let lightGrey = Color(red: 119/255, green: 119/255, blue: 129/255) // #777781
     
     // MARK: - Typography
     struct Typography {
@@ -39,6 +42,7 @@ struct AppTheme {
         static let medium: CGFloat = 14
         static let large: CGFloat = 16
         static let button: CGFloat = 24
+		static let extraLarge: CGFloat = 32
     }
     
     // MARK: - Shadows
