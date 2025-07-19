@@ -262,17 +262,21 @@ struct RoutineCard: View {
 		routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
 	}
 	
-	private var blocksSummary: String {
-		let blockNames = routine.getRoutine().blocks.map(\.name)
-		if blockNames.count <= 3 {
-			return blockNames.joined(separator: " • ")
-		} else {
-			return blockNames.prefix(2).joined(separator: " • ") + " • " + String.localizedStringWithFormat(
-				String(localized: "routine.more.blocks.format"),
-				blockNames.count - 2
-			)
-		}
-	}
+	    private var blocksSummary: String {
+        let blockNames = routine.getRoutine().blocks.map(\.name)
+        if blockNames.count <= 3 {
+            return blockNames.joined(separator: " • ")
+        } else {
+            return blockNames.prefix(2).joined(separator: " • ") + " • " + String.localizedStringWithFormat(
+                String(localized: "routine.more.blocks.format"),
+                blockNames.count - 2
+            )
+        }
+    }
+    
+    private var blockIcons: [String] {
+		routine.getRoutine().blocks.map(\.blockIcon)
+    }
 	
 	var body: some View {
 		VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
@@ -307,11 +311,31 @@ struct RoutineCard: View {
 				Spacer()
 			}
 			
-				// Blocks summary
-			Text(blocksSummary)
-				.font(.system(size: 14, weight: .regular, design: .rounded))
-				.foregroundColor(AppTheme.lightGrey)
-				.lineLimit(2)
+				            // Blocks summary or block icons
+            if isSelected {
+                // Horizontal scrollable list of block icons
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: AppTheme.Spacing.medium) {
+                        ForEach(Array(blockIcons.enumerated()), id: \.offset) { index, iconName in
+                            ZStack {
+                                Circle()
+                                    .fill(AppTheme.accentColor.opacity(0.2))
+                                    .frame(width: 32, height: 32)
+                                Image(systemName: iconName)
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                            }
+                        }
+                    }
+                    .padding(.horizontal, 4)
+                }
+            } else {
+                // Regular blocks summary text
+                Text(blocksSummary)
+                    .font(.system(size: 14, weight: .regular, design: .rounded))
+                    .foregroundColor(AppTheme.lightGrey)
+                    .lineLimit(2)
+            }
 			
 				// Action buttons - only show when selected
 			if isSelected {
