@@ -294,21 +294,36 @@ struct RoutineCard: View {
                     }
                 }
 				
-				VStack(alignment: .leading, spacing: 4) {
+				                VStack(alignment: .leading, spacing: 4) {
                     Text(routine.routineName)
                         .font(isSelected ? AppTheme.Typography.headlineFontLarge : AppTheme.Typography.headlineFont)
                         .foregroundColor(.white)
                         .lineLimit(2)
-					
-					Text(String.localizedStringWithFormat(
-						String(localized: "routine.duration.format.simplified"),
-						totalDuration
-					))
-					.font(isSelected ? AppTheme.Typography.headlineFont : AppTheme.Typography.bodyFont)
-					.foregroundColor(AppTheme.lightGrey)
-				}
-				
-				Spacer()
+                    
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "routine.duration.format.simplified"),
+                        totalDuration
+                    ))
+                        .font(isSelected ? AppTheme.Typography.headlineFont : AppTheme.Typography.bodyFont)
+                        .foregroundColor(AppTheme.lightGrey)
+                }
+                
+                Spacer()
+                
+                // Play button - only show when not selected
+                if !isSelected {
+                    Button(action: onPlay) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.black.opacity(0.5))
+                                .frame(width: 40, height: 40)
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 16, weight: .medium))
+                                .foregroundColor(AppTheme.lightGrey)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
 			}
 			
 				            // Blocks summary or block icons
