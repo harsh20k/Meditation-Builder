@@ -318,12 +318,12 @@ struct RoutineCard: View {
                     HStack(spacing: AppTheme.Spacing.medium) {
                         ForEach(Array(blockIcons.enumerated()), id: \.offset) { index, iconName in
                             ZStack {
-                                Circle()
-                                    .fill(AppTheme.accentColor.opacity(0.2))
-                                    .frame(width: 32, height: 32)
+//                                Circle()
+//                                    .fill(AppTheme.accentColor.opacity(0.2))
+//                                    .frame(width: 32, height: 32)
                                 Image(systemName: iconName)
-                                    .font(.system(size: 16, weight: .medium))
-                                    .foregroundColor(AppTheme.accentColor)
+                                    .font(.system(size: 32, weight: .medium))
+                                    .foregroundColor(AppTheme.lightGrey)
                             }
                         }
                     }
@@ -398,7 +398,7 @@ struct RoutineCard: View {
 		)
 		.overlay(
 			RoundedRectangle(cornerRadius: AppTheme.CornerRadius.extraLarge)
-				.stroke(isSelected ? AppTheme.accentColor : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1)
+				.stroke(isSelected ? AppTheme.accentColor.opacity(0.2) : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1)
 		)
 		.shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
 		.onTapGesture(perform: onTap)
