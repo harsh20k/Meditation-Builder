@@ -809,76 +809,105 @@ struct SessionStatistics {
 @MainActor
 @Observable
 class RoutinePlayerViewModel {
-    // MARK: - Properties
-    /// The routine being played (persistent model)
-    private let routine: SavedRoutine
-    /// The SwiftData model context for persistence
-    private let modelContext: ModelContext
-    /// Data manager for routine/session persistence
-    private let dataManager: RoutineDataManager
-    /// Whether debug mode is enabled (short block durations)
-    private let isDebugMode: Bool
+    // MARK: - 1. Routine & Data Management
+    /**
+     * Properties related to the routine being played, data manager, and persistence context.
+     *
+     * - routine: SavedRoutine - The routine model being played.
+     * - modelContext: ModelContext - SwiftData context for persistence operations.
+     * - dataManager: RoutineDataManager - Handles routine/session persistence logic.
+     */
+    private let routine: SavedRoutine              // The routine model being played
+    private let modelContext: ModelContext         // SwiftData context for persistence
+    private let dataManager: RoutineDataManager    // Handles routine/session persistence
     
-    // MARK: - Published State
-    /// Index of the current block in the routine
-    var currentBlockIndex = 0
-    /// Timestamp when the routine started
-    var routineStartDate = Date()
-    /// Timestamp when the current block started
-    var blockStartDate = Date()
-    /// Whether the routine is currently paused
-    var isPaused = false
-    /// Timestamp when the routine was paused (if paused)
-    var pausedDate: Date?
-    /// Total time spent paused during the routine (seconds)
-    var totalPausedTime: TimeInterval = 0
-    /// Time spent paused during the current block (seconds)
-    var blockPausedTime: TimeInterval = 0
-    /// Actual meditation time at the moment of pausing (seconds)
-    var actualMeditationTimeAtPause: Int = 0
-    /// Whether to show the end session alert
-    var showingEndSessionAlert = false
-    /// Whether to show the discard session alert
-    var showingDiscardSessionAlert = false
-    /// Whether to show the finish session alert
-    var showingFinishAlert = false
-    /// The current time (updated by timer)
-    var currentTime = Date()
+    // MARK: - 2. Debug/Configuration
+    /**
+     * Properties controlling debug or configuration flags.
+     *
+     * - isDebugMode: Bool - Enables debug mode (short block durations for testing).
+     */
+    private let isDebugMode: Bool                  // Enables debug mode for short block durations
     
-    // Session tracking
-    /// Event-based session record for analytics and persistence
-    private var sessionRecord: SessionRecord?
+    // MARK: - 3. Playback State
+    /**
+     * Properties tracking the current state of playback, timers, block index, pause state, etc.
+     *
+     * - currentBlockIndex: Int - Index of the current block in the routine.
+     * - routineStartDate: Date - Timestamp when the routine started.
+     * - blockStartDate: Date - Timestamp when the current block started.
+     * - isPaused: Bool - Whether the routine is currently paused.
+     * - pausedDate: Date? - Timestamp when the routine was paused (if paused).
+     * - totalPausedTime: TimeInterval - Total time spent paused during the routine (seconds).
+     * - blockPausedTime: TimeInterval - Time spent paused during the current block (seconds).
+     * - actualMeditationTimeAtPause: Int - Actual meditation time at the moment of pausing (seconds).
+     * - currentTime: Date - The current time (updated by timer).
+     */
+    var currentBlockIndex = 0                      // Index of the current block
+    var routineStartDate = Date()                  // When the routine started
+    var blockStartDate = Date()                    // When the current block started
+    var isPaused = false                           // Is the routine paused?
+    var pausedDate: Date?                          // When the routine was paused
+    var totalPausedTime: TimeInterval = 0          // Total paused time (seconds)
+    var blockPausedTime: TimeInterval = 0          // Paused time in current block (seconds)
+    var actualMeditationTimeAtPause: Int = 0       // Meditation time at pause (seconds)
+    var currentTime = Date()                       // The current time (updated by timer)
     
-    // MARK: - Computed Properties
-    /// The full routine data (decoded from SavedRoutine)
+    // MARK: - 4. UI State
+    /**
+     * Properties controlling UI alerts and display state.
+     *
+     * - showingEndSessionAlert: Bool - Whether to show the end session alert.
+     * - showingDiscardSessionAlert: Bool - Whether to show the discard session alert.
+     * - showingFinishAlert: Bool - Whether to show the finish session alert.
+     */
+    var showingEndSessionAlert = false             // Show end session alert?
+    var showingDiscardSessionAlert = false         // Show discard session alert?
+    var showingFinishAlert = false                 // Show finish session alert?
+    
+    // MARK: - 5. Session Tracking
+    /**
+     * Properties and objects for event-based session tracking and analytics.
+     *
+     * - sessionRecord: SessionRecord? - Event-based session record for analytics and persistence.
+     */
+    private var sessionRecord: SessionRecord?      // Event-based session record for analytics/persistence
+    
+    // MARK: - 6. Computed Properties
+    /**
+     * Properties that derive values from the above state (current block, progress, etc).
+     *
+     * - routineData: Routine - The full routine data (decoded from SavedRoutine).
+     * - currentBlock: RoutineBlock? - The current block being played, or nil if complete.
+     * - nextBlock: RoutineBlock? - The next block in the routine, or nil if at the end.
+     * - totalBlocks: Int - Total number of blocks in the routine.
+     * - elapsedTime: Int - Elapsed time since routine start, excluding paused time (seconds).
+     * - inBlockProgress: Double - Progress (0.0-1.0) through the current block.
+     * - isRoutineComplete: Bool - Whether the routine is complete (all blocks finished).
+     */
     var routineData: Routine {
-        routine.getRoutine()
+        routine.getRoutine()                       // Decoded routine data
     }
-    /// The current block being played, or nil if complete
     var currentBlock: RoutineBlock? {
         guard currentBlockIndex < routineData.blocks.count else { return nil }
-        return routineData.blocks[currentBlockIndex]
+        return routineData.blocks[currentBlockIndex]   // Current block or nil if complete
     }
-    /// The next block in the routine, or nil if at the end
     var nextBlock: RoutineBlock? {
         let nextIndex = currentBlockIndex + 1
         guard nextIndex < routineData.blocks.count else { return nil }
-        return routineData.blocks[nextIndex]
+        return routineData.blocks[nextIndex]           // Next block or nil if at end
     }
-    /// Total number of blocks in the routine
     var totalBlocks: Int {
-        routineData.blocks.count
+        routineData.blocks.count                      // Total number of blocks
     }
-    /// Elapsed time since routine start, excluding paused time (seconds)
     var elapsedTime: Int {
         guard !isPaused else {
             let elapsedBeforePause = pausedDate?.timeIntervalSince(routineStartDate) ?? 0
             return max(0, Int(elapsedBeforePause))
         }
         let elapsed = currentTime.timeIntervalSince(routineStartDate) - totalPausedTime
-        return max(0, Int(elapsed))
+        return max(0, Int(elapsed))                   // Elapsed time in seconds
     }
-    /// Progress (0.0-1.0) through the current block
     var inBlockProgress: Double {
         guard let block = currentBlock else { return 0.0 }
         let blockDuration: Double = isDebugMode ? 5.0 : Double(block.durationInMinutes * 60)
@@ -888,19 +917,19 @@ class RoutinePlayerViewModel {
         } else {
             elapsed = currentTime.timeIntervalSince(blockStartDate) - blockPausedTime
         }
-        return min(1.0, max(0.0, elapsed / blockDuration))
+        return min(1.0, max(0.0, elapsed / blockDuration)) // Progress through current block
     }
-    /// Whether the routine is complete (all blocks finished)
     var isRoutineComplete: Bool {
-        currentBlockIndex >= routineData.blocks.count
+        currentBlockIndex >= routineData.blocks.count      // All blocks finished?
     }
     
-    // MARK: - Initialization
+    // MARK: - 7. Initialization
     /**
-     * Initialize the view model with a routine and model context.
+     * Initializes the view model with a routine and model context.
+     *
      * - Parameters:
-     *   - routine: The SavedRoutine to play
-     *   - modelContext: The SwiftData context for persistence
+     *   - routine: SavedRoutine - The routine to play.
+     *   - modelContext: ModelContext - The SwiftData context for persistence.
      */
     init(routine: SavedRoutine, modelContext: ModelContext) {
         self.routine = routine
@@ -913,8 +942,16 @@ class RoutinePlayerViewModel {
         #endif
     }
     
-    // MARK: - Timer Functions
-    /// Start the routine timer and session tracking
+    // MARK: - 8. Timer & Playback Control
+    /**
+     * Functions for starting, pausing, resuming, and progressing the timer and routine blocks.
+     *
+     * - startTimer(): Starts the routine timer and session tracking.
+     * - startCurrentBlock(): Starts the current block (reset block timer).
+     * - togglePause(): Toggles pause/resume for the routine.
+     * - moveToNextBlock(): Moves to the next block in the routine.
+     * - formatTime(_: Int): Formats a time interval (seconds) as MM:SS string.
+     */
     func startTimer() {
         logger.info("Starting timer for routine: \(routine.routineName)", category: "Timer")
         routineStartDate = Date()
@@ -927,7 +964,6 @@ class RoutinePlayerViewModel {
         }
         startCurrentBlock()
     }
-    /// Start the current block (reset block timer)
     private func startCurrentBlock() {
         let block = routineData.blocks[currentBlockIndex]
         blockStartDate = Date()
@@ -935,7 +971,6 @@ class RoutinePlayerViewModel {
         blockPausedTime = 0
         logger.info("Starting block: \(block.name)", category: "Timer")
     }
-    /// Toggle pause/resume for the routine
     func togglePause() {
         isPaused.toggle()
         if isPaused {
@@ -962,7 +997,6 @@ class RoutinePlayerViewModel {
             }
         }
     }
-    /// Move to the next block in the routine
     func moveToNextBlock() {
         logger.info("Block completed: \(currentBlock?.name ?? "Unknown")", category: "Timer")
         currentBlockIndex += 1
@@ -974,16 +1008,18 @@ class RoutinePlayerViewModel {
             logger.info("Starting next block: \(nextBlock.name)", category: "Timer")
         }
     }
-    /// Format a time interval (seconds) as MM:SS string
     func formatTime(_ seconds: Int) -> String {
         let minutes = seconds / 60
         let remainingSeconds = seconds % 60
         return String(format: "%d:%02d", minutes, remainingSeconds)
     }
-    // MARK: - Session Management
+    
+    // MARK: - 9. Session Management
     /**
-     * End the session, optionally saving progress.
-     * - Parameter saveProgress: Whether to save the session or discard it
+     * Functions for ending, saving, or discarding sessions, and cleaning up resources.
+     *
+     * - endSession(saveProgress: Bool): Ends the session, optionally saving progress.
+     * - cleanup(): Cleans up resources and timers (called on view disappear).
      */
     func endSession(saveProgress: Bool) async {
         logger.info("Session \(saveProgress ? "ended" : "discarded") for routine: \(routine.routineName)", category: "Timer")
@@ -999,11 +1035,17 @@ class RoutinePlayerViewModel {
         }
         cleanup()
     }
-    /// Clean up resources and timers (called on view disappear)
+    /// Cleans up resources and timers (called on view disappear)
     func cleanup() {
         logger.info("Cleaning up timer resources", category: "Timer")
     }
-    /// Update the current time (called by timer)
+    
+    // MARK: - 10. Utility/Helper Methods
+    /**
+     * Utility and helper methods for updating time and other minor tasks.
+     *
+     * - updateCurrentTime(_ newTime: Date): Updates the current time (called by timer).
+     */
     func updateCurrentTime(_ newTime: Date) {
         currentTime = newTime
         if !isRoutineComplete && inBlockProgress >= 1.0 && !isPaused {
