@@ -143,7 +143,7 @@ struct RoutineLibraryView: View {
 			RoutineBuilderView(editingRoutine: routine)
 		}
 		.fullScreenCover(item: $playingRoutine) { routine in
-			RoutinePlayerView(routine: routine)
+			RoutinePlayerView(routine: routine, modelContext: modelContext)
 		}
 		.alert(LocalizedStringKey("alert.delete.routine.title"), isPresented: $showingDeleteAlert) {
 			Button(LocalizedStringKey("button.cancel"), role: .cancel) {
