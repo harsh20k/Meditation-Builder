@@ -62,32 +62,34 @@ struct RoutineLibraryView: View {
 				.padding(.top, AppTheme.Spacing.extraLarge)
 				.padding(.bottom, AppTheme.Spacing.small)
 				
-					// Search Bar
-				HStack {
-					Image(systemName: "magnifyingglass")
-						.foregroundColor(AppTheme.accentColor)
-						.font(.system(size: 16, weight: .medium))
-					
-					TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
-						.foregroundColor(.white)
-						.font(AppTheme.Typography.bodyFont)
-					
-					if !searchText.isEmpty {
-						Button(action: {
-							searchText = ""
-						}) {
-							Image(systemName: "xmark.circle.fill")
-								.foregroundColor(AppTheme.lightGrey)
-								.font(.system(size: 16, weight: .medium))
+					// Search Bar Hidden
+				if false {
+					HStack {
+						Image(systemName: "magnifyingglass")
+							.foregroundColor(AppTheme.accentColor)
+							.font(.system(size: 16, weight: .medium))
+						
+						TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
+							.foregroundColor(.white)
+							.font(AppTheme.Typography.bodyFont)
+						
+						if !searchText.isEmpty {
+							Button(action: {
+								searchText = ""
+							}) {
+								Image(systemName: "xmark.circle.fill")
+									.foregroundColor(AppTheme.lightGrey)
+									.font(.system(size: 16, weight: .medium))
+							}
+							.buttonStyle(PlainButtonStyle())
 						}
-						.buttonStyle(PlainButtonStyle())
 					}
+					.padding(AppTheme.Spacing.medium)
+					.background(AppTheme.searchBar)
+					.cornerRadius(AppTheme.CornerRadius.button)
+					.padding(.horizontal)
+					.padding(.bottom, AppTheme.Spacing.large)
 				}
-				.padding(AppTheme.Spacing.medium)
-				.background(AppTheme.searchBar)
-				.cornerRadius(AppTheme.CornerRadius.button)
-				.padding(.horizontal)
-				.padding(.bottom, AppTheme.Spacing.large)
 				
 					// Routines List
 				if filteredRoutines.isEmpty {
@@ -106,7 +108,7 @@ struct RoutineLibraryView: View {
 									onEdit: { editingRoutine = routine },
 									onDelete: { deleteRoutine(routine) },
 									onTap: {
-										withAnimation(.spring(duration: 0.2)) {
+										withAnimation(.spring(duration: 0.35)) {
 											selectedRoutine = routine
 										}
 									}
@@ -413,7 +415,7 @@ struct RoutineCard: View {
 		)
 		.overlay(
 			RoundedRectangle(cornerRadius: AppTheme.CornerRadius.extraLarge)
-				.stroke(isSelected ? AppTheme.accentColor.opacity(0.2) : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1)
+//				.stroke(isSelected ? AppTheme.accentColor.opacity(0.2) : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1) // stroke hidden for card
 		)
 		.shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
 		.onTapGesture(perform: onTap)
@@ -499,20 +501,23 @@ struct LibraryEmptyStateView: View {
 					.padding(.bottom, AppTheme.Spacing.small)
 					
 						// Search Bar
-					HStack {
-						Image(systemName: "magnifyingglass")
-							.foregroundColor(AppTheme.accentColor)
-							.font(.system(size: 16, weight: .medium))
+					if false {
+						HStack {
+							Image(systemName: "magnifyingglass")
+								.foregroundColor(AppTheme.accentColor)
+								.font(.system(size: 16, weight: .medium))
+							
+							TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
+								.foregroundColor(.white)
+								.font(AppTheme.Typography.bodyFont)
+						}
+						.padding(AppTheme.Spacing.medium)
+						.background(AppTheme.cardColor)
+						.cornerRadius(AppTheme.CornerRadius.large)
+						.padding(.horizontal)
+						.padding(.bottom, AppTheme.Spacing.large)
 						
-						TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
-							.foregroundColor(.white)
-							.font(AppTheme.Typography.bodyFont)
 					}
-					.padding(AppTheme.Spacing.medium)
-					.background(AppTheme.cardColor)
-					.cornerRadius(AppTheme.CornerRadius.large)
-					.padding(.horizontal)
-					.padding(.bottom, AppTheme.Spacing.large)
 					
 					LibraryEmptyStateView(searchText: searchText)
 					
@@ -523,15 +528,15 @@ struct LibraryEmptyStateView: View {
 				Button(action: { showingRoutineBuilder = true }) {
 					ZStack {
 						Circle()
-							.fill(AppTheme.accentColor)
+							.fill(AppTheme.accentColor.opacity(0.3))
 							.frame(width: 56, height: 56)
 						Image(systemName: "plus")
 							.foregroundColor(.white)
 							.font(.system(size: 28, weight: .bold))
 					}
 				}
-				.padding(.trailing, AppTheme.Spacing.extraLarge)
-				.padding(.bottom, 112)
+				.padding(.trailing, AppTheme.Spacing.section)
+				.padding(.bottom, 92)
 				.shadow(radius: 8)
 				
 					// Tab Bar

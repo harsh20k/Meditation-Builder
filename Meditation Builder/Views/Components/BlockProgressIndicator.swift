@@ -32,7 +32,7 @@ struct BlockProgressIndicator: View {
 	@Namespace private var ballNamespace
 	
 	// Configuration
-	private let ticksPerBlock = 10
+	private let ticksPerBlock = 5
 	private let ballSize: CGFloat = 12
 	private let pileSpacing: CGFloat = 8
 	private let dotSpacing: CGFloat = 6
@@ -235,7 +235,7 @@ struct BlockProgressIndicator: View {
 		ZStack {
 			// Bottom circle (slightly larger)
 			Circle()
-				.fill(Color.white.opacity(0.6))
+				.fill(Color.white.opacity(0.3))
 				.frame(width: ballSize + 2, height: ballSize + 2)
 				.offset(y: 1)
 			
@@ -251,7 +251,7 @@ struct BlockProgressIndicator: View {
 		ZStack {
 			// Bottom circle (slightly larger)
 			Circle()
-				.stroke(Color.white.opacity(0.6), lineWidth: 2)
+				.stroke(Color.white.opacity(0.4), lineWidth: 2)
 				.frame(width: ballSize + 2, height: ballSize + 2)
 				.offset(y: 1)
 			
