@@ -32,7 +32,7 @@ struct BlockProgressIndicator: View {
 	@Namespace private var ballNamespace
 	
 	// Configuration
-	private let ticksPerBlock = 5
+	private let ticksPerBlock = 10
 	private let ballSize: CGFloat = 12
 	private let pileSpacing: CGFloat = 8
 	private let dotSpacing: CGFloat = 6

@@ -821,6 +821,12 @@ class RoutinePlayerViewModel {
     private let modelContext: ModelContext         // SwiftData context for persistence
     private let dataManager: RoutineDataManager    // Handles routine/session persistence
     
+    /**
+     * Bell scheduling and playback manager for the routine session.
+     * Handles all bell audio events in sync with routine playback.
+     */
+    private let bellManager = AuditoriumEngine()
+    
     // MARK: - 2. Debug/Configuration
     /**
      * Properties controlling debug or configuration flags.
@@ -958,6 +964,8 @@ class RoutinePlayerViewModel {
         currentTime = Date()
         sessionRecord = SessionRecord(routineID: routine.id)
         sessionRecord?.addEvent(.start(routineStartDate))
+        // Schedule all bells for the routine
+        bellManager.scheduleRoutineVerbatim(savedRoutine: routine)
         guard currentBlockIndex < routineData.blocks.count else {
             logger.info("Timer completed - no more blocks", category: "Timer")
             return
@@ -978,6 +986,8 @@ class RoutinePlayerViewModel {
             actualMeditationTimeAtPause = Int(pausedDate!.timeIntervalSince(routineStartDate) - totalPausedTime)
             sessionRecord?.addEvent(.pause(pausedDate!))
             logger.info("Timer paused", category: "Timer")
+            // Pause bell playback
+            _ = bellManager.pauseRoutine()
         } else {
             if let pauseStart = pausedDate {
                 let resumeTime = Date()
@@ -992,6 +1002,8 @@ class RoutinePlayerViewModel {
                 pausedDate = nil
                 sessionRecord?.addEvent(.resume(resumeTime))
                 logger.info("Timer resumed", category: "Timer")
+                // Resume bell playback
+                _ = bellManager.resumeRoutine()
             } else {
                 logger.warning("Resume called but no pause start time recorded", category: "Timer")
             }
@@ -1038,6 +1050,7 @@ class RoutinePlayerViewModel {
     /// Cleans up resources and timers (called on view disappear)
     func cleanup() {
         logger.info("Cleaning up timer resources", category: "Timer")
+        bellManager.stop()
     }
     
     // MARK: - 10. Utility/Helper Methods

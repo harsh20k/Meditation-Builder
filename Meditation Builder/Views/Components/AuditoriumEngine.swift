@@ -5,7 +5,7 @@ import AVFoundation
 	///
 	/// Manages bell scheduling and playback for a meditation routine, supporting opening, block, and closing bells.
 	/// Uses AVAudioEngine and AVAudioPlayerNode for precise timing. Designed for integration with the main app.
-final class AuditoriumEngine: ObservableObject {
+final class AuditoriumManager: ObservableObject {
 		/// The audio engine responsible for audio signal processing and playback.
 	private let audioEngine = AVAudioEngine()
 		/// The player node used to schedule and play bell audio files.

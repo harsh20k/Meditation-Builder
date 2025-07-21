@@ -15,7 +15,8 @@ struct AppTheme {
 	static let searchBar = Color(red: 35/255, green: 37/255, blue: 40/255) //232528
 	static let tabBar = Color(red: 35/255, green: 36/255, blue: 39/255) //232427
 
-	static let accentColor = Color(red: 221/255, green: 97/255, blue: 27/255) // #dd611b
+//	static let accentColor = Color(red: 221/255, green: 97/255, blue: 27/255) // #dd611b
+	static let accentColor = Color(red: 77/255, green: 181/255, blue: 172/255) // #4DB6AC
     static let lightGrey = Color(red: 119/255, green: 119/255, blue: 129/255) // #777781
     
     // MARK: - Typography
