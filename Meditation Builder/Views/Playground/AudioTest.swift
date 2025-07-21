@@ -14,24 +14,49 @@ import AVFoundation
 	/// When the button is tapped, the associated AudioTester schedules and plays bell sounds.
 struct AudioTestView: View {
 	@StateObject private var audioTester = AudioTester()
+	@State private var elapsedSeconds: Int = 0
+	@State private var timer: DispatchSourceTimer?
 	
 	var body: some View {
 		VStack {
 			Spacer()
 			Button("Start Session") {
 				audioTester.startSession()
+				startInternalTimer()
 			}
 			.font(.headline)
 			.padding()
 			.background(Color.orange)
 			.foregroundColor(.white)
 			.cornerRadius(24)
+			TimelineView(.periodic(from: .now, by: 1.0)) { _ in
+				Text("Elapsed: \(elapsedSeconds) seconds")
+					.font(.body)
+					.foregroundColor(.white)
+			}
 			Spacer()
 		}
 		.background(Color.black.ignoresSafeArea())
 		.onDisappear {
 			audioTester.stopEngine()
+			stopInternalTimer()
 		}
+	}
+	
+	private func startInternalTimer() {
+		elapsedSeconds = 0
+		let t = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
+		t.schedule(deadline: .now(), repeating: 1.0, leeway: .milliseconds(100))
+		t.setEventHandler {
+			elapsedSeconds += 1
+		}
+		t.resume()
+		timer = t
+	}
+	
+	private func stopInternalTimer() {
+		timer?.cancel()
+		timer = nil
 	}
 }
 
@@ -64,8 +89,8 @@ final class AudioTester: ObservableObject {
 		/// the opening bell sounds at 0s, 10s, and 20s offsets.
 	func startSession() {
 		schedule(sound: "opening_bell", at: 0)
-		schedule(sound: "soft_bell", at: 10)
-		schedule(sound: "closing_bell", at: 30)
+		schedule(sound: "soft_bell", at: 60)
+		schedule(sound: "closing_bell", at: 120)
 	}
 	
 		/// Stops all audio playback and pauses the audio engine.
