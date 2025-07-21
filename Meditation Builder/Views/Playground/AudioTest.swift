@@ -14,23 +14,25 @@ import AVFoundation
 	/// When the button is tapped, the associated AudioTester schedules and plays bell sounds.
 struct AudioTestView: View {
 	@StateObject private var audioTester = AudioTester()
-	@State private var elapsedSeconds: Int = 0
-	@State private var timer: DispatchSourceTimer?
+	@State private var sessionStartDate: Date?
+	@State private var interactionLog: [(String, TimeInterval)] = []
 	
 	var body: some View {
 		VStack {
 			Spacer()
 			Button("Start Session") {
 				audioTester.startSession()
-				startInternalTimer()
+				sessionStartDate = Date()
+				recordInteraction("Start Session")
 			}
 			.font(.headline)
 			.padding()
 			.background(Color.orange)
 			.foregroundColor(.white)
 			.cornerRadius(24)
-			TimelineView(.periodic(from: .now, by: 1.0)) { _ in
-				Text("Elapsed: \(elapsedSeconds) seconds")
+			TimelineView(.periodic(from: .now, by: 1.0)) { context in
+				let elapsed = sessionStartDate.map { Int(context.date.timeIntervalSince($0)) } ?? 0
+				Text("Elapsed: \(elapsed) seconds")
 					.font(.body)
 					.foregroundColor(.white)
 			}
@@ -39,24 +41,14 @@ struct AudioTestView: View {
 		.background(Color.black.ignoresSafeArea())
 		.onDisappear {
 			audioTester.stopEngine()
-			stopInternalTimer()
+			sessionStartDate = nil
+			interactionLog.removeAll()
 		}
 	}
 	
-	private func startInternalTimer() {
-		elapsedSeconds = 0
-		let t = DispatchSource.makeTimerSource(queue: DispatchQueue.main)
-		t.schedule(deadline: .now(), repeating: 1.0, leeway: .milliseconds(100))
-		t.setEventHandler {
-			elapsedSeconds += 1
-		}
-		t.resume()
-		timer = t
-	}
-	
-	private func stopInternalTimer() {
-		timer?.cancel()
-		timer = nil
+	private func recordInteraction(_ action: String) {
+		let timestamp = sessionStartDate?.timeIntervalSinceNow ?? 0
+		interactionLog.append((action, timestamp))
 	}
 }
 
