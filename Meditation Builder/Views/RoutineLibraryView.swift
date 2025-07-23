@@ -127,15 +127,15 @@ struct RoutineLibraryView: View {
 			Button(action: { showingRoutineBuilder = true }) {
 				ZStack {
 					Circle()
-						.fill(AppTheme.accentColor)
+						.fill(AppTheme.accentColor.opacity(0.3))
 						.frame(width: 56, height: 56)
 					Image(systemName: "plus")
-						.foregroundColor(.white)
+						.foregroundColor(.white.opacity(0.5))
 						.font(.system(size: 28, weight: .bold))
 				}
 			}
 			.padding(.trailing, AppTheme.Spacing.extraLarge)
-			.padding(.bottom, 112)
+			.padding(.bottom, 92)
 			.shadow(radius: 8)
 		}
 		.sheet(isPresented: $showingRoutineBuilder) {
@@ -415,7 +415,7 @@ struct RoutineCard: View {
 		)
 		.overlay(
 			RoundedRectangle(cornerRadius: AppTheme.CornerRadius.extraLarge)
-//				.stroke(isSelected ? AppTheme.accentColor.opacity(0.2) : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1) // stroke hidden for card
+				.stroke(isSelected ? AppTheme.accentColor.opacity(0.2) : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1)
 		)
 		.shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
 		.onTapGesture(perform: onTap)
@@ -536,7 +536,7 @@ struct LibraryEmptyStateView: View {
 					}
 				}
 				.padding(.trailing, AppTheme.Spacing.section)
-				.padding(.bottom, 92)
+				.padding(.bottom, 112)
 				.shadow(radius: 8)
 				
 					// Tab Bar

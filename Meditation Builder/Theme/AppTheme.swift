@@ -11,8 +11,8 @@ import SwiftUI
 struct AppTheme {
     // MARK: - Colors
     static let backgroundColor = Color(red: 20/255, green: 21/255, blue: 24/255) // #141518
-//	static let cardColor = Color(red: 34/255, green: 35/255, blue: 38/255) // #222326
-	static let cardColor = Color(red: 30/255, green: 32/255, blue: 32/255) // #
+	static let cardColor = Color(red: 34/255, green: 35/255, blue: 38/255) // #222326
+//	static let cardColor = Color(red: 30/255, green: 32/255, blue: 32/255) // #
 	static let searchBar = Color(red: 35/255, green: 37/255, blue: 40/255) //232528
 	static let tabBar = Color(red: 35/255, green: 36/255, blue: 39/255) //232427
 
