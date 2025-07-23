@@ -10,6 +10,7 @@ import os.log
 
 struct MainTabView: View {
     @State private var selectedTab: TabSelection = .library
+    @Environment(\.modelContext) private var modelContext
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -26,7 +27,7 @@ struct MainTabView: View {
 //                    )
 					AudioTestView()
                 case .timer:
-                    RoutineBuilderView()
+                    RoutinePlayerView(modelContext: modelContext)
                 case .history:
                     SessionHistoryView()
                 case .settings:

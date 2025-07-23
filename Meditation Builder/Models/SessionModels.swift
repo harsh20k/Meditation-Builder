@@ -813,11 +813,11 @@ class RoutinePlayerViewModel {
     /**
      * Properties related to the routine being played, data manager, and persistence context.
      *
-     * - routine: SavedRoutine - The routine model being played.
+     * - routine: SavedRoutine? - The routine model being played (optional).
      * - modelContext: ModelContext - SwiftData context for persistence operations.
      * - dataManager: RoutineDataManager - Handles routine/session persistence logic.
      */
-    private let routine: SavedRoutine              // The routine model being played
+    private let routine: SavedRoutine?              // The routine model being played (optional)
     private let modelContext: ModelContext         // SwiftData context for persistence
     private let dataManager: RoutineDataManager    // Handles routine/session persistence
     
@@ -892,21 +892,24 @@ class RoutinePlayerViewModel {
      * - isRoutineComplete: Bool - Whether the routine is complete (all blocks finished).
      */
     var routineData: Routine {
-        routine.getRoutine()                       // Decoded routine data
+        routine?.getRoutine() ?? Routine(name: "", icon: "", blocks: [], openingBell: .softBell, closingBell: .softBell, media: [])
     }
     var currentBlock: RoutineBlock? {
-        guard currentBlockIndex < routineData.blocks.count else { return nil }
-        return routineData.blocks[currentBlockIndex]   // Current block or nil if complete
+        guard let routine = routine else { return nil }
+        guard currentBlockIndex < routine.getRoutine().blocks.count else { return nil }
+        return routine.getRoutine().blocks[currentBlockIndex]
     }
     var nextBlock: RoutineBlock? {
+        guard let routine = routine else { return nil }
         let nextIndex = currentBlockIndex + 1
-        guard nextIndex < routineData.blocks.count else { return nil }
-        return routineData.blocks[nextIndex]           // Next block or nil if at end
+        guard nextIndex < routine.getRoutine().blocks.count else { return nil }
+        return routine.getRoutine().blocks[nextIndex]
     }
     var totalBlocks: Int {
-        routineData.blocks.count                      // Total number of blocks
+        routine?.getRoutine().blocks.count ?? 0
     }
     var elapsedTime: Int {
+        guard routine != nil else { return 0 }
         guard !isPaused else {
             let elapsedBeforePause = pausedDate?.timeIntervalSince(routineStartDate) ?? 0
             return max(0, Int(elapsedBeforePause))
@@ -926,7 +929,8 @@ class RoutinePlayerViewModel {
         return min(1.0, max(0.0, elapsed / blockDuration)) // Progress through current block
     }
     var isRoutineComplete: Bool {
-        currentBlockIndex >= routineData.blocks.count      // All blocks finished?
+        guard let routine = routine else { return true }
+        return currentBlockIndex >= routine.getRoutine().blocks.count      // All blocks finished?
     }
     
     // MARK: - 7. Initialization
@@ -934,10 +938,10 @@ class RoutinePlayerViewModel {
      * Initializes the view model with a routine and model context.
      *
      * - Parameters:
-     *   - routine: SavedRoutine - The routine to play.
+     *   - routine: SavedRoutine? - The routine to play (optional).
      *   - modelContext: ModelContext - The SwiftData context for persistence.
      */
-    init(routine: SavedRoutine, modelContext: ModelContext) {
+    init(routine: SavedRoutine?, modelContext: ModelContext) {
         self.routine = routine
         self.modelContext = modelContext
         self.dataManager = RoutineDataManager(context: modelContext)
@@ -946,6 +950,10 @@ class RoutinePlayerViewModel {
         #else
         self.isDebugMode = false
         #endif
+    }
+    // Convenience initializer for no routine
+    convenience init(modelContext: ModelContext) {
+        self.init(routine: nil, modelContext: modelContext)
     }
     
     // MARK: - 8. Timer & Playback Control
@@ -959,6 +967,7 @@ class RoutinePlayerViewModel {
      * - formatTime(_: Int): Formats a time interval (seconds) as MM:SS string.
      */
     func startTimer() {
+        guard let routine = routine else { return }
         logger.info("Starting timer for routine: \(routine.routineName)", category: "Timer")
         routineStartDate = Date()
         currentTime = Date()
@@ -966,20 +975,22 @@ class RoutinePlayerViewModel {
         sessionRecord?.addEvent(.start(routineStartDate))
         // Schedule all bells for the routine
         bellManager.scheduleRoutineVerbatim(savedRoutine: routine)
-        guard currentBlockIndex < routineData.blocks.count else {
+        guard currentBlockIndex < routine.getRoutine().blocks.count else {
             logger.info("Timer completed - no more blocks", category: "Timer")
             return
         }
         startCurrentBlock()
     }
     private func startCurrentBlock() {
-        let block = routineData.blocks[currentBlockIndex]
+        guard let routine = routine else { return }
+        let block = routine.getRoutine().blocks[currentBlockIndex]
         blockStartDate = Date()
         currentTime = Date()
         blockPausedTime = 0
         logger.info("Starting block: \(block.name)", category: "Timer")
     }
     func togglePause() {
+        guard routine != nil else { return }
         isPaused.toggle()
         if isPaused {
             pausedDate = Date()
@@ -1010,13 +1021,14 @@ class RoutinePlayerViewModel {
         }
     }
     func moveToNextBlock() {
+        guard let routine = routine else { return }
         logger.info("Block completed: \(currentBlock?.name ?? "Unknown")", category: "Timer")
         currentBlockIndex += 1
-        if currentBlockIndex >= routineData.blocks.count {
+        if currentBlockIndex >= routine.getRoutine().blocks.count {
             logger.info("Routine completed: \(routine.routineName) - Timer continues", category: "Timer")
         } else {
             startCurrentBlock()
-            let nextBlock = routineData.blocks[currentBlockIndex]
+            let nextBlock = routine.getRoutine().blocks[currentBlockIndex]
             logger.info("Starting next block: \(nextBlock.name)", category: "Timer")
         }
     }
@@ -1034,6 +1046,7 @@ class RoutinePlayerViewModel {
      * - cleanup(): Cleans up resources and timers (called on view disappear).
      */
     func endSession(saveProgress: Bool) async {
+        guard let routine = routine else { return }
         logger.info("Session \(saveProgress ? "ended" : "discarded") for routine: \(routine.routineName)", category: "Timer")
         let finishTime = Date()
         sessionRecord?.addEvent(.finish(finishTime))
@@ -1049,7 +1062,6 @@ class RoutinePlayerViewModel {
     }
     /// Cleans up resources and timers (called on view disappear)
     func cleanup() {
-        logger.info("Cleaning up timer resources", category: "Timer")
         bellManager.stop()
     }
     
@@ -1060,6 +1072,7 @@ class RoutinePlayerViewModel {
      * - updateCurrentTime(_ newTime: Date): Updates the current time (called by timer).
      */
     func updateCurrentTime(_ newTime: Date) {
+        guard routine != nil else { return }
         currentTime = newTime
         if !isRoutineComplete && inBlockProgress >= 1.0 && !isPaused {
             moveToNextBlock()
