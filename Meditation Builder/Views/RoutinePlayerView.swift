@@ -9,6 +9,164 @@ import SwiftUI
 import os.log
 import SwiftData
 
+// MARK: - Empty State View
+struct RoutineEmptyStateView: View {
+    var body: some View {
+        VStack {
+            Spacer()
+            Text("No routine selected")
+                .font(.system(size: 22, weight: .semibold, design: .rounded))
+                .foregroundColor(.white.opacity(0.8))
+                .multilineTextAlignment(.center)
+            Spacer()
+        }
+    }
+}
+
+// MARK: - Player Header View
+struct PlayerHeaderView: View {
+    let routineName: String
+    let onClose: () -> Void
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Close button - positioned at top right
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .foregroundColor(.white)
+                        .font(.system(size: 20, weight: .medium))
+                        .frame(width: 44, height: 44)
+                        .background(Color.black.opacity(0.3))
+                        .clipShape(Circle())
+                }
+                .position(x: geometry.size.width - 44, y: geometry.safeAreaInsets.top + 60)
+                
+                // Routine Name - positioned at top center
+                Text(routineName)
+                    .font(.system(size: 17, weight: .semibold, design: .default))
+                    .foregroundColor(.white)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+                    .frame(width: geometry.size.width - 40)
+                    .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 120)
+            }
+        }
+    }
+}
+
+// MARK: - Timer Display View
+struct TimerDisplayView: View {
+    @Bindable var viewModel: RoutinePlayerViewModel
+    
+    var body: some View {
+        VStack(spacing: 16) {
+            // Large elapsed timer with TimelineView for efficiency
+            TimelineView(.periodic(from: viewModel.routineStartDate, by: 1.0)) { context in
+                Text(viewModel.formatTime(viewModel.elapsedTime))
+                    .font(.system(size: 72, weight: .bold, design: .default))
+                    .foregroundColor(.white)
+                    .monospacedDigit()
+                    .onChange(of: context.date) { _, newDate in
+                        viewModel.updateCurrentTime(newDate)
+                    }
+            }
+            
+            // Current block indicator or completion message
+            if viewModel.isRoutineComplete {
+                Text(LocalizedStringKey("routine.complete"))
+                    .font(.system(size: 17, weight: .regular, design: .default))
+                    .foregroundColor(.white.opacity(0.8))
+                    .lineLimit(2)
+                    .multilineTextAlignment(.center)
+            } else if let current = viewModel.currentBlock {
+                HStack(spacing: 0) {
+                    Text(current.name)
+                        .font(.system(size: 17, weight: .regular, design: .default))
+                        .foregroundColor(.white)
+                    
+                    if let next = viewModel.nextBlock {
+                        Text(" → ")
+                            .font(.system(size: 17, weight: .regular, design: .default))
+                            .foregroundColor(.white.opacity(0.6))
+                        
+                        Text(next.name)
+                            .font(.system(size: 17, weight: .regular, design: .default))
+                            .foregroundColor(.white.opacity(0.6))
+                    }
+                }
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: .infinity)
+    }
+}
+
+// MARK: - Player Controls View
+struct PlayerControlsView: View {
+    @Bindable var viewModel: RoutinePlayerViewModel
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Play/Pause button - always in the same position
+                Button(action: { viewModel.togglePause() }) {
+                    Text(viewModel.isPaused ? "▶" : "❙❙")
+                        .font(.system(size: 72, weight: .regular, design: .default))
+                        .foregroundColor(.white)
+                }
+                .buttonStyle(PlainButtonStyle())
+                .position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 180)
+                
+                // Pause state controls - shown with opacity animation
+                if viewModel.isPaused {
+                    VStack(spacing: 8) {
+                        // End Session Button
+                        Button(action: { viewModel.showingEndSessionAlert = true }) {
+                            Text(LocalizedStringKey("button.end.session"))
+                                .font(.system(size: 14, weight: .medium, design: .default))
+                                .foregroundColor(.black)
+                                .frame(width: 120, height: 36)
+                                .background(Color.white)
+                                .cornerRadius(18)
+                                .padding(8)
+                        }
+                        
+                        // Discard Session Button
+                        Button(action: { viewModel.showingDiscardSessionAlert = true }) {
+                            Text(LocalizedStringKey("button.discard.session"))
+                                .font(.system(size: 14, weight: .medium, design: .default))
+                                .foregroundColor(.red)
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                    }
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 80)
+                    .opacity(viewModel.isPaused ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.isPaused)
+                }
+                
+                // Finish button - shown when routine is complete
+                if viewModel.isRoutineComplete {
+                    Button(action: { viewModel.showingFinishAlert = true }) {
+                        Text(LocalizedStringKey("button.finish"))
+                            .font(.system(size: 14, weight: .medium, design: .default))
+                            .foregroundColor(.black)
+                            .frame(width: 120, height: 36)
+                            .background(Color.white)
+                            .cornerRadius(18)
+                            .padding(8)
+                    }
+                    .position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 80)
+                    .opacity(viewModel.isRoutineComplete ? 1.0 : 0.0)
+                    .animation(.easeInOut(duration: 0.3), value: viewModel.isRoutineComplete)
+                }
+            }
+        }
+    }
+}
+
+// MARK: - Main Routine Player View
 struct RoutinePlayerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
@@ -27,139 +185,26 @@ struct RoutinePlayerView: View {
                 
                 if viewModel.routineData.blocks.isEmpty {
                     // No routine selected state
-                    VStack {
-                        Spacer()
-                        Text("No routine selected")
-                            .font(.system(size: 22, weight: .semibold, design: .rounded))
-                            .foregroundColor(.white.opacity(0.8))
-                            .multilineTextAlignment(.center)
-                        Spacer()
-                    }
-                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    RoutineEmptyStateView()
+                        .frame(width: geometry.size.width, height: geometry.size.height)
                 } else {
-                    // Close button - positioned at top right
-                    Button(action: {
-                        Task {
-                            await viewModel.endSession(saveProgress: false)
-                            dismiss()
-                        }
-                    }) {
-                        Image(systemName: "xmark")
-                            .foregroundColor(.white)
-                            .font(.system(size: 20, weight: .medium))
-                            .frame(width: 44, height: 44)
-                            .background(Color.black.opacity(0.3))
-                            .clipShape(Circle())
-                    }
-                    .position(x: geometry.size.width - 44, y: geometry.safeAreaInsets.top + 60)
-                    
-                    // Routine Name - positioned at top center
-                    Text(viewModel.routineData.name)
-                        .font(.system(size: 17, weight: .semibold, design: .default))
-                        .foregroundColor(.white)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.center)
-                        .frame(width: geometry.size.width - 40)
-                        .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 120)
-                    
-                    // Main Timer Display - positioned at center
-                    VStack(spacing: 16) {
-                        // Large elapsed timer with TimelineView for efficiency
-                        TimelineView(.periodic(from: viewModel.routineStartDate, by: 1.0)) { context in
-                            Text(viewModel.formatTime(viewModel.elapsedTime))
-                                .font(.system(size: 72, weight: .bold, design: .default))
-                                .foregroundColor(.white)
-                                .monospacedDigit()
-                                .onChange(of: context.date) { _, newDate in
-                                    viewModel.updateCurrentTime(newDate)
-                                }
-                        }
-                        
-                        // Current block indicator or completion message
-                        if viewModel.isRoutineComplete {
-                            Text(LocalizedStringKey("routine.complete"))
-                                .font(.system(size: 17, weight: .regular, design: .default))
-                                .foregroundColor(.white.opacity(0.8))
-                                .lineLimit(2)
-                                .multilineTextAlignment(.center)
-                                .frame(width: geometry.size.width - 40)
-                        } else if let current = viewModel.currentBlock {
-                            HStack(spacing: 0) {
-                                Text(current.name)
-                                    .font(.system(size: 17, weight: .regular, design: .default))
-                                    .foregroundColor(.white)
-                                
-                                if let next = viewModel.nextBlock {
-                                    Text(" → ")
-                                        .font(.system(size: 17, weight: .regular, design: .default))
-                                        .foregroundColor(.white.opacity(0.6))
-                                    
-                                    Text(next.name)
-                                        .font(.system(size: 17, weight: .regular, design: .default))
-                                        .foregroundColor(.white.opacity(0.6))
-                                }
+                    // Player Header
+                    PlayerHeaderView(
+                        routineName: viewModel.routineData.name,
+                        onClose: {
+                            Task {
+                                await viewModel.endSession(saveProgress: false)
+                                dismiss()
                             }
-                            .lineLimit(2)
-                            .multilineTextAlignment(.center)
-                            .frame(width: geometry.size.width - 40)
                         }
-                    }
-                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    )
                     
-                    // Play/Pause Controls - positioned at bottom with fixed coordinates
-                    ZStack {
-                        // Play/Pause button - always in the same position
-                        Button(action: { viewModel.togglePause() }) {
-                            Text(viewModel.isPaused ? "▶" : "❙❙")
-                                .font(.system(size: 72, weight: .regular, design: .default))
-                                .foregroundColor(.white)
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 180)
-                        
-                        // Pause state controls - shown with opacity animation
-                        if viewModel.isPaused {
-                            VStack(spacing: 8) {
-                                // End Session Button
-                                Button(action: { viewModel.showingEndSessionAlert = true }) {
-                                    Text(LocalizedStringKey("button.end.session"))
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(.black)
-                                        .frame(width: 120, height: 36)
-                                        .background(Color.white)
-                                        .cornerRadius(18)
-                                        .padding(8)
-                                }
-                                
-                                // Discard Session Button
-                                Button(action: { viewModel.showingDiscardSessionAlert = true }) {
-                                    Text(LocalizedStringKey("button.discard.session"))
-                                        .font(.system(size: 14, weight: .medium, design: .default))
-                                        .foregroundColor(.red)
-                                }
-                                .buttonStyle(PlainButtonStyle())
-                            }
-                            .position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 80)
-                            .opacity(viewModel.isPaused ? 1.0 : 0.0)
-                            .animation(.easeInOut(duration: 0.3), value: viewModel.isPaused)
-                        }
-                        
-                        // Finish button - shown when routine is complete
-                        if viewModel.isRoutineComplete {
-                            Button(action: { viewModel.showingFinishAlert = true }) {
-                                Text(LocalizedStringKey("button.finish"))
-                                    .font(.system(size: 14, weight: .medium, design: .default))
-                                    .foregroundColor(.black)
-                                    .frame(width: 120, height: 36)
-                                    .background(Color.white)
-                                    .cornerRadius(18)
-                                    .padding(8)
-                            }
-                            .position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 80)
-                            .opacity(viewModel.isRoutineComplete ? 1.0 : 0.0)
-                            .animation(.easeInOut(duration: 0.3), value: viewModel.isRoutineComplete)
-                        }
-                    }
+                    // Timer Display - positioned at center
+                    TimerDisplayView(viewModel: viewModel)
+                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                    
+                    // Player Controls - positioned at bottom
+                    PlayerControlsView(viewModel: viewModel)
                     
                     // Block Progress Indicator - positioned at right edge
                     BlockProgressIndicator(
