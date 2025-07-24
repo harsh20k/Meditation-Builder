@@ -193,8 +193,21 @@ struct PlayerControlsView: View {
 struct NoRoutineState: View {
     var body: some View {
         GeometryReader { geometry in
-            RoutineEmptyStateView()
-                .frame(width: geometry.size.width, height: geometry.size.height)
+            ZStack {
+                RoutineEmptyStateView()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                
+                // Beads Progress Indicator - positioned at top center
+                BeadsView(
+                    currentBlockIndex: 0,
+                    totalBlocks: 0,
+                    inBlockProgress: 0.0,
+                    blockStartDate: Date(),
+                    isRoutineSelected: false,
+                    isPlaying: false
+                )
+                .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 60)
+            }
         }
     }
 }
@@ -243,6 +256,17 @@ struct PreSessionState: View {
                     .buttonStyle(PlainButtonStyle())
                 }
                 .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                
+                // Beads Progress Indicator - positioned at top center
+                BeadsView(
+                    currentBlockIndex: 0,
+                    totalBlocks: viewModel.totalBlocks,
+                    inBlockProgress: 0.0,
+                    blockStartDate: Date(),
+                    isRoutineSelected: true,
+                    isPlaying: false
+                )
+                .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 60)
             }
         }
     }
@@ -318,6 +342,7 @@ struct RoutinePlayerView: View {
                             Task {
                                 await viewModel.endSession(saveProgress: false)
                                 dismiss()
+                     
                             }
                         }
                     )
