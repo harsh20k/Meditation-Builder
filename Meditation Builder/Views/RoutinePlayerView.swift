@@ -268,14 +268,16 @@ struct ActiveSessionState: View {
                 // Player Controls - positioned at bottom
                 PlayerControlsView(viewModel: viewModel)
                 
-                // Block Progress Indicator - positioned at right edge
-                BlockProgressIndicator(
+                // Beads Progress Indicator - positioned at top center
+                BeadsView(
                     currentBlockIndex: viewModel.currentBlockIndex,
                     totalBlocks: viewModel.totalBlocks,
                     inBlockProgress: viewModel.isRoutineComplete ? 1.0 : viewModel.inBlockProgress,
-                    blockStartDate: viewModel.blockStartDate
+                    blockStartDate: viewModel.blockStartDate,
+                    isRoutineSelected: true,
+                    isPlaying: !viewModel.isPaused
                 )
-                .position(x: geometry.size.width - 20, y: geometry.size.height / 2)
+                .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 60)
             }
         }
     }

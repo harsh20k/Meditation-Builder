@@ -260,17 +260,17 @@ struct SessionDetailView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     // Debug info (temporary)
-                    VStack(alignment: .leading, spacing: 8) {
-                        Text(LocalizedStringKey("session.history.debug.info"))
-                            .font(.headline)
-                            .foregroundColor(.red)
-                        Text(debugInfo)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                    .padding()
-                    .background(Color(.systemGray6))
-                    .cornerRadius(12)
+//                    VStack(alignment: .leading, spacing: 8) {
+//                        Text(LocalizedStringKey("session.history.debug.info"))
+//                            .font(.headline)
+//                            .foregroundColor(.red)
+//                        Text(debugInfo)
+//                            .font(.caption)
+//                            .foregroundColor(.secondary)
+//                    }
+//                    .padding()
+//                    .background(Color(.systemGray6))
+//                    .cornerRadius(12)
                     
                     // Header
                     VStack(alignment: .leading, spacing: 8) {
@@ -390,9 +390,27 @@ struct SessionDetailView: View {
     
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
-        formatter.dateStyle = .full
-        formatter.timeStyle = .short
-        return formatter.string(from: date)
+        formatter.dateFormat = "EEE d'${ordinalSuffix}' MMM, h:mm a"
+        
+        // Get the day of month
+        let day = Calendar.current.component(.day, from: date)
+        
+        // Create ordinal suffix
+        let ordinalSuffix: String
+        switch day {
+        case 1, 21, 31:
+            ordinalSuffix = "st"
+        case 2, 22:
+            ordinalSuffix = "nd"
+        case 3, 23:
+            ordinalSuffix = "rd"
+        default:
+            ordinalSuffix = "th"
+        }
+        
+        // Replace the placeholder with actual suffix
+        let dateString = formatter.string(from: date)
+        return dateString.replacingOccurrences(of: "${ordinalSuffix}", with: ordinalSuffix)
     }
 }
 
