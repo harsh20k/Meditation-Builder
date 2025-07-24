@@ -107,7 +107,7 @@ struct BeadsView: View {
 	}
 }
 
-// MARK: - Morphing Shape
+	// MARK: - Morphing Shape
 
 struct MorphingShape: View {
 	let isCurrentBlock: Bool
@@ -158,27 +158,33 @@ struct MorphingPath: Shape {
 	
 	func path(in rect: CGRect) -> Path {
 		let center = CGPoint(x: rect.midX, y: rect.midY)
-		let radius = min(rect.width, rect.height) / 2
-		
 		var path = Path()
 		
-			// Interpolated shape between circle and capsule
-		let capsuleHeight = beadSize
-		let capsuleWidthValue = capsuleWidth
-		
-			// Interpolate width and corner radius
-		let currentWidth = beadSize + (capsuleWidthValue - beadSize) * morphProgress
-		let currentHeight = beadSize
-		let cornerRadius = (beadSize / 2) * morphProgress
-		
-		let currentRect = CGRect(
-			x: center.x - currentWidth / 2,
-			y: center.y - currentHeight / 2,
-			width: currentWidth,
-			height: currentHeight
-		)
-		
-		path.addRoundedRect(in: currentRect, cornerSize: CGSize(width: cornerRadius, height: cornerRadius))
+		if morphProgress == 0 {
+			let circleRect = CGRect(
+				x: center.x - beadSize / 2,
+				y: center.y - beadSize / 2,
+				width: beadSize,
+				height: beadSize
+			)
+			path.addEllipse(in: circleRect)
+		} else {
+			let capsuleHeight = beadSize
+			let capsuleWidthValue = capsuleWidth
+			
+			let currentWidth = beadSize + (capsuleWidthValue - beadSize) * morphProgress
+			let currentHeight = beadSize
+			let cornerRadius = (beadSize / 2) * morphProgress
+			
+			let currentRect = CGRect(
+				x: center.x - currentWidth / 2,
+				y: center.y - currentHeight / 2,
+				width: currentWidth,
+				height: currentHeight
+			)
+			
+			path.addRoundedRect(in: currentRect, cornerSize: CGSize(width: cornerRadius, height: cornerRadius))
+		}
 		return path
 	}
 }
