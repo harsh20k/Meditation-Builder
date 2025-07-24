@@ -9,6 +9,28 @@ import SwiftUI
 import os.log
 import SwiftData
 
+// MARK: - Shared Player Layout
+struct PlayerLayout<Content: View>: View {
+    let content: Content
+    
+    init(@ViewBuilder content: () -> Content) {
+        self.content = content()
+    }
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                Color.black
+                    .ignoresSafeArea(.all, edges: .all)
+                content
+            }
+        }
+        .statusBarHidden(true)
+        .preferredColorScheme(.dark)
+        .ignoresSafeArea(.all, edges: .all)
+    }
+}
+
 // MARK: - Empty State View
 struct RoutineEmptyStateView: View {
     var body: some View {
@@ -166,31 +188,130 @@ struct PlayerControlsView: View {
     }
 }
 
+// MARK: - State-Specific Views
+
+struct NoRoutineState: View {
+    var body: some View {
+        GeometryReader { geometry in
+            RoutineEmptyStateView()
+                .frame(width: geometry.size.width, height: geometry.size.height)
+        }
+    }
+}
+
+struct PreSessionState: View {
+    @Bindable var viewModel: RoutinePlayerViewModel
+    let onStartSession: () -> Void
+    let onClose: () -> Void
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Player Header
+                PlayerHeaderView(
+                    routineName: viewModel.routineData.name,
+                    onClose: onClose
+                )
+                
+                // Pre-session content
+                VStack(spacing: 24) {
+                    // Routine info
+                    VStack(spacing: 16) {
+                        Text(viewModel.routineData.name)
+                            .font(.system(size: 28, weight: .bold, design: .default))
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+                        
+                        Text("\(viewModel.totalBlocks) blocks • \(viewModel.routineData.blocks.map(\.durationInMinutes).reduce(0, +)) minutes")
+                            .font(.system(size: 17, weight: .regular, design: .default))
+                            .foregroundColor(.white.opacity(0.7))
+                    }
+                    
+                    // Large play button
+                    Button(action: onStartSession) {
+                        ZStack {
+                            Circle()
+                                .fill(Color.white)
+                                .frame(width: 120, height: 120)
+                            
+                            Image(systemName: "play.fill")
+                                .font(.system(size: 48, weight: .medium))
+                                .foregroundColor(.black)
+                                .offset(x: 4, y: 0)
+                        }
+                    }
+                    .buttonStyle(PlainButtonStyle())
+                }
+                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+            }
+        }
+    }
+}
+
+struct ActiveSessionState: View {
+    @Bindable var viewModel: RoutinePlayerViewModel
+    let onClose: () -> Void
+    
+    var body: some View {
+        GeometryReader { geometry in
+            ZStack {
+                // Player Header
+                PlayerHeaderView(
+                    routineName: viewModel.routineData.name,
+                    onClose: onClose
+                )
+                
+                // Timer Display - positioned at center
+                TimerDisplayView(viewModel: viewModel)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+                
+                // Player Controls - positioned at bottom
+                PlayerControlsView(viewModel: viewModel)
+                
+                // Block Progress Indicator - positioned at right edge
+                BlockProgressIndicator(
+                    currentBlockIndex: viewModel.currentBlockIndex,
+                    totalBlocks: viewModel.totalBlocks,
+                    inBlockProgress: viewModel.isRoutineComplete ? 1.0 : viewModel.inBlockProgress,
+                    blockStartDate: viewModel.blockStartDate
+                )
+                .position(x: geometry.size.width - 20, y: geometry.size.height / 2)
+            }
+        }
+    }
+}
+
 // MARK: - Main Routine Player View
 struct RoutinePlayerView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: RoutinePlayerViewModel
+    @State private var sessionStarted = false
     
     init(routine: SavedRoutine? = nil, modelContext: ModelContext) {
         _viewModel = State(initialValue: RoutinePlayerViewModel(routine: routine, modelContext: modelContext))
     }
     
     var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                Color.black
-                    .ignoresSafeArea(.all, edges: .all)
-                
+        PlayerLayout {
+            Group {
                 if viewModel.routineData.blocks.isEmpty {
-                    // No routine selected state
-                    RoutineEmptyStateView()
-                        .frame(width: geometry.size.width, height: geometry.size.height)
+                    NoRoutineState()
+                } else if !sessionStarted {
+                    PreSessionState(
+                        viewModel: viewModel,
+                        onStartSession: {
+                            sessionStarted = true
+                            viewModel.startTimer()
+                        },
+                        onClose: {
+                            dismiss()
+                        }
+                    )
                 } else {
-                    // Player Header
-                    PlayerHeaderView(
-                        routineName: viewModel.routineData.name,
+                    ActiveSessionState(
+                        viewModel: viewModel,
                         onClose: {
                             Task {
                                 await viewModel.endSession(saveProgress: false)
@@ -198,44 +319,28 @@ struct RoutinePlayerView: View {
                             }
                         }
                     )
-                    
-                    // Timer Display - positioned at center
-                    TimerDisplayView(viewModel: viewModel)
-                        .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-                    
-                    // Player Controls - positioned at bottom
-                    PlayerControlsView(viewModel: viewModel)
-                    
-                    // Block Progress Indicator - positioned at right edge
-                    BlockProgressIndicator(
-                        currentBlockIndex: viewModel.currentBlockIndex,
-                        totalBlocks: viewModel.totalBlocks,
-                        inBlockProgress: viewModel.isRoutineComplete ? 1.0 : viewModel.inBlockProgress,
-                        blockStartDate: viewModel.blockStartDate
-                    )
-                    .position(x: geometry.size.width - 20, y: geometry.size.height / 2)
                 }
             }
         }
-        .onAppear {
-            viewModel.startTimer()
-        }
         .onDisappear {
-            viewModel.cleanup()
+            if sessionStarted {
+                viewModel.cleanup()
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             switch newPhase {
             case .background, .inactive:
-                logger.info("App backgrounded - timer continues running", category: "Timer")
+                if sessionStarted {
+                    logger.info("App backgrounded - timer continues running", category: "Timer")
+                }
             case .active:
-                logger.info("App returned to foreground - timer continues running", category: "Timer")
+                if sessionStarted {
+                    logger.info("App returned to foreground - timer continues running", category: "Timer")
+                }
             @unknown default:
                 break
             }
         }
-        .statusBarHidden(true)
-        .preferredColorScheme(.dark)
-        .ignoresSafeArea(.all, edges: .all)
         .alert(LocalizedStringKey("alert.end.session.title"), isPresented: $viewModel.showingEndSessionAlert) {
             Button(LocalizedStringKey("button.cancel"), role: .cancel) { }
             Button(LocalizedStringKey("button.end.session"), role: .destructive) {
