@@ -57,6 +57,7 @@ struct AppTheme {
         static let large: CGFloat = 20
         static let extraLarge: CGFloat = 24
         static let section: CGFloat = 32
+		static let titleRoom: CGFloat = 50
     }
     
     // MARK: - Corner Radius

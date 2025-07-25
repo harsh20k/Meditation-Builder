@@ -56,8 +56,8 @@ struct RoutineLibraryView: View {
 						//                    Spacer()
 				}
 				.padding(.horizontal)
-				.padding(.top, AppTheme.Spacing.extraLarge)
-				.padding(.bottom, AppTheme.Spacing.small)
+				.padding(.top, AppTheme.Spacing.titleRoom)
+				.padding(.bottom, AppTheme.Spacing.titleRoom)
 				
 					// Search Bar Hidden
 				if false {
