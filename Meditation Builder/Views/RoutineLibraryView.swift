@@ -44,55 +44,51 @@ struct RoutineLibraryView: View {
 		ZStack(alignment: .bottomTrailing) {
 			AppTheme.backgroundColor.ignoresSafeArea()
 			
-			VStack(spacing: 0) {
+			ScrollView {
+				VStack(spacing: 0) {
 					// Header
-				HStack {
-						//                    Image(systemName: "books.vertical.fill")
-						//                        .foregroundColor(AppTheme.accentColor)
-						//                        .font(.system(size: 28, weight: .bold))
-					Text(LocalizedStringKey("routine.library.title"))
-						.font(AppTheme.Typography.titleFont)
-						.foregroundColor(.white)
-						//                    Spacer()
-				}
-				.padding(.horizontal)
-				.padding(.top, AppTheme.Spacing.titleRoom)
-				.padding(.bottom, AppTheme.Spacing.titleRoom)
-				
-					// Search Bar Hidden
-				if false {
 					HStack {
-						Image(systemName: "magnifyingglass")
-							.foregroundColor(AppTheme.accentColor)
-							.font(.system(size: 16, weight: .medium))
-						
-						TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
+						Text(LocalizedStringKey("routine.library.title"))
+							.font(AppTheme.Typography.titleFont)
 							.foregroundColor(.white)
-							.font(AppTheme.Typography.bodyFont)
-						
-						if !searchText.isEmpty {
-							Button(action: {
-								searchText = ""
-							}) {
-								Image(systemName: "xmark.circle.fill")
-									.foregroundColor(AppTheme.lightGrey)
-									.font(.system(size: 16, weight: .medium))
-							}
-							.buttonStyle(PlainButtonStyle())
-						}
 					}
-					.padding(AppTheme.Spacing.medium)
-					.background(AppTheme.searchBar)
-					.cornerRadius(AppTheme.CornerRadius.button)
 					.padding(.horizontal)
-					.padding(.bottom, AppTheme.Spacing.large)
-				}
-				
+					.padding(.top, AppTheme.Spacing.titleRoom)
+					.padding(.bottom, AppTheme.Spacing.titleRoom)
+					
+					// Search Bar Hidden
+					if false {
+						HStack {
+							Image(systemName: "magnifyingglass")
+								.foregroundColor(AppTheme.accentColor)
+								.font(.system(size: 16, weight: .medium))
+							
+							TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
+								.foregroundColor(.white)
+								.font(AppTheme.Typography.bodyFont)
+							
+							if !searchText.isEmpty {
+								Button(action: {
+									searchText = ""
+								}) {
+									Image(systemName: "xmark.circle.fill")
+										.foregroundColor(AppTheme.lightGrey)
+										.font(.system(size: 16, weight: .medium))
+								}
+								.buttonStyle(PlainButtonStyle())
+							}
+						}
+						.padding(AppTheme.Spacing.medium)
+						.background(AppTheme.searchBar)
+						.cornerRadius(AppTheme.CornerRadius.button)
+						.padding(.horizontal)
+						.padding(.bottom, AppTheme.Spacing.large)
+					}
+					
 					// Routines List
-				if filteredRoutines.isEmpty {
-					LibraryEmptyStateView(searchText: searchText)
-				} else {
-					ScrollView(showsIndicators: false) {
+					if filteredRoutines.isEmpty {
+						LibraryEmptyStateView(searchText: searchText)
+					} else {
 						LazyVStack(spacing: AppTheme.Spacing.large) {
 							ForEach(filteredRoutines) { routine in
 								RoutineCard(
@@ -116,11 +112,9 @@ struct RoutineLibraryView: View {
 						.padding(.bottom, 120) // Account for floating button and tab bar
 					}
 				}
-				
-				Spacer()
 			}
 			
-				// Floating Create Button
+			// Floating Create Button
 			Button(action: { showingRoutineBuilder = true }) {
 				ZStack {
 					Circle()
@@ -159,6 +153,7 @@ struct RoutineLibraryView: View {
 				))
 			}
 		}
+		.statusBar(hidden: true)
 	}
 	
 		// MARK: - Private Methods
