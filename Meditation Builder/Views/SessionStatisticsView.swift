@@ -10,13 +10,10 @@ import SwiftData
 
 struct SessionStatisticsView: View {
     @Environment(\.modelContext) private var modelContext
-    @Query private var sessions: [MeditationSession]
+    @Environment(\.routineDataManager) private var dataManager
+	@Query private var sessions: [MeditationSession]
     @State private var statistics: SessionStatistics?
     @State private var isLoading = true
-    
-    private var dataManager: RoutineDataManager {
-        RoutineDataManager(context: modelContext)
-    }
     
     var body: some View {
         NavigationView {

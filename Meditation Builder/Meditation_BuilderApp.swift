@@ -15,11 +15,20 @@ import os.log
 struct Meditation_BuilderApp: App {
     // Initialize logger at app startup
     @StateObject private var appLogger = AppLogger.shared
+    private let modelContainer: ModelContainer
     
     init() {
         print("Meditation_BuilderApp: init() called")
         // Test logger immediately
         logger.info("App initialization started", category: "AppLifecycle")
+        
+        // Initialize ModelContainer first
+        let container = Self.createModelContainer()
+        self.modelContainer = container
+        
+        // Configure RoutineDataManager after modelContainer is initialized
+        let context = ModelContext(container)
+        RoutineDataManager.shared.configure(with: context)
     }
     
     var body: some Scene {
@@ -40,7 +49,8 @@ struct Meditation_BuilderApp: App {
                     logger.info("App will disappear", category: "AppLifecycle")
                 }
         }
-        .modelContainer(createModelContainer())
+        .modelContainer(modelContainer)
+        .environment(\.routineDataManager, RoutineDataManager.shared)
         .onChange(of: scenePhase) { _, newPhase in
             handleScenePhaseChange(newPhase)
         }
@@ -63,7 +73,8 @@ struct Meditation_BuilderApp: App {
         }
     }
     
-    private func createModelContainer() -> ModelContainer {
+    // Make createModelContainer static so it can be called during initialization
+    private static func createModelContainer() -> ModelContainer {
         logger.info("Creating SwiftData model container", category: "Data")
         
         let schema = Schema([
@@ -115,7 +126,7 @@ struct Meditation_BuilderApp: App {
         }
     }
     
-    private func clearDatabaseFiles() {
+    private static func clearDatabaseFiles() {
         do {
             let url = URL.applicationSupportDirectory.appending(path: "default.store")
             if FileManager.default.fileExists(atPath: url.path) {
@@ -131,9 +142,7 @@ struct Meditation_BuilderApp: App {
     private func initializeSampleDataIfNeeded() async {
         logger.info("Initializing sample data if needed", category: "Data")
         do {
-            let context = ModelContext(createModelContainer())
-            let dataManager = RoutineDataManager(context: context)
-            try dataManager.initializeSampleDataIfNeeded()
+            try RoutineDataManager.shared.initializeSampleDataIfNeeded()
             logger.info("Sample data initialization completed", category: "Data")
         } catch {
             logger.error("Failed to initialize sample data: \(error)", category: "Data")

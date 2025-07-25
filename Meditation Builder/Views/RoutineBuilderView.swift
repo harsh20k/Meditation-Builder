@@ -26,10 +26,7 @@ struct RoutineBuilderView: View {
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
-    
-    private var dataManager: RoutineDataManager {
-        RoutineDataManager(context: modelContext)
-    }
+    @Environment(\.routineDataManager) private var dataManager
     
     // Initializer for creating new routine
     init() {

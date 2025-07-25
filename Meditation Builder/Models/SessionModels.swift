@@ -941,10 +941,11 @@ class RoutinePlayerViewModel {
      *   - routine: SavedRoutine? - The routine to play (optional).
      *   - modelContext: ModelContext - The SwiftData context for persistence.
      */
-    init(routine: SavedRoutine?, modelContext: ModelContext) {
+    init(routine: SavedRoutine? = nil, modelContext: ModelContext) {
         self.routine = routine
         self.modelContext = modelContext
-        self.dataManager = RoutineDataManager(context: modelContext)
+        self.dataManager = RoutineDataManager.shared
+        
         #if DEBUG
         self.isDebugMode = true
         #else

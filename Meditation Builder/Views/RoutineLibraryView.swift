@@ -12,6 +12,7 @@ import os.log
 struct RoutineLibraryView: View {
 	@Query(sort: \SavedRoutine.lastModified, order: .reverse) private var allSavedRoutines: [SavedRoutine]
 	@Environment(\.modelContext) private var modelContext
+	@Environment(\.routineDataManager) private var dataManager
 	
 	@State private var searchText = ""
 	@State private var showingRoutineBuilder = false
@@ -21,11 +22,7 @@ struct RoutineLibraryView: View {
 	@State private var showingDeleteAlert = false
 	@State private var selectedRoutine: SavedRoutine? = nil
 	
-	private var dataManager: RoutineDataManager {
-		RoutineDataManager(context: modelContext)
-	}
-	
-		// Filter out soft-deleted routines
+	// Filter out soft-deleted routines
 	private var savedRoutines: [SavedRoutine] {
 		allSavedRoutines.filter { !$0.isDeleted }
 	}

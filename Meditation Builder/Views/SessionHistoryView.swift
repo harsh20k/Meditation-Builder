@@ -10,15 +10,14 @@ import SwiftData
 
 struct SessionHistoryView: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.routineDataManager) private var dataManager
     @Query(sort: \MeditationSession.sessionStartTime, order: .reverse) private var sessions: [MeditationSession]
-    @State private var selectedSession: MeditationSession?
+    @State private var selectedSession: MeditationSession? = nil
+    @State private var showingDeleteAlert = false
+    @State private var sessionToDelete: MeditationSession? = nil
     @State private var showingStatistics = false
     @State private var searchText = ""
     @State private var selectedFilter: SessionFilter = .all
-    
-    private var dataManager: RoutineDataManager {
-        RoutineDataManager(context: modelContext)
-    }
     
     private var filteredSessions: [MeditationSession] {
         var filtered = sessions
@@ -235,12 +234,9 @@ struct StatusBadge: View {
 // MARK: - Session Detail View
 struct SessionDetailView: View {
     let session: MeditationSession
-    @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var modelContext
-    
-    private var dataManager: RoutineDataManager {
-        RoutineDataManager(context: modelContext)
-    }
+    @Environment(\.routineDataManager) private var dataManager
+    @Environment(\.dismiss) private var dismiss
     
     // Debug computed properties
     private var debugInfo: String {

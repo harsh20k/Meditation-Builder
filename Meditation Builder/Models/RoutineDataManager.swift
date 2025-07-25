@@ -12,18 +12,30 @@ import os.log
 
 @MainActor
 class RoutineDataManager: ObservableObject {
-    private var context: ModelContext
-	
-	// MARK: - Debug Configuration
-	
-	#if DEBUG
-	private let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
-	#else
-	private let isDebugMode = false
-	#endif
+    // MARK: - Singleton
+    static let shared = RoutineDataManager()
     
-    init(context: ModelContext) {
+    private var context: ModelContext?
+    
+    // MARK: - Debug Configuration
+    
+    #if DEBUG
+    private let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
+    #else
+    private let isDebugMode = false
+    #endif
+    
+    private init() {}
+    
+    func configure(with context: ModelContext) {
         self.context = context
+    }
+    
+    private var safeContext: ModelContext {
+        guard let context = context else {
+            fatalError("RoutineDataManager not configured with ModelContext")
+        }
+        return context
     }
     
     // MARK: - CRUD Operations
@@ -42,8 +54,8 @@ class RoutineDataManager: ObservableObject {
             routine: routineToSave
         )
         
-        context.insert(savedRoutine)
-        try context.save()
+        safeContext.insert(savedRoutine)
+        try safeContext.save()
         
         logger.info("Routine saved successfully: \(savedRoutine.routineName)", category: "Routine")
     }
@@ -55,7 +67,7 @@ class RoutineDataManager: ObservableObject {
         savedRoutine.updateFromRoutine(routine)
         savedRoutine.version += 1
         
-        try context.save()
+        try safeContext.save()
         
         logger.info("Routine updated successfully: \(savedRoutine.routineName) (version: \(savedRoutine.version))", category: "Routine")
     }
@@ -68,7 +80,7 @@ class RoutineDataManager: ObservableObject {
         savedRoutine.isDeleted = true
         savedRoutine.deletedAt = Date()
         
-        try context.save()
+        try safeContext.save()
         
         logger.info("Routine soft deleted successfully: \(savedRoutine.routineName)", category: "Routine")
     }
@@ -80,12 +92,12 @@ class RoutineDataManager: ObservableObject {
         // First, delete all sessions for this routine
         let sessions = try fetchSessions(for: savedRoutine.id)
         for session in sessions {
-            context.delete(session)
+            safeContext.delete(session)
         }
         
         // Then delete the routine itself
-        context.delete(savedRoutine)
-        try context.save()
+        safeContext.delete(savedRoutine)
+        try safeContext.save()
         
         logger.info("Routine permanently deleted successfully: \(savedRoutine.routineName) (\(sessions.count) sessions removed)", category: "Routine")
     }
@@ -97,7 +109,7 @@ class RoutineDataManager: ObservableObject {
         savedRoutine.isDeleted = false
         savedRoutine.deletedAt = nil
         
-        try context.save()
+        try safeContext.save()
         
         logger.info("Routine restored successfully: \(savedRoutine.routineName)", category: "Routine")
     }
@@ -109,7 +121,7 @@ class RoutineDataManager: ObservableObject {
         logger.info("Recording play for routine: \(savedRoutine.routineName)", category: "Routine")
         
         savedRoutine.recordPlay()
-        try context.save()
+        try safeContext.save()
         
         logger.info("Play recorded for routine: \(savedRoutine.routineName) (total plays: \(savedRoutine.playCount))", category: "Routine")
     }
@@ -125,8 +137,8 @@ class RoutineDataManager: ObservableObject {
             routine: duplicatedRoutine
         )
         
-        context.insert(savedDuplicatedRoutine)
-        try context.save()
+        safeContext.insert(savedDuplicatedRoutine)
+        try safeContext.save()
         
         logger.info("Routine duplicated successfully: \(savedDuplicatedRoutine.routineName)", category: "Routine")
     }
@@ -169,7 +181,7 @@ class RoutineDataManager: ObservableObject {
             session.addBlockRecord(blockRecord)
         }
         
-        context.insert(session)
+        safeContext.insert(session)
         
         // Console logging for session creation
         print("🧘‍♀️ LEGACY SESSION CREATED")
@@ -181,7 +193,7 @@ class RoutineDataManager: ObservableObject {
         
         // Verify session was inserted
         do {
-            try context.save()
+            try safeContext.save()
             logger.info("Legacy session created and saved successfully: \(session.id)", category: "Session")
         } catch {
             logger.error("Failed to save legacy session: \(error)", category: "Session")
@@ -197,7 +209,7 @@ class RoutineDataManager: ObservableObject {
         
         if let record = session.blockRecords.first(where: { $0.blockId == blockId }) {
             record.startTime = startTime
-            try context.save()
+            try safeContext.save()
             logger.debug("Legacy block start time updated", category: "Session")
         }
     }
@@ -218,7 +230,7 @@ class RoutineDataManager: ObservableObject {
             }
             
             session.updateBlockRecord(blockId, actualDuration: finalDuration, wasSkipped: wasSkipped, endTime: endTime)
-            try context.save()
+            try safeContext.save()
             logger.debug("Legacy block end time and duration updated: \(finalDuration)s", category: "Session")
         }
     } 
@@ -236,7 +248,7 @@ class RoutineDataManager: ObservableObject {
             }
         }
         
-        try context.save()
+        try safeContext.save()
         
         // Console logging for session completion
         let status = wasDiscarded ? "DISCARDED" : "COMPLETED"
@@ -300,8 +312,8 @@ class RoutineDataManager: ObservableObject {
         logger.info("Completing session using events \(sessionRecord.id) (discarded: \(wasDiscarded))", category: "Session")
         
         // First, persist the SessionRecord
-        context.insert(sessionRecord)
-        try context.save()
+        safeContext.insert(sessionRecord)
+        try safeContext.save()
         
         // Get routine data and validate
         let routineData = routine.getRoutine()
@@ -357,14 +369,14 @@ class RoutineDataManager: ObservableObject {
         session.overshootTimeInSeconds = max(0, Int(actualMeditationTime) - plannedDurationInSeconds)
         
         // Insert session into context
-        context.insert(session)
+        safeContext.insert(session)
         
         // Record play for the routine if not discarded
         if !wasDiscarded {
             routine.recordPlay()
         }
         
-        try context.save()
+        try safeContext.save()
         
         // Console logging for session completion
         let status = wasDiscarded ? "DISCARDED" : "COMPLETED"
@@ -592,7 +604,7 @@ class RoutineDataManager: ObservableObject {
             sortBy: [SortDescriptor(\.sessionStartTime, order: .reverse)]
         )
         
-        return try context.fetch(descriptor)
+        return try safeContext.fetch(descriptor)
     }
     
     /// Fetch all sessions (for history view)
@@ -601,7 +613,7 @@ class RoutineDataManager: ObservableObject {
             sortBy: [SortDescriptor(\.sessionStartTime, order: .reverse)]
         )
         
-        return try context.fetch(descriptor)
+        return try safeContext.fetch(descriptor)
     }
     
     /// Fetch sessions within a date range
@@ -613,15 +625,15 @@ class RoutineDataManager: ObservableObject {
             sortBy: [SortDescriptor(\.sessionStartTime, order: .reverse)]
         )
         
-        return try context.fetch(descriptor)
+        return try safeContext.fetch(descriptor)
     }
     
     /// Delete a session
     func deleteSession(_ session: MeditationSession) throws {
         logger.info("Deleting session: \(session.id)", category: "Session")
         
-        context.delete(session)
-        try context.save()
+        safeContext.delete(session)
+        try safeContext.save()
         
         logger.info("Session deleted successfully", category: "Session")
     }
@@ -671,7 +683,7 @@ class RoutineDataManager: ObservableObject {
             }
         )
         
-        return try context.fetch(descriptor).first
+        return try safeContext.fetch(descriptor).first
     }
     
     /// Fetch all routines including soft-deleted ones (for admin/debug purposes)
@@ -680,7 +692,7 @@ class RoutineDataManager: ObservableObject {
             sortBy: [SortDescriptor(\.lastModified, order: .reverse)]
         )
         
-        return try context.fetch(descriptor)
+        return try safeContext.fetch(descriptor)
     }
     
     /// Fetch only soft-deleted routines (for admin/debug purposes)
@@ -692,7 +704,7 @@ class RoutineDataManager: ObservableObject {
             sortBy: [SortDescriptor(\.deletedAt, order: .reverse)]
         )
         
-        return try context.fetch(descriptor)
+        return try safeContext.fetch(descriptor)
     }
     
     // MARK: - Sample Data
@@ -704,11 +716,11 @@ class RoutineDataManager: ObservableObject {
         let sampleRoutines = Self.createSampleRoutines()
         
         for routine in sampleRoutines {
-            context.insert(routine)
+            safeContext.insert(routine)
             logger.debug("Added sample routine: \(routine.routineName)", category: "Data")
         }
         
-        try context.save()
+        try safeContext.save()
         
         logger.info("Sample routines added successfully (\(sampleRoutines.count) routines)", category: "Data")
     }
@@ -720,7 +732,7 @@ class RoutineDataManager: ObservableObject {
                 !routine.isDeleted
             }
         )
-        let count = (try? context.fetchCount(descriptor)) ?? 0
+        let count = (try? safeContext.fetchCount(descriptor)) ?? 0
         logger.debug("Current non-deleted routine count: \(count)", category: "Data")
         return count == 0
     }
@@ -791,12 +803,12 @@ class RoutineDataManager: ObservableObject {
 }
 
 // MARK: - Environment Key
-struct RoutineDataManagerKey: EnvironmentKey {
-    static let defaultValue: RoutineDataManager? = nil
+private struct RoutineDataManagerKey: EnvironmentKey {
+    static let defaultValue = RoutineDataManager.shared
 }
 
 extension EnvironmentValues {
-    var routineDataManager: RoutineDataManager? {
+    var routineDataManager: RoutineDataManager {
         get { self[RoutineDataManagerKey.self] }
         set { self[RoutineDataManagerKey.self] = newValue }
     }
