@@ -48,9 +48,14 @@ struct RoutineLibraryView: View {
 				VStack(spacing: 0) {
 					// Header
 					HStack {
-						Text(LocalizedStringKey("routine.library.title"))
-							.font(AppTheme.Typography.titleFont)
-							.foregroundColor(.white)
+						VStack {
+							Text(LocalizedStringKey("routine.library.title"))
+								.font(AppTheme.Typography.titleFont)
+								.foregroundColor(AppTheme.offWhiteText)
+							Text(LocalizedStringKey("routine.library.title"))
+								.font(AppTheme.Typography.captionFont)
+								.foregroundColor(AppTheme.lightGrey)
+						}
 					}
 					.padding(.horizontal)
 					.padding(.top, AppTheme.Spacing.titleRoom)
@@ -118,10 +123,10 @@ struct RoutineLibraryView: View {
 			Button(action: { showingRoutineBuilder = true }) {
 				ZStack {
 					Circle()
-						.fill(AppTheme.accentColor.opacity(0.3))
+						.fill(AppTheme.tabBar)
 						.frame(width: 56, height: 56)
 					Image(systemName: "plus")
-						.foregroundColor(.white.opacity(0.5))
+						.foregroundColor(.gray)
 						.font(.system(size: 28, weight: .bold))
 				}
 			}
@@ -291,7 +296,7 @@ struct RoutineCard: View {
 				                VStack(alignment: .leading, spacing: 4) {
                     Text(routine.routineName)
                         .font(isSelected ? AppTheme.Typography.headlineFontLarge : AppTheme.Typography.headlineFont)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.offWhiteText)
                         .lineLimit(2)
                     
                     Text(String.localizedStringWithFormat(
@@ -331,17 +336,17 @@ struct RoutineCard: View {
 //                                    .fill(AppTheme.accentColor.opacity(0.2))
 //                                    .frame(width: 32, height: 32)
                                 Image(systemName: iconName)
-                                    .font(.system(size: 32, weight: .medium))
+									.font(.system(size: 22, weight: .ultraLight))
                                     .foregroundColor(AppTheme.lightGrey)
                             }
                         }
                     }
-                    .padding(.horizontal, 4)
+                    .padding(.horizontal, 12)
                 }
             } else {
                 // Regular blocks summary text
                 Text(blocksSummary)
-                    .font(.system(size: 14, weight: .regular, design: .rounded))
+					.font(AppTheme.Typography.captionFont)
                     .foregroundColor(AppTheme.lightGrey)
                     .lineLimit(2)
             }
@@ -407,9 +412,9 @@ struct RoutineCard: View {
 		)
 		.overlay(
 			RoundedRectangle(cornerRadius: AppTheme.CornerRadius.extraLarge)
-				.stroke(isSelected ? AppTheme.accentColor.opacity(0.2) : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 1)
+				.stroke(isSelected ? AppTheme.accentColor.opacity(0.05) : Color.white.opacity(AppTheme.Opacity.border), lineWidth: isSelected ? 2 : 0)
 		)
-		.shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
+//		.shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
 		.onTapGesture(perform: onTap)
 	}
 }
@@ -510,7 +515,7 @@ struct LibraryEmptyStateView: View {
                     HStack {
                         Text(LocalizedStringKey("routine.library.title"))
                             .font(AppTheme.Typography.titleFont)
-                            .foregroundColor(.white)
+							.foregroundColor(AppTheme.offWhiteText)
                     }
                     .padding(.horizontal)
                     .padding(.top, AppTheme.Spacing.extraLarge)

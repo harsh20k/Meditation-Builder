@@ -10,11 +10,13 @@ import SwiftUI
 // MARK: - App Theme
 struct AppTheme {
     // MARK: - Colors
-    static let backgroundColor = Color(red: 20/255, green: 21/255, blue: 24/255) // #141518
-	static let cardColor = Color(red: 26/255, green: 27/255, blue: 29/255) // #222326
+    static let backgroundColor = Color(red: 20/255, green: 22/255, blue: 20/255) // #141518
+	static let cardColor = Color(red: 15/255, green: 17/255, blue: 17/255) // #
 //	static let cardColor = Color(red: 30/255, green: 32/255, blue: 32/255) // #
 	static let searchBar = Color(red: 35/255, green: 37/255, blue: 40/255) //232528
 	static let tabBar = Color(red: 35/255, green: 36/255, blue: 39/255) //232427
+	static let offWhiteText = Color(red: 200/255, green: 200/255, blue: 200/255) //232427
+
 
 //	static let accentColor = Color(red: 221/255, green: 97/255, blue: 27/255) // #dd611b (orange)
 	static let accentColor = Color(red: 77/255, green: 181/255, blue: 172/255) // #4DB6AC (Teal)
@@ -32,7 +34,7 @@ struct AppTheme {
 	
 	struct Typography {
 			// Big, bold serif for main titles
-		static let titleFont          = Font.system(size: 25, weight: .thin,   design: .serif)
+		static let titleFont          = Font.system(size: 25, weight: .light,   design: .serif)
 		
 			// Medium-weight serif for large headlines
 		static let headlineFontLarge  = Font.system(size: 18, weight: .medium, design: .serif)
@@ -41,13 +43,13 @@ struct AppTheme {
 		static let headlineFont       = Font.system(size: 15, weight: .light, design: .serif)
 		
 			// Clean, readable sans-serif for body text
-		static let bodyFont           = Font.system(size: 16, weight: .regular, design: .default)
+		static let bodyFont           = Font.system(size: 16, weight: .regular, design: .serif)
 		
 			// Slightly smaller, semibold sans-serif for tappable buttons
-		static let buttonFont         = Font.system(size: 16, weight: .semibold, design: .default)
+		static let buttonFont         = Font.system(size: 16, weight: .semibold, design: .serif)
 		
 			// Light, compact sans-serif for captions & metadata
-		static let captionFont        = Font.system(size: 14, weight: .light,   design: .default)
+		static let captionFont        = Font.system(size: 14, weight: .light,   design: .serif)
 	}
     
     // MARK: - Spacing
