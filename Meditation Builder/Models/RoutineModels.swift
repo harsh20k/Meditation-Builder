@@ -89,6 +89,10 @@ final class MeditationBlock: Identifiable, DragulaItem {
     /// Associated media resources (cascade deleted when block is deleted)
     @Relationship(deleteRule: .cascade) var media: [MediaResource]
     
+    /// Themes associated with this block
+    @Relationship(deleteRule: .nullify, inverse: \Theme.blocks)
+    var themes: [Theme] = []
+    
     /**
      * Initializes a new meditation block.
      *
@@ -200,6 +204,98 @@ final class MeditationBlock: Identifiable, DragulaItem {
             case .custom: return 5
             }
         }
+    }
+}
+
+// MARK: - Theme
+
+/**
+ * Defines the type of meditation content a theme can be applied to.
+ */
+enum ThemeType: String, Codable {
+    /// Theme can only be applied to routines
+    case routine = "routine"
+    /// Theme can only be applied to blocks
+    case block = "block"
+    /// Theme can be applied to both routines and blocks
+    case both = "both"
+}
+
+/**
+ * SwiftData model representing a theme that can be applied to routines or blocks.
+ * 
+ * Themes provide a way to categorize and organize meditation content. They are
+ * designed to be extensible for future features while maintaining a simple initial
+ * implementation.
+ *
+ * ## Properties:
+ * - `id`: Unique identifier
+ * - `name`: Display name for the theme
+ * - `icon`: SF Symbol name for visual representation
+ * - `themeType`: What type of content this theme can be applied to
+ * - `color`: Theme color for visual distinction
+ * - `version`: Schema version for future migrations
+ * - `metadata`: Extensible properties for future features
+ */
+@Model
+final class Theme: Identifiable {
+    /// Unique identifier for the theme
+    var id: UUID
+    
+    /// Display name for the theme
+    var name: String
+    
+    /// SF Symbol name for visual representation
+    var icon: String
+    
+    /// What type of content this theme can be applied to
+    var themeType: ThemeType
+    
+    /// Theme color stored as hex string (e.g. "#FF0000" for red)
+    var colorHex: String = "#0000FF"  // Default to blue
+    
+    /// Schema version for future migrations
+    var version: Int = 1
+    
+    /// Extensible properties for future features
+    var metadata: [String: String] = [:]
+    
+    /// Routines associated with this theme
+    @Relationship(deleteRule: .nullify)
+    var routines: [SavedRoutine] = []
+    
+    /// Blocks associated with this theme
+    @Relationship(deleteRule: .nullify)
+    var blocks: [MeditationBlock] = []
+    
+    /**
+     * Initializes a new theme.
+     *
+     * - Parameters:
+     *   - id: Unique identifier (auto-generated if not provided)
+     *   - name: Display name for the theme
+     *   - icon: SF Symbol name
+     *   - themeType: What type of content this theme can be applied to
+     *   - color: Theme color
+     *   - version: Schema version (defaults to 1)
+     *   - metadata: Additional properties (defaults to empty)
+     */
+    init(
+        id: UUID = UUID(),
+        name: String,
+        icon: String,
+        themeType: ThemeType,
+        color: String = "#0000FF",
+        version: Int = 1,
+        metadata: [String: String] = [:]
+    ) {
+        self.id = id
+        self.name = name
+        self.icon = icon
+        self.themeType = themeType
+        self.colorHex = color
+        self.version = version
+        self.metadata = metadata
     }
 }
 
@@ -446,8 +542,9 @@ final class SavedRoutine: Identifiable {
     /// When the routine was soft deleted (nil if not deleted)
     var deletedAt: Date?
     
-    /// Whether this routine is marked as favorite
-    var isFavorite: Bool = false
+    /// Themes associated with this routine
+    @Relationship(deleteRule: .nullify, inverse: \Theme.routines)
+    var themes: [Theme] = []
     
     // MARK: - Conversion Methods
     
