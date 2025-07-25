@@ -466,7 +466,82 @@ struct LibraryEmptyStateView: View {
 
 // MARK: - Preview
 #Preview("Routine Library") {
-	RoutineLibraryView()
+    struct PreviewRoutineLibrary: View {
+        @State private var savedRoutines: [SavedRoutine] = [
+            SavedRoutine(
+                routine: Routine(
+                    name: "Morning Meditation",
+                    icon: "sun.max.fill",
+                    blocks: [
+                        RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                        RoutineBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell),
+                        RoutineBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl)
+                    ],
+                    openingBell: .softBell,
+                    closingBell: .tibetanBowl
+                )
+            ),
+            SavedRoutine(
+                routine: Routine(
+                    name: "Evening Wind Down",
+                    icon: "moon.stars.fill",
+                    blocks: [
+                        RoutineBlock(name: "Body Scan", durationInMinutes: 10, type: .bodyScan, blockStartBell: .silent),
+                        RoutineBlock(name: "Deep Relaxation", durationInMinutes: 15, type: .silence, blockStartBell: .tibetanBowl)
+                    ],
+                    openingBell: .tibetanBowl,
+                    closingBell: .softBell
+                )
+            ),
+            SavedRoutine(
+                routine: Routine(
+                    name: "Quick Focus",
+                    icon: "target",
+                    blocks: [
+                        RoutineBlock(name: "Mindful Breathing", durationInMinutes: 3, type: .breathwork, blockStartBell: .silent),
+                        RoutineBlock(name: "Present Moment", durationInMinutes: 5, type: .silence, blockStartBell: .digitalChime)
+                    ],
+                    openingBell: .digitalChime,
+                    closingBell: .digitalChime
+                )
+            )
+        ]
+        
+        var body: some View {
+            ZStack {
+                AppTheme.backgroundColor.ignoresSafeArea()
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        Text(LocalizedStringKey("routine.library.title"))
+                            .font(AppTheme.Typography.titleFont)
+                            .foregroundColor(.white)
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, AppTheme.Spacing.extraLarge)
+                    .padding(.bottom, AppTheme.Spacing.small)
+                    
+                    ScrollView {
+                        VStack(spacing: AppTheme.Spacing.large) {
+                            ForEach(savedRoutines) { routine in
+                                RoutineCard(
+                                    routine: routine,
+                                    isSelected: false,
+                                    onPlay: {},
+                                    onEdit: {},
+                                    onDelete: {},
+                                    onTap: {}
+                                )
+                            }
+                        }
+                        .padding()
+                    }
+                }
+            }
+        }
+    }
+    
+    return PreviewRoutineLibrary()
 }
 
 #Preview("Empty State") {

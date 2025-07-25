@@ -5,6 +5,26 @@
 //  Created by harsh  on 09/07/25.
 //
 
+     // In RoutineDataManager.swift
+     /// ⚠️ CRITICAL: DO NOT CREATE NEW MODEL CONTAINERS
+     /// This is the single source of truth for data persistence
+     /// Creating new containers will cause data loss
+     /// 
+     /// Always use:
+     /// @Environment(\.modelContext) or
+     /// RoutineDataManager.shared
+
+   /// ModelContainer Safety Guidelines:
+   /// 1. NEVER create new ModelContainer instances at runtime
+   /// 2. ALWAYS use @Environment(\.modelContext)
+   /// 3. ALWAYS use RoutineDataManager.shared
+   /// 4. Container creation is restricted to app initialization
+   ///
+   /// ⚠️ Violation will cause:
+   /// - Data truncation
+   /// - Schema conflicts
+   /// - Permanent data loss
+
 import Foundation
 import SwiftData
 import SwiftUI

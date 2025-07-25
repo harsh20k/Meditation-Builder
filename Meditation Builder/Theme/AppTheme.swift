@@ -11,7 +11,7 @@ import SwiftUI
 struct AppTheme {
     // MARK: - Colors
     static let backgroundColor = Color(red: 20/255, green: 21/255, blue: 24/255) // #141518
-	static let cardColor = Color(red: 34/255, green: 35/255, blue: 38/255) // #222326
+	static let cardColor = Color(red: 26/255, green: 27/255, blue: 29/255) // #222326
 //	static let cardColor = Color(red: 30/255, green: 32/255, blue: 32/255) // #
 	static let searchBar = Color(red: 35/255, green: 37/255, blue: 40/255) //232528
 	static let tabBar = Color(red: 35/255, green: 36/255, blue: 39/255) //232427
@@ -32,13 +32,13 @@ struct AppTheme {
 	
 	struct Typography {
 			// Big, bold serif for main titles
-		static let titleFont          = Font.system(size: 32, weight: .bold,   design: .serif)
+		static let titleFont          = Font.system(size: 25, weight: .thin,   design: .serif)
 		
 			// Medium-weight serif for large headlines
-		static let headlineFontLarge  = Font.system(size: 22, weight: .medium, design: .serif)
+		static let headlineFontLarge  = Font.system(size: 18, weight: .medium, design: .serif)
 		
 			// Regular serif for section headers
-		static let headlineFont       = Font.system(size: 18, weight: .regular, design: .serif)
+		static let headlineFont       = Font.system(size: 15, weight: .light, design: .serif)
 		
 			// Clean, readable sans-serif for body text
 		static let bodyFont           = Font.system(size: 16, weight: .regular, design: .default)
