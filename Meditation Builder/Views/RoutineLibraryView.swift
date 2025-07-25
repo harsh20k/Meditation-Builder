@@ -423,6 +423,8 @@ struct CompactRoutineCard: View {
     var onEdit: () -> Void
     var onDelete: () -> Void
     
+    @State private var showingMenu = false
+    
     private var totalDuration: Int {
         routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
     }
@@ -435,29 +437,42 @@ struct CompactRoutineCard: View {
                     Image(systemName: routine.routineIcon)
                         .font(.system(size: 24, weight: .ultraLight))
                         .foregroundColor(AppTheme.accentColor)
-					Text(String.localizedStringWithFormat(
-						String(localized: "routine.duration.format.simplified"),
-						totalDuration
-					))
-					.font(AppTheme.Typography.captionFont)
-					.foregroundColor(AppTheme.lightGrey)
+                    Text(String.localizedStringWithFormat(
+                        String(localized: "routine.duration.format.simplified"),
+                        totalDuration
+                    ))
+                    .font(AppTheme.Typography.captionFont)
+                    .foregroundColor(AppTheme.lightGrey)
                     Spacer()
                     
                     Menu {
-                        Button(action: onEdit) {
-                            Label(LocalizedStringKey("button.edit"), systemImage: "pencil")
+                        Group {
+                            Button(action: onEdit) {
+                                Text(LocalizedStringKey("button.edit"))
+                                    .font(AppTheme.Typography.bodyFont)
+                            }
+                            .foregroundColor(AppTheme.lightGrey)
+                            
+                            Button(action: onDelete) {
+                                Text(LocalizedStringKey("button.delete"))
+                                    .font(AppTheme.Typography.bodyFont)
+                            }
+                            .foregroundColor(Color.red.opacity(0.7))
                         }
-                        Button(role: .destructive, action: onDelete) {
-                            Label(LocalizedStringKey("button.delete"), systemImage: "trash")
-                        }
+                        .padding(.vertical, 2)
+                        .background(AppTheme.backgroundColor)
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 16, weight: .medium))
+                            .frame(width: 32, height: 32)
+                            .clipShape(Circle())
                             .foregroundColor(AppTheme.lightGrey)
-                            .padding(8)
+                            .background(Color.black.opacity(0.3))
                     }
+                    .menuStyle(CustomMenuStyle())
                 }
-				Spacer()
+                
+                Spacer()
                 
                 // Name and Duration
                 Text(routine.routineName)
@@ -465,14 +480,23 @@ struct CompactRoutineCard: View {
                     .foregroundColor(AppTheme.offWhiteText)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
-                
             }
             .padding(AppTheme.Spacing.large)
-			.frame(maxWidth: .infinity, minHeight: 150.0, alignment: .leading)
+            .frame(maxWidth: .infinity, minHeight: 150.0, alignment: .leading)
             .background(AppTheme.cardColor)
-			.cornerRadius(AppTheme.CornerRadius.medium)
+            .cornerRadius(AppTheme.CornerRadius.medium)
         }
         .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Custom Menu Style
+struct CustomMenuStyle: MenuStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        Menu(configuration)
+            .background(AppTheme.backgroundColor)
+            .foregroundColor(AppTheme.lightGrey)
+            .menuIndicator(.hidden)
     }
 }
 
