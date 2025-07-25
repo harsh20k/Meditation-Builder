@@ -94,22 +94,19 @@ struct RoutineLibraryView: View {
 					if filteredRoutines.isEmpty {
 						LibraryEmptyStateView(searchText: searchText)
 					} else {
-						LazyVStack(spacing: AppTheme.Spacing.large) {
+						LazyVGrid(columns: [
+							GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
+							GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
+						], spacing: AppTheme.Spacing.medium) {
 							ForEach(filteredRoutines) { routine in
-								RoutineCard(
+								CompactRoutineCard(
 									routine: routine,
-									isSelected: selectedRoutine?.id == routine.id,
 									onPlay: {
 										playingRoutine = routine
 										recordPlay(for: routine)
 									},
 									onEdit: { editingRoutine = routine },
-									onDelete: { deleteRoutine(routine) },
-									onTap: {
-										withAnimation(.spring(duration: 0.35)) {
-											selectedRoutine = routine
-										}
-									}
+									onDelete: { deleteRoutine(routine) }
 								)
 							}
 						}
@@ -419,6 +416,66 @@ struct RoutineCard: View {
 	}
 }
 
+// MARK: - Compact Routine Card
+struct CompactRoutineCard: View {
+    let routine: SavedRoutine
+    var onPlay: () -> Void
+    var onEdit: () -> Void
+    var onDelete: () -> Void
+    
+    private var totalDuration: Int {
+        routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
+    }
+    
+    var body: some View {
+        Button(action: onPlay) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+                // Icon and Menu
+                HStack {
+                    Image(systemName: routine.routineIcon)
+                        .font(.system(size: 24, weight: .ultraLight))
+                        .foregroundColor(AppTheme.accentColor)
+					Text(String.localizedStringWithFormat(
+						String(localized: "routine.duration.format.simplified"),
+						totalDuration
+					))
+					.font(AppTheme.Typography.captionFont)
+					.foregroundColor(AppTheme.lightGrey)
+                    Spacer()
+                    
+                    Menu {
+                        Button(action: onEdit) {
+                            Label(LocalizedStringKey("button.edit"), systemImage: "pencil")
+                        }
+                        Button(role: .destructive, action: onDelete) {
+                            Label(LocalizedStringKey("button.delete"), systemImage: "trash")
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(AppTheme.lightGrey)
+                            .padding(8)
+                    }
+                }
+				Spacer()
+                
+                // Name and Duration
+                Text(routine.routineName)
+                    .font(AppTheme.Typography.headlineFont)
+                    .foregroundColor(AppTheme.offWhiteText)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.leading)
+                
+            }
+            .padding(AppTheme.Spacing.large)
+			.frame(maxWidth: .infinity, minHeight: 150.0, alignment: .leading)
+            .background(AppTheme.cardColor)
+			.cornerRadius(AppTheme.CornerRadius.medium)
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
 // MARK: - Library Empty State View
 struct LibraryEmptyStateView: View {
 	let searchText: String
@@ -513,24 +570,30 @@ struct LibraryEmptyStateView: View {
                 VStack(spacing: 0) {
                     // Header
                     HStack {
-                        Text(LocalizedStringKey("routine.library.title"))
-                            .font(AppTheme.Typography.titleFont)
-							.foregroundColor(AppTheme.offWhiteText)
+                        VStack {
+                            Text(LocalizedStringKey("routine.library.title"))
+                                .font(AppTheme.Typography.titleFont)
+                                .foregroundColor(AppTheme.offWhiteText)
+                            Text(LocalizedStringKey("routine.library.title"))
+                                .font(AppTheme.Typography.captionFont)
+                                .foregroundColor(AppTheme.lightGrey)
+                        }
                     }
                     .padding(.horizontal)
                     .padding(.top, AppTheme.Spacing.extraLarge)
                     .padding(.bottom, AppTheme.Spacing.small)
                     
                     ScrollView {
-                        VStack(spacing: AppTheme.Spacing.large) {
+                        LazyVGrid(columns: [
+                            GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
+                            GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
+                        ], spacing: AppTheme.Spacing.medium) {
                             ForEach(savedRoutines) { routine in
-                                RoutineCard(
+                                CompactRoutineCard(
                                     routine: routine,
-                                    isSelected: false,
                                     onPlay: {},
                                     onEdit: {},
-                                    onDelete: {},
-                                    onTap: {}
+                                    onDelete: {}
                                 )
                             }
                         }
@@ -545,82 +608,64 @@ struct LibraryEmptyStateView: View {
 }
 
 #Preview("Empty State") {
-	struct EmptyLibraryView: View {
-		@State private var savedRoutines: [SavedRoutine] = []
-		@State private var searchText = ""
-		@State private var showingRoutineBuilder = false
-		@State private var editingRoutine: SavedRoutine? = nil
-		@State private var playingRoutine: SavedRoutine? = nil
-		@State private var selectedTab: TabSelection = .library
-		
-		var body: some View {
-			ZStack(alignment: .bottomTrailing) {
-				AppTheme.backgroundColor.ignoresSafeArea()
-				
-				VStack(spacing: 0) {
-						// Header
-					HStack {
-						Image(systemName: "books.vertical.fill")
-							.foregroundColor(AppTheme.accentColor)
-							.font(.system(size: 28, weight: .bold))
-						Text(LocalizedStringKey("routine.library.title"))
-							.font(AppTheme.Typography.titleFont)
-							.foregroundColor(.white)
-						Spacer()
-					}
-					.padding(.horizontal)
-					.padding(.top, AppTheme.Spacing.extraLarge)
-					.padding(.bottom, AppTheme.Spacing.small)
-					
-						// Search Bar
-					if false {
-						HStack {
-							Image(systemName: "magnifyingglass")
-								.foregroundColor(AppTheme.accentColor)
-								.font(.system(size: 16, weight: .medium))
-							
-							TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
-								.foregroundColor(.white)
-								.font(AppTheme.Typography.bodyFont)
-						}
-						.padding(AppTheme.Spacing.medium)
-						.background(AppTheme.cardColor)
-						.cornerRadius(AppTheme.CornerRadius.large)
-						.padding(.horizontal)
-						.padding(.bottom, AppTheme.Spacing.large)
-						
-					}
-					
-					LibraryEmptyStateView(searchText: searchText)
-					
-					Spacer()
-				}
-				
-					// Floating Create Button
-				Button(action: { showingRoutineBuilder = true }) {
-					ZStack {
-						Circle()
-							.fill(AppTheme.accentColor.opacity(0.3))
-							.frame(width: 56, height: 56)
-						Image(systemName: "plus")
-							.foregroundColor(.white)
-							.font(.system(size: 28, weight: .bold))
-					}
-				}
-				.padding(.trailing, AppTheme.Spacing.section)
-				.padding(.bottom, 112)
-				.shadow(radius: 8)
-				
-					// Tab Bar
-				VStack {
-					Spacer()
-					CustomTabBar(selectedTab: $selectedTab)
-				}
-			}
-		}
-	}
-	
-	return EmptyLibraryView()
+    struct EmptyLibraryView: View {
+        @State private var savedRoutines: [SavedRoutine] = []
+        @State private var searchText = ""
+        @State private var showingRoutineBuilder = false
+        @State private var editingRoutine: SavedRoutine? = nil
+        @State private var playingRoutine: SavedRoutine? = nil
+        @State private var selectedTab: TabSelection = .library
+        
+        var body: some View {
+            ZStack(alignment: .bottomTrailing) {
+                AppTheme.backgroundColor.ignoresSafeArea()
+                
+                VStack(spacing: 0) {
+                    // Header
+                    HStack {
+                        VStack {
+                            Text(LocalizedStringKey("routine.library.title"))
+                                .font(AppTheme.Typography.titleFont)
+                                .foregroundColor(AppTheme.offWhiteText)
+                            Text(LocalizedStringKey("routine.library.title"))
+                                .font(AppTheme.Typography.captionFont)
+                                .foregroundColor(AppTheme.lightGrey)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, AppTheme.Spacing.extraLarge)
+                    .padding(.bottom, AppTheme.Spacing.small)
+                    
+                    LibraryEmptyStateView(searchText: searchText)
+                    
+                    Spacer()
+                }
+                
+                // Floating Create Button
+                Button(action: { showingRoutineBuilder = true }) {
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.tabBar)
+                            .frame(width: 56, height: 56)
+                        Image(systemName: "plus")
+                            .foregroundColor(.gray)
+                            .font(.system(size: 28, weight: .bold))
+                    }
+                }
+                .padding(.trailing, AppTheme.Spacing.section)
+                .padding(.bottom, 112)
+                .shadow(radius: 8)
+                
+                // Tab Bar
+                VStack {
+                    Spacer()
+                    CustomTabBar(selectedTab: $selectedTab)
+                }
+            }
+        }
+    }
+    
+    return EmptyLibraryView()
 }
 
 #Preview("Single Routine Card") {
@@ -654,4 +699,53 @@ struct LibraryEmptyStateView: View {
 		)
 		.padding()
 	}
+}
+
+#Preview("Compact Routine Card Grid") {
+    ZStack {
+        AppTheme.backgroundColor.ignoresSafeArea()
+        
+        let sampleRoutines = [
+            SavedRoutine(
+                routine: Routine(
+                    name: "Morning Meditation",
+                    icon: "sun.max.fill",
+                    blocks: [
+                        RoutineBlock(name: "Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent),
+                        RoutineBlock(name: "Breathwork", durationInMinutes: 10, type: .breathwork, blockStartBell: .softBell)
+                    ],
+                    openingBell: .softBell,
+                    closingBell: .tibetanBowl
+                )
+            ),
+            SavedRoutine(
+                routine: Routine(
+                    name: "Quick Focus",
+                    icon: "target",
+                    blocks: [
+                        RoutineBlock(name: "Mindful Breathing", durationInMinutes: 3, type: .breathwork, blockStartBell: .silent)
+                    ],
+                    openingBell: .digitalChime,
+                    closingBell: .digitalChime
+                )
+            )
+        ]
+        
+        ScrollView {
+            LazyVGrid(columns: [
+                GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
+                GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
+            ], spacing: AppTheme.Spacing.medium) {
+                ForEach(sampleRoutines) { routine in
+                    CompactRoutineCard(
+                        routine: routine,
+                        onPlay: {},
+                        onEdit: {},
+                        onDelete: {}
+                    )
+                }
+            }
+            .padding()
+        }
+    }
 }
