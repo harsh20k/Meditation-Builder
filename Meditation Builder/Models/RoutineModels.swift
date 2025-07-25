@@ -57,6 +57,7 @@ import Dragula
  * - `blockStartBell`: Bell sound to play when block starts
  * - `blockIcon`: SF Symbol icon for visual representation
  * - `orderIndex`: Position within the routine
+ * - `isFavorite`: Whether this block is marked as favorite
  * - `media`: Associated media resources (cascade deleted)
  */
 @Model
@@ -82,6 +83,9 @@ final class MeditationBlock: Identifiable, DragulaItem {
     /// Position within the routine (defaults to 0)
     var orderIndex: Int = 0
     
+    /// Whether this block is marked as favorite
+    var isFavorite: Bool = false
+    
     /// Associated media resources (cascade deleted when block is deleted)
     @Relationship(deleteRule: .cascade) var media: [MediaResource]
     
@@ -96,9 +100,10 @@ final class MeditationBlock: Identifiable, DragulaItem {
      *   - blockStartBell: Bell sound for block start (defaults to .default)
      *   - blockIcon: SF Symbol icon name (defaults to type.icon if nil)
      *   - orderIndex: Position within routine (defaults to 0)
+     *   - isFavorite: Whether this block is marked as favorite (defaults to false)
      *   - media: Associated media resources (defaults to empty array)
      */
-    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, orderIndex: Int = 0, media: [MediaResource] = []) {
+    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, orderIndex: Int = 0, isFavorite: Bool = false, media: [MediaResource] = []) {
         self.id = id
         self.name = name
         self.durationInMinutes = durationInMinutes
@@ -106,6 +111,7 @@ final class MeditationBlock: Identifiable, DragulaItem {
         self.blockStartBell = blockStartBell
         self.blockIcon = blockIcon ?? type.icon
         self.orderIndex = orderIndex
+        self.isFavorite = isFavorite
         self.media = media
     }
     
@@ -270,6 +276,9 @@ struct RoutineBlock: Identifiable, Equatable, Codable, DragulaItem {
     /// Associated media resources
     var media: [MediaInfo]
     
+    /// Whether this block is marked as favorite
+    var isFavorite: Bool = false
+    
     /**
      * Initializes a new routine block value.
      *
@@ -281,8 +290,9 @@ struct RoutineBlock: Identifiable, Equatable, Codable, DragulaItem {
      *   - blockStartBell: Bell sound for block start (defaults to .default)
      *   - blockIcon: SF Symbol icon name (defaults to type.icon if nil)
      *   - media: Associated media resources (defaults to empty array)
+     *   - isFavorite: Whether this block is marked as favorite (defaults to false)
      */
-    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: MeditationBlock.BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, media: [MediaInfo] = []) {
+    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: MeditationBlock.BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, media: [MediaInfo] = [], isFavorite: Bool = false) {
         self.id = id
         self.name = name
         self.durationInMinutes = durationInMinutes
@@ -290,6 +300,7 @@ struct RoutineBlock: Identifiable, Equatable, Codable, DragulaItem {
         self.blockStartBell = blockStartBell
         self.blockIcon = blockIcon ?? type.icon
         self.media = media
+        self.isFavorite = isFavorite
     }
 }
 
@@ -389,6 +400,7 @@ struct Routine: Equatable, Codable {
  * - `lastPlayed`: When the routine was last played
  * - `isDeleted`: Soft delete flag
  * - `deletedAt`: When the routine was soft deleted
+ * - `isFavorite`: Whether this routine is marked as favorite
  */
 @Model
 final class SavedRoutine: Identifiable {
@@ -434,6 +446,9 @@ final class SavedRoutine: Identifiable {
     /// When the routine was soft deleted (nil if not deleted)
     var deletedAt: Date?
     
+    /// Whether this routine is marked as favorite
+    var isFavorite: Bool = false
+    
     // MARK: - Conversion Methods
     
     /**
@@ -464,7 +479,8 @@ final class SavedRoutine: Identifiable {
                             fileName: media.fileName,
                             url: media.url
                         )
-                    }
+                    },
+                    isFavorite: block.isFavorite
                 )
             },
             openingBell: openingBell,
@@ -531,6 +547,7 @@ final class SavedRoutine: Identifiable {
                 existingBlock.blockStartBell = routineBlock.blockStartBell
                 existingBlock.blockIcon = routineBlock.blockIcon
                 existingBlock.orderIndex = index  // Set the order based on position
+                existingBlock.isFavorite = routineBlock.isFavorite
                 
                 // Update media for this block
                 updateBlockMedia(existingBlock, from: routineBlock.media)
@@ -547,6 +564,7 @@ final class SavedRoutine: Identifiable {
                     blockStartBell: routineBlock.blockStartBell,
                     blockIcon: routineBlock.blockIcon,
                     orderIndex: index,
+                    isFavorite: routineBlock.isFavorite,
                     media: routineBlock.media.enumerated().map { (mediaIndex, mediaInfo) in
                         MediaResource(
                             id: mediaInfo.id,
@@ -685,6 +703,7 @@ final class SavedRoutine: Identifiable {
                 blockStartBell: routineBlock.blockStartBell,
                 blockIcon: routineBlock.blockIcon,
                 orderIndex: blockIndex,
+                isFavorite: routineBlock.isFavorite,
                 media: routineBlock.media.enumerated().map { (mediaIndex, mediaInfo) in
                     MediaResource(
                         id: mediaInfo.id,
