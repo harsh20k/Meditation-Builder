@@ -437,6 +437,9 @@ struct Routine: Equatable, Codable {
     /// Associated media resources for the routine (empty for MVP)
     var media: [MediaInfo]
     
+    /// Whether this is a system-provided routine that cannot be deleted
+    var isSystemRoutine: Bool
+    
     /**
      * Initializes a new routine.
      *
@@ -447,14 +450,16 @@ struct Routine: Equatable, Codable {
      *   - openingBell: Bell sound for routine start (defaults to .softBell)
      *   - closingBell: Bell sound for routine end (defaults to .softBell)
      *   - media: Associated media resources (defaults to empty array)
+     *   - isSystemRoutine: Whether this is a system routine (defaults to false)
      */
-    init(name: String, icon: String = "sun.max.fill", blocks: [RoutineBlock], openingBell: BellSound = .softBell, closingBell: BellSound = .softBell, media: [MediaInfo] = []) {
+    init(name: String, icon: String = "sun.max.fill", blocks: [RoutineBlock], openingBell: BellSound = .softBell, closingBell: BellSound = .softBell, media: [MediaInfo] = [], isSystemRoutine: Bool = false) {
         self.name = name
         self.icon = icon
         self.blocks = blocks
         self.openingBell = openingBell
         self.closingBell = closingBell
         self.media = media
+        self.isSystemRoutine = isSystemRoutine
     }
     
     /**
@@ -467,7 +472,8 @@ struct Routine: Equatable, Codable {
         lhs.blocks == rhs.blocks &&
         lhs.openingBell == rhs.openingBell &&
         lhs.closingBell == rhs.closingBell &&
-        lhs.media == rhs.media
+        lhs.media == rhs.media &&
+        lhs.isSystemRoutine == rhs.isSystemRoutine
     }
 }
 
@@ -497,6 +503,7 @@ struct Routine: Equatable, Codable {
  * - `isDeleted`: Soft delete flag
  * - `deletedAt`: When the routine was soft deleted
  * - `isFavorite`: Whether this routine is marked as favorite
+ * - `isSystemRoutine`: Whether this is a system-provided routine that cannot be deleted
  */
 @Model
 final class SavedRoutine: Identifiable {
@@ -544,6 +551,9 @@ final class SavedRoutine: Identifiable {
     
     /// Whether this routine is marked as favorite
     var isFavorite: Bool = false
+    
+    /// Whether this is a system-provided routine that cannot be deleted
+    var isSystemRoutine: Bool = false
     
     /// Theme this routine belongs to (optional)
     @Relationship(deleteRule: .nullify, inverse: \Theme.routines)
@@ -593,7 +603,8 @@ final class SavedRoutine: Identifiable {
                     fileName: media.fileName,
                     url: media.url
                 )
-            }
+            },
+            isSystemRoutine: isSystemRoutine
         )
     }
     
@@ -785,6 +796,7 @@ final class SavedRoutine: Identifiable {
      *   - playCount: Number of times played (defaults to 0)
      *   - lastPlayed: When last played (defaults to nil)
      *   - isFavorite: Whether this routine is marked as favorite (defaults to false)
+     *   - isSystemRoutine: Whether this is a system-provided routine (inherited from routine)
      */
     init(
         id: UUID = UUID(),
@@ -794,7 +806,8 @@ final class SavedRoutine: Identifiable {
         version: Int = 1,
         playCount: Int = 0,
         lastPlayed: Date? = nil,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        isSystemRoutine: Bool = false
     ) {
         self.id = id
         self.routineName = routine.name
@@ -838,6 +851,7 @@ final class SavedRoutine: Identifiable {
         self.playCount = playCount
         self.lastPlayed = lastPlayed
         self.isFavorite = isFavorite
+        self.isSystemRoutine = isSystemRoutine
     }
     
     // MARK: - Helper Methods

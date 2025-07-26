@@ -812,6 +812,9 @@ class RoutineDataManager: ObservableObject {
         } else {
             logger.debug("Sample data already exists, skipping initialization", category: "Data")
         }
+        
+        // Initialize system routine (ensures it exists for all users)
+        try initializeSystemRoutineIfNeeded()
     }
     
     private static func createSampleRoutines() -> [SavedRoutine] {
@@ -866,6 +869,94 @@ class RoutineDataManager: ObservableObject {
         quickFocus.lastPlayed = Date().addingTimeInterval(-1800) // 30 minutes ago
         
         return [morningMeditation, eveningWindDown, quickFocus]
+    }
+    
+    // MARK: - System Routine Management
+    
+    /// Initialize the system routine if it doesn't exist
+    /// This method ensures there's always a special system routine available
+    ///
+    /// ⚠️ Should only be called ONCE at app launch, after SwiftData is initialized.
+    func initializeSystemRoutineIfNeeded() throws {
+        logger.info("Checking for system routine initialization", category: "SystemRoutine")
+        
+        // Check UserDefaults for existing system routine ID
+        let userDefaults = UserDefaults.standard
+        let systemRoutineIDKey = "SystemRoutineID"
+        
+        if let existingSystemRoutineID = userDefaults.string(forKey: systemRoutineIDKey),
+           let uuid = UUID(uuidString: existingSystemRoutineID) {
+            // Verify the system routine still exists in the database
+            if let existingRoutine = try fetchRoutine(by: uuid) {
+                logger.info("System routine already exists: \(existingRoutine.routineName)", category: "SystemRoutine")
+                return
+            } else {
+                logger.warning("System routine ID found in UserDefaults but routine not found in database, will create new one", category: "SystemRoutine")
+                // Remove invalid ID from UserDefaults
+                userDefaults.removeObject(forKey: systemRoutineIDKey)
+            }
+        }
+        
+        // Create the system routine
+        logger.info("Creating new system routine", category: "SystemRoutine")
+        let systemRoutine = createSystemRoutine()
+        
+        // Insert into database
+        safeContext.insert(systemRoutine)
+        try safeContext.save()
+        
+        // Store the system routine ID in UserDefaults ONLY after successful save
+        userDefaults.set(systemRoutine.id.uuidString, forKey: systemRoutineIDKey)
+        
+        logger.info("System routine created and stored successfully: \(systemRoutine.routineName) (ID: \(systemRoutine.id))", category: "SystemRoutine")
+    }
+    
+    /// Create the system routine with predefined content
+    private func createSystemRoutine() -> SavedRoutine {
+        let systemRoutine = SavedRoutine(
+            routine: Routine(
+                name: "Pure Silence",
+                icon: "bell.slash.fill",
+                blocks: [
+                    RoutineBlock(
+                        name: "Silence",
+                        durationInMinutes: 30,
+                        type: .silence,
+                        blockStartBell: .silent
+                    )
+                ],
+                openingBell: .softBell,
+                closingBell: .tibetanBowl,
+                isSystemRoutine: true
+            ),
+            isSystemRoutine: true
+        )
+        
+        return systemRoutine
+    }
+    
+    /// Get the system routine if it exists
+    func getSystemRoutine() -> SavedRoutine? {
+        let userDefaults = UserDefaults.standard
+        let systemRoutineIDKey = "SystemRoutineID"
+        
+        guard let systemRoutineIDString = userDefaults.string(forKey: systemRoutineIDKey),
+              let systemRoutineID = UUID(uuidString: systemRoutineIDString) else {
+            logger.warning("No system routine ID found in UserDefaults", category: "SystemRoutine")
+            return nil
+        }
+        
+        do {
+            return try fetchRoutine(by: systemRoutineID)
+        } catch {
+            logger.error("Failed to fetch system routine: \(error)", category: "SystemRoutine")
+            return nil
+        }
+    }
+    
+    /// Check if a routine is the system routine
+    func isSystemRoutine(_ routine: SavedRoutine) -> Bool {
+        return routine.isSystemRoutine
     }
 }
 
