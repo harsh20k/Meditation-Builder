@@ -446,27 +446,41 @@ struct CompactRoutineCard: View {
                     Spacer()
                     
                     Menu {
-                        Group {
-                            Button(action: onEdit) {
-                                Text(LocalizedStringKey("button.edit"))
-                                    .font(AppTheme.Typography.bodyFont)
+                        if !routine.isSystemRoutine {
+                            Group {
+                                Button(action: onEdit) {
+                                    Text(LocalizedStringKey("button.edit"))
+                                        .font(AppTheme.Typography.bodyFont)
+                                }
+                                .foregroundColor(AppTheme.lightGrey)
+                                
+                                Button(action: onDelete) {
+                                    Text(LocalizedStringKey("button.delete"))
+                                        .font(AppTheme.Typography.bodyFont)
+                                }
+                                .foregroundColor(Color.red.opacity(0.7))
+                            }
+                            .padding(.vertical, 2)
+                            .background(AppTheme.backgroundColor)
+                        } else {
+                            // Show info for system routines instead of edit/delete
+                            Button(action: {}) {
+                                HStack {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 14, weight: .medium))
+                                    Text("System Routine")
+                                        .font(AppTheme.Typography.bodyFont)
+                                }
                             }
                             .foregroundColor(AppTheme.lightGrey)
-                            
-                            Button(action: onDelete) {
-                                Text(LocalizedStringKey("button.delete"))
-                                    .font(AppTheme.Typography.bodyFont)
-                            }
-                            .foregroundColor(Color.red.opacity(0.7))
+                            .disabled(true)
                         }
-                        .padding(.vertical, 2)
-                        .background(AppTheme.backgroundColor)
                     } label: {
                         Image(systemName: "ellipsis")
                             .font(.system(size: 16, weight: .medium))
                             .frame(width: 32, height: 32)
                             .clipShape(Circle())
-                            .foregroundColor(AppTheme.lightGrey)
+                            .foregroundColor(routine.isSystemRoutine ? AppTheme.lightGrey.opacity(0.5) : AppTheme.lightGrey)
                             .background(Color.black.opacity(0.3))
                     }
                     .menuStyle(CustomMenuStyle())
