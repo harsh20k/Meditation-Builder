@@ -89,9 +89,9 @@ final class MeditationBlock: Identifiable, DragulaItem {
     /// Associated media resources (cascade deleted when block is deleted)
     @Relationship(deleteRule: .cascade) var media: [MediaResource]
     
-    /// Themes associated with this block
+    /// Theme this block belongs to (optional)
     @Relationship(deleteRule: .nullify, inverse: \Theme.blocks)
-    var themes: [Theme] = []
+    var theme: Theme?
     
     /**
      * Initializes a new meditation block.
@@ -260,11 +260,11 @@ final class Theme: Identifiable {
     /// Extensible properties for future features
     var metadata: [String: String] = [:]
     
-    /// Routines associated with this theme
+    /// Routines associated with this theme (one-to-many)
     @Relationship(deleteRule: .nullify)
     var routines: [SavedRoutine] = []
     
-    /// Blocks associated with this theme
+    /// Blocks associated with this theme (one-to-many)
     @Relationship(deleteRule: .nullify)
     var blocks: [MeditationBlock] = []
     
@@ -542,9 +542,12 @@ final class SavedRoutine: Identifiable {
     /// When the routine was soft deleted (nil if not deleted)
     var deletedAt: Date?
     
-    /// Themes associated with this routine
+    /// Whether this routine is marked as favorite
+    var isFavorite: Bool = false
+    
+    /// Theme this routine belongs to (optional)
     @Relationship(deleteRule: .nullify, inverse: \Theme.routines)
-    var themes: [Theme] = []
+    var theme: Theme?
     
     // MARK: - Conversion Methods
     
@@ -616,6 +619,9 @@ final class SavedRoutine: Identifiable {
         openingBell = routine.openingBell
         closingBell = routine.closingBell
         lastModified = Date()
+        
+        // Preserve favorite status during updates
+        // isFavorite remains unchanged
     }
     
     // MARK: - Private Update Methods
@@ -778,6 +784,7 @@ final class SavedRoutine: Identifiable {
      *   - version: Version number (defaults to 1)
      *   - playCount: Number of times played (defaults to 0)
      *   - lastPlayed: When last played (defaults to nil)
+     *   - isFavorite: Whether this routine is marked as favorite (defaults to false)
      */
     init(
         id: UUID = UUID(),
@@ -786,7 +793,8 @@ final class SavedRoutine: Identifiable {
         lastModified: Date = Date(),
         version: Int = 1,
         playCount: Int = 0,
-        lastPlayed: Date? = nil
+        lastPlayed: Date? = nil,
+        isFavorite: Bool = false
     ) {
         self.id = id
         self.routineName = routine.name
@@ -800,7 +808,6 @@ final class SavedRoutine: Identifiable {
                 blockStartBell: routineBlock.blockStartBell,
                 blockIcon: routineBlock.blockIcon,
                 orderIndex: blockIndex,
-                isFavorite: routineBlock.isFavorite,
                 media: routineBlock.media.enumerated().map { (mediaIndex, mediaInfo) in
                     MediaResource(
                         id: mediaInfo.id,
@@ -830,6 +837,7 @@ final class SavedRoutine: Identifiable {
         self.version = version
         self.playCount = playCount
         self.lastPlayed = lastPlayed
+        self.isFavorite = isFavorite
     }
     
     // MARK: - Helper Methods

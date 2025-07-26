@@ -92,9 +92,54 @@ class RoutineDataManager: ObservableObject {
         logger.info("Routine updated successfully: \(savedRoutine.routineName) (version: \(savedRoutine.version))", category: "Routine")
     }
     
+    // MARK: - Favorite Management
+    
+    /// Set a routine as favorite
+    func setRoutineFavorite(_ routine: SavedRoutine) throws {
+        logger.info("Setting routine as favorite: \(routine.routineName)", category: "Routine")
+        
+        routine.isFavorite = true
+        try safeContext.save()
+        
+        logger.info("Routine marked as favorite successfully", category: "Routine")
+    }
+    
+    /// Unset a routine's favorite status
+    func unsetRoutineFavorite(_ routine: SavedRoutine) throws {
+        logger.info("Unsetting routine favorite: \(routine.routineName)", category: "Routine")
+        
+        routine.isFavorite = false
+        try safeContext.save()
+        
+        logger.info("Routine favorite status removed successfully", category: "Routine")
+    }
+    
+    /// Set a meditation block as favorite
+    func setBlockFavorite(_ block: MeditationBlock) throws {
+        logger.info("Setting block as favorite: \(block.name)", category: "Block")
+        
+        block.isFavorite = true
+        try safeContext.save()
+        
+        logger.info("Block marked as favorite successfully", category: "Block")
+    }
+    
+    /// Unset a meditation block's favorite status
+    func unsetBlockFavorite(_ block: MeditationBlock) throws {
+        logger.info("Unsetting block favorite: \(block.name)", category: "Block")
+        
+        block.isFavorite = false
+        try safeContext.save()
+        
+        logger.info("Block favorite status removed successfully", category: "Block")
+    }
+    
     /// Delete a routine (soft delete - preserves session data)
     func deleteRoutine(_ savedRoutine: SavedRoutine) throws {
         logger.info("Soft deleting routine: \(savedRoutine.routineName)", category: "Routine")
+        
+        // Clear favorite status when soft deleting
+        savedRoutine.isFavorite = false
         
         // Soft delete - mark as deleted but keep in database
         savedRoutine.isDeleted = true
@@ -156,6 +201,8 @@ class RoutineDataManager: ObservableObject {
         let savedDuplicatedRoutine = SavedRoutine(
             routine: duplicatedRoutine
         )
+        // Ensure favorite status is not copied
+        savedDuplicatedRoutine.isFavorite = false
         
         safeContext.insert(savedDuplicatedRoutine)
         try safeContext.save()
