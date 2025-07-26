@@ -958,6 +958,34 @@ class RoutineDataManager: ObservableObject {
     func isSystemRoutine(_ routine: SavedRoutine) -> Bool {
         return routine.isSystemRoutine
     }
+    
+    /// Permanently delete all system routines
+    /// ⚠️ This action cannot be undone
+    func deleteAllSystemRoutines() throws {
+        logger.warning("Attempting to delete all system routines", category: "SystemRoutine")
+        
+        // Fetch all system routines
+        let descriptor = FetchDescriptor<SavedRoutine>(
+            predicate: #Predicate<SavedRoutine> { routine in
+                routine.isSystemRoutine == true
+            }
+        )
+        
+        let systemRoutines = try safeContext.fetch(descriptor)
+        logger.info("Found \(systemRoutines.count) system routines to delete", category: "SystemRoutine")
+        
+        // Delete each system routine
+        for routine in systemRoutines {
+            try permanentlyDeleteRoutine(routine)
+            logger.info("Deleted system routine: \(routine.routineName)", category: "SystemRoutine")
+        }
+        
+        // Clear the system routine ID from UserDefaults
+        let userDefaults = UserDefaults.standard
+        userDefaults.removeObject(forKey: "SystemRoutineID")
+        
+        logger.info("Successfully deleted \(systemRoutines.count) system routines and cleared UserDefaults", category: "SystemRoutine")
+    }
 }
 
 // MARK: - Environment Key

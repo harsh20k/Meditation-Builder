@@ -12,6 +12,9 @@ struct LoggingSettingsView: View {
     @StateObject private var logger = AppLogger.shared
     @State private var showingLogViewer = false
     @State private var showingClearLogsAlert = false
+    @State private var showingDeleteSystemRoutinesAlert = false
+    @State private var isDeletingSystemRoutines = false
+    @State private var deleteSystemRoutinesResult: String?
     
     var body: some View {
         NavigationView {
@@ -144,6 +147,29 @@ struct LoggingSettingsView: View {
                                             .padding(.vertical, AppTheme.Spacing.small)
                                         }
                                         .buttonStyle(PlainButtonStyle())
+                                        
+                                        Divider()
+                                            .background(AppTheme.lightGrey.opacity(0.3))
+                                        
+                                        Button(action: { showingDeleteSystemRoutinesAlert = true }) {
+                                            HStack {
+                                                if isDeletingSystemRoutines {
+                                                    ProgressView()
+                                                        .scaleEffect(0.8)
+                                                        .foregroundColor(.red)
+                                                } else {
+                                                    Image(systemName: "trash.circle")
+                                                        .font(.system(size: 16, weight: .medium))
+                                                }
+                                                Text("Delete System Routines")
+                                                    .font(AppTheme.Typography.bodyFont)
+                                                Spacer()
+                                            }
+                                            .foregroundColor(.red)
+                                            .padding(.vertical, AppTheme.Spacing.small)
+                                            .disabled(isDeletingSystemRoutines)
+                                        }
+                                        .buttonStyle(PlainButtonStyle())
                                     }
                                 }
                             }
@@ -194,6 +220,42 @@ struct LoggingSettingsView: View {
             }
         } message: {
             Text("This will permanently delete all log files. This action cannot be undone.")
+        }
+        .alert("Delete System Routines", isPresented: $showingDeleteSystemRoutinesAlert) {
+            Button("Cancel", role: .cancel) { }
+            Button("Delete", role: .destructive) {
+                deleteAllSystemRoutines()
+            }
+        } message: {
+            Text("This will permanently delete all system routines and their associated session data. This action cannot be undone.")
+        }
+        .alert("System Routines Deleted", isPresented: .constant(deleteSystemRoutinesResult != nil)) {
+            Button("OK") {
+                deleteSystemRoutinesResult = nil
+            }
+        } message: {
+            if let result = deleteSystemRoutinesResult {
+                Text(result)
+            }
+        }
+    }
+    
+    private func deleteAllSystemRoutines() {
+        isDeletingSystemRoutines = true
+        
+        Task {
+            do {
+                try RoutineDataManager.shared.deleteAllSystemRoutines()
+                await MainActor.run {
+                    deleteSystemRoutinesResult = "System routines deleted successfully."
+                    isDeletingSystemRoutines = false
+                }
+            } catch {
+                await MainActor.run {
+                    deleteSystemRoutinesResult = "Failed to delete system routines: \(error.localizedDescription)"
+                    isDeletingSystemRoutines = false
+                }
+            }
         }
     }
 }
