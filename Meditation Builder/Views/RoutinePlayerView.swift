@@ -114,13 +114,25 @@ struct TimerDisplayView: View {
 // MARK: - Player Controls View
 struct PlayerControlsView: View {
     @Bindable var viewModel: RoutinePlayerViewModel
+    let onStartSession: (() -> Void)?
+    
+    init(viewModel: RoutinePlayerViewModel, onStartSession: (() -> Void)? = nil) {
+        self.viewModel = viewModel
+        self.onStartSession = onStartSession
+    }
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 // Play/Pause button - always in the same position
-                Button(action: { viewModel.togglePause() }) {
-                    Text(viewModel.isPaused ? "▶" : "❙❙")
+                Button(action: {
+                    if let onStartSession = onStartSession {
+                        onStartSession()
+                    } else {
+                        viewModel.togglePause()
+                    }
+                }) {
+                    Text(onStartSession != nil ? "▶" : (viewModel.isPaused ? "▶" : "❙❙"))
                         .font(.system(size: 72, weight: .regular, design: .default))
                         .foregroundColor(.white)
                 }
@@ -220,24 +232,9 @@ struct PreSessionState: View {
 				.position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 220)
 
 				
-				VStack(spacing: 0) {
-                 
-                    // Large play button
-                    Button(action: onStartSession) {
-                        ZStack {
-                            Circle()
-                                .fill(Color.white)
-                                .frame(width: 120, height: 120)
-                            
-                            Image(systemName: "play.fill")
-                                .font(.system(size: 48, weight: .medium))
-                                .foregroundColor(.black)
-                                .offset(x: 4, y: 0)
-                        }
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+				// Player Controls - positioned at center for pre-session
+				PlayerControlsView(viewModel: viewModel, onStartSession: onStartSession)
+					.position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 
             }
         }
@@ -262,7 +259,7 @@ struct ActiveSessionState: View {
                     .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 
                 // Player Controls - positioned at bottom
-                PlayerControlsView(viewModel: viewModel)
+                PlayerControlsView(viewModel: viewModel, onStartSession: nil)
                 
                 // Beads Progress Indicator - positioned at top center
                 BeadsView(
