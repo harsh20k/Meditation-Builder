@@ -204,7 +204,7 @@ struct PreSessionState: View {
                         )
                         .frame(height: 200)
                     } else {
-                        // Routine info (when only one routine or none)
+                        // Routine info (when only none routines) which will never happen
                         VStack(spacing: 16) {
                             Text(viewModel.routineData.name)
                                 .font(.system(size: 28, weight: .bold, design: .default))

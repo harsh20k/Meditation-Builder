@@ -25,14 +25,6 @@ struct RoutineSelectionCarousel: View {
     
     var body: some View {
         VStack(spacing: 24) {
-            // Display the currently centered routine name
-            // if !routines.isEmpty {
-            //     Text(routines[currentIndex].routineName)
-            //         .font(.subheadline)
-            //         .foregroundColor(AppTheme.offWhiteText)
-            //         .padding(.top, 4)
-            // }
-            
             ScrollView(.horizontal, showsIndicators: false) {
                 ScrollViewReader { proxy in
                 HStack(spacing: spacing) {
@@ -49,13 +41,13 @@ struct RoutineSelectionCarousel: View {
                                     .foregroundColor(AppTheme.accentColor)
                             }
                             
-                            // Routine Name
-                            Text(routine.routineName)
-                                .font(AppTheme.Typography.captionFont)
-                                .foregroundColor(AppTheme.offWhiteText)
-                                .multilineTextAlignment(.center)
-                                .lineLimit(2)
-                                .frame(width: itemWidth * 0.8)
+                            // // Routine Name
+                            // Text(routine.routineName)
+                            //     .font(AppTheme.Typography.captionFont)
+                            //     .foregroundColor(AppTheme.offWhiteText)
+                            //     .multilineTextAlignment(.center)
+                            //     .lineLimit(2)
+                            //     .frame(width: itemWidth * 0.8)
                         }
                         .frame(width: itemWidth)
                         .scaleEffect(currentIndex == index ? 1.0 : 0.8)
@@ -79,7 +71,7 @@ struct RoutineSelectionCarousel: View {
                        let selectedIndex = routines.firstIndex(where: { $0.id == selectedRoutine.id }) {
                         isProgrammaticScroll = true
                         proxy.scrollTo(selectedRoutine.id, anchor: .center)
-                        // Reset the flag after a short delay to allow for the scroll animation
+                        // Reset the flag
                         isProgrammaticScroll = false
                     }
                 }
