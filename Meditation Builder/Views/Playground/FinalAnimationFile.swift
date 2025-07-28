@@ -2,7 +2,7 @@ import SwiftUI
 import UIKit
 
 	// PreferenceKey to capture each item's center X position
-struct CarouselCellKey: PreferenceKey {
+struct CarouselCellKeySample: PreferenceKey {
 	static var defaultValue: [Int: CGFloat] = [:]
 	static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
 		value.merge(nextValue(), uniquingKeysWith: { $1 })
@@ -60,7 +60,7 @@ struct MeditationAnimationPlayground: View {
 								.background(
 									GeometryReader { geo in
 										Color.clear.preference(
-											key: CarouselCellKey.self,
+											key: CarouselCellKeySample.self,
 											value: [index: geo.frame(in: .global).midX]
 										)
 									}
@@ -69,7 +69,7 @@ struct MeditationAnimationPlayground: View {
 					}
 					.padding(.horizontal, (UIScreen.main.bounds.width - itemWidth) / 2)
 				}
-				.onPreferenceChange(CarouselCellKey.self) { prefs in
+				.onPreferenceChange(CarouselCellKeySample.self) { prefs in
 					positions = prefs
 					detectCenterItem()
 				}
