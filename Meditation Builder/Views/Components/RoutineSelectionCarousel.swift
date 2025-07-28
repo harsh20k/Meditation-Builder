@@ -2,59 +2,20 @@ import SwiftUI
 import SwiftData
 
 // PreferenceKey to capture each item's center X position
-struct CarouselCellKeys: PreferenceKey {
+struct CarouselCellKey: PreferenceKey {
     static var defaultValue: [Int: CGFloat] = [:]
     static func reduce(value: inout [Int: CGFloat], nextValue: () -> [Int: CGFloat]) {
         value.merge(nextValue(), uniquingKeysWith: { $1 })
     }
 }
 
-struct RoutinePlayerSelectionView: View {
-    @Bindable var viewModel: RoutinePlayerViewModel
-    
-    var body: some View {
-        GeometryReader { geometry in
-            ZStack {
-                // AppTheme.backgroundColor.ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Beads Progress Indicator
-                    BeadsView(
-                        currentBlockIndex: 0,
-                        totalBlocks: 0,
-                        inBlockProgress: 0.0,
-                        blockStartDate: Date(),
-                        isRoutineSelected: false,
-                        isPlaying: false
-                    )
-                    .padding(.top, geometry.safeAreaInsets.top + 60)
-                    
-                    // Spacer to push carousel to vertical center
-                    Spacer()
-                    
-                    // New Carousel Implementation
-                    RoutineCarouselView(
-                        routines: viewModel.savedRoutines,
-                        onRoutineSelected: { routine in
-                            viewModel.selectRoutine(routine)
-                        }
-                    )
-                    .frame(height: 200) // Increased height for better visibility
-                    
-                    // Spacer for bottom padding
-                    Spacer()
-                }
-            }
-        }
-    }
-}
-
-struct RoutineCarouselView: View {
+struct RoutineSelectionCarousel: View {
     let routines: [SavedRoutine]
     let onRoutineSelected: (SavedRoutine) -> Void
     
     @State private var positions: [Int: CGFloat] = [:]
     @State private var currentIndex: Int = 0
+    @State private var lastSelectedIndex: Int = -1
     
     private let itemWidth = UIScreen.main.bounds.width * 0.7
     private let spacing: CGFloat = 16
@@ -95,9 +56,7 @@ struct RoutineCarouselView: View {
                         .frame(width: itemWidth)
                         .scaleEffect(currentIndex == index ? 1.0 : 0.8)
                         .animation(.easeInOut(duration: 0.2), value: currentIndex)
-                        .onTapGesture {
-                            onRoutineSelected(routine)
-                        }
+
                         // Capture each card's center X
                         .background(
                             GeometryReader { geo in
@@ -115,6 +74,13 @@ struct RoutineCarouselView: View {
                 positions = prefs
                 detectCenterItem()
             }
+            .onAppear {
+                // Initialize with the first routine selected
+                if !routines.isEmpty && lastSelectedIndex == -1 {
+                    lastSelectedIndex = 0
+                    onRoutineSelected(routines[0])
+                }
+            }
         }
     }
     
@@ -126,6 +92,12 @@ struct RoutineCarouselView: View {
             if newIndex != currentIndex {
                 currentIndex = newIndex
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                
+                // Automatically select the centered routine
+                if newIndex != lastSelectedIndex && newIndex < routines.count {
+                    lastSelectedIndex = newIndex
+                    onRoutineSelected(routines[newIndex])
+                }
             }
         }
     }
@@ -135,7 +107,20 @@ struct RoutineCarouselView: View {
 #Preview {
     let config = ModelConfiguration(isStoredInMemoryOnly: true)
     let container = try! ModelContainer(for: SavedRoutine.self, configurations: config)
-    let viewModel = RoutinePlayerViewModel(modelContext: container.mainContext)
     
-    return RoutinePlayerSelectionView(viewModel: viewModel)
+    let sampleRoutines = [
+        SavedRoutine(routine: Routine(name: "Morning Meditation", icon: "sunrise.fill", blocks: [], openingBell: .softBell, closingBell: .digitalChime)),
+        SavedRoutine(routine: Routine(name: "Evening Relaxation", icon: "moon.fill", blocks: [], openingBell: .tibetanBowl, closingBell: .softBell)),
+        SavedRoutine(routine: Routine(name: "Quick Focus", icon: "brain.head.profile", blocks: [], openingBell: .digitalChime, closingBell: .tibetanBowl))
+    ]
+    
+    return ZStack {
+        AppTheme.backgroundColor.ignoresSafeArea()
+        RoutineSelectionCarousel(
+            routines: sampleRoutines,
+            onRoutineSelected: { routine in
+                print("Auto-selected: \(routine.routineName)")
+            }
+        )
+    }
 } 

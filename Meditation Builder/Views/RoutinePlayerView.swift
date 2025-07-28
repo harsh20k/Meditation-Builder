@@ -33,7 +33,7 @@ struct PlayerLayout<Content: View>: View {
 
 // MARK: - Player Header View
 struct PlayerHeaderView: View {
-    let routineName: String
+    let title: String
     let onClose: () -> Void
     
     var body: some View {
@@ -50,8 +50,8 @@ struct PlayerHeaderView: View {
                 }
                 .position(x: geometry.size.width - 44, y: geometry.safeAreaInsets.top + 60)
                 
-                // Routine Name - positioned at top center
-                Text(routineName)
+                // Title - positioned at top center
+                Text(title)
                     .font(.system(size: 17, weight: .semibold, design: .default))
                     .foregroundColor(.white)
                     .lineLimit(2)
@@ -186,22 +186,34 @@ struct PreSessionState: View {
             ZStack {
                 // Player Header
                 PlayerHeaderView(
-                    routineName: viewModel.routineData.name,
+                    title: viewModel.savedRoutines.count > 1 ? "Select Routine" : viewModel.routineData.name,
                     onClose: onClose
                 )
                 
                 // Pre-session content
                 VStack(spacing: 24) {
-                    // Routine info
-                    VStack(spacing: 16) {
-                        Text(viewModel.routineData.name)
-                            .font(.system(size: 28, weight: .bold, design: .default))
-                            .foregroundColor(.white)
-                            .multilineTextAlignment(.center)
-                        
-                        Text("\(viewModel.totalBlocks) blocks • \(viewModel.routineData.blocks.map(\.durationInMinutes).reduce(0, +)) minutes")
-                            .font(.system(size: 17, weight: .regular, design: .default))
-                            .foregroundColor(.white.opacity(0.7))
+                    // Show carousel if multiple routines available
+                    if viewModel.savedRoutines.count > 1 {
+                        // Routine selection carousel
+                        RoutineSelectionCarousel(
+                            routines: viewModel.savedRoutines,
+                            onRoutineSelected: { routine in
+                                viewModel.selectRoutine(routine)
+                            }
+                        )
+                        .frame(height: 200)
+                    } else {
+                        // Routine info (when only one routine or none)
+                        VStack(spacing: 16) {
+                            Text(viewModel.routineData.name)
+                                .font(.system(size: 28, weight: .bold, design: .default))
+                                .foregroundColor(.white)
+                                .multilineTextAlignment(.center)
+                            
+                            Text("\(viewModel.totalBlocks) blocks • \(viewModel.routineData.blocks.map(\.durationInMinutes).reduce(0, +)) minutes")
+                                .font(.system(size: 17, weight: .regular, design: .default))
+                                .foregroundColor(.white.opacity(0.7))
+                        }
                     }
                     
                     // Large play button
@@ -245,7 +257,7 @@ struct ActiveSessionState: View {
             ZStack {
                 // Player Header
                 PlayerHeaderView(
-                    routineName: viewModel.routineData.name,
+                    title: viewModel.routineData.name,
                     onClose: onClose
                 )
                 
@@ -286,9 +298,7 @@ struct RoutinePlayerView: View {
     var body: some View {
         PlayerLayout {
             Group {
-                if viewModel.routineData.blocks.isEmpty {
-					RoutinePlayerSelectionView(viewModel: viewModel)
-                } else if !sessionStarted {
+                if !sessionStarted {
                     PreSessionState(
                         viewModel: viewModel,
                         onStartSession: {
