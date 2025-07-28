@@ -78,13 +78,9 @@ struct RoutineSelectionCarousel: View {
                     if let selectedRoutine = currentlySelectedRoutine,
                        let selectedIndex = routines.firstIndex(where: { $0.id == selectedRoutine.id }) {
                         isProgrammaticScroll = true
-                        withAnimation(.easeInOut(duration: 0.5)) {
-                            proxy.scrollTo(selectedRoutine.id, anchor: .center)
-                        }
+                        proxy.scrollTo(selectedRoutine.id, anchor: .center)
                         // Reset the flag after a short delay to allow for the scroll animation
-                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
-                            isProgrammaticScroll = false
-                        }
+                        isProgrammaticScroll = false
                     }
                 }
             }
