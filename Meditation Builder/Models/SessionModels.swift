@@ -817,7 +817,8 @@ class RoutinePlayerViewModel {
      * - modelContext: ModelContext - SwiftData context for persistence operations.
      * - dataManager: RoutineDataManager - Handles routine/session persistence logic.
      */
-    private let routine: SavedRoutine?              // The routine model being played (optional)
+    private var routine: SavedRoutine?              // The routine model being played (optional)
+    private var availableRoutines: [SavedRoutine] = []  // Available routines for selection
     private let modelContext: ModelContext         // SwiftData context for persistence
     private let dataManager: RoutineDataManager    // Handles routine/session persistence
     
@@ -933,6 +934,16 @@ class RoutinePlayerViewModel {
         return currentBlockIndex >= routine.getRoutine().blocks.count      // All blocks finished?
     }
     
+    // MARK: - 6.1. Routine Selection Properties
+    /**
+     * Properties for routine selection functionality.
+     *
+     * - savedRoutines: [SavedRoutine] - Available routines (filtered to exclude soft-deleted).
+     */
+    var savedRoutines: [SavedRoutine] {
+        availableRoutines.filter { !$0.isDeleted }
+    }
+    
     // MARK: - 7. Initialization
     /**
      * Initializes the view model with a routine and model context.
@@ -942,7 +953,6 @@ class RoutinePlayerViewModel {
      *   - modelContext: ModelContext - The SwiftData context for persistence.
      */
     init(routine: SavedRoutine? = nil, modelContext: ModelContext) {
-        self.routine = routine
         self.modelContext = modelContext
         self.dataManager = RoutineDataManager.shared
         
@@ -951,10 +961,45 @@ class RoutinePlayerViewModel {
         #else
         self.isDebugMode = false
         #endif
+        
+        // Load available routines for selection
+        loadAvailableRoutines()
+        
+        // Handle routine selection: use provided routine or select first available
+        if let providedRoutine = routine {
+            self.routine = providedRoutine
+        } else if let firstRoutine = availableRoutines.filter({ !$0.isDeleted }).first {
+            self.routine = firstRoutine
+            logger.info("Auto-selected first available routine: \(firstRoutine.routineName)", category: "RoutineSelection")
+        }
     }
     // Convenience initializer for no routine
     convenience init(modelContext: ModelContext) {
         self.init(routine: nil, modelContext: modelContext)
+    }
+    
+    // MARK: - 7.1. Routine Selection Methods
+    /**
+     * Methods for routine selection functionality.
+     *
+     * - selectRoutine(_ routine: SavedRoutine): Selects a routine for playback.
+     */
+    func selectRoutine(_ routine: SavedRoutine) {
+        self.routine = routine
+        logger.info("Routine selected: \(routine.routineName)", category: "RoutineSelection")
+    }
+    
+    func loadAvailableRoutines() {
+        let descriptor = FetchDescriptor<SavedRoutine>(
+            sortBy: [SortDescriptor(\.lastModified, order: .reverse)]
+        )
+        do {
+            availableRoutines = try modelContext.fetch(descriptor)
+            logger.info("Loaded \(availableRoutines.count) available routines", category: "RoutineSelection")
+        } catch {
+            logger.error("Failed to load available routines: \(error)", category: "RoutineSelection")
+            availableRoutines = []
+        }
     }
     
     // MARK: - 8. Timer & Playback Control

@@ -287,7 +287,7 @@ struct RoutinePlayerView: View {
         PlayerLayout {
             Group {
                 if viewModel.routineData.blocks.isEmpty {
-					RoutinePlayerSelectionView()
+					RoutinePlayerSelectionView(viewModel: viewModel)
                 } else if !sessionStarted {
                     PreSessionState(
                         viewModel: viewModel,

@@ -10,12 +10,7 @@ struct CarouselCellKey: PreferenceKey {
 }
 
 struct RoutinePlayerSelectionView: View {
-    @Query(sort: \SavedRoutine.lastModified, order: .reverse) private var allSavedRoutines: [SavedRoutine]
-    
-    // Filter out soft-deleted routines
-    private var savedRoutines: [SavedRoutine] {
-        allSavedRoutines.filter { !$0.isDeleted }
-    }
+    @Bindable var viewModel: RoutinePlayerViewModel
     
     var body: some View {
         GeometryReader { geometry in
@@ -38,8 +33,13 @@ struct RoutinePlayerSelectionView: View {
                     Spacer()
                     
                     // New Carousel Implementation
-                    RoutineCarouselView(routines: savedRoutines)
-                        .frame(height: 200) // Increased height for better visibility
+                    RoutineCarouselView(
+                        routines: viewModel.savedRoutines,
+                        onRoutineSelected: { routine in
+                            viewModel.selectRoutine(routine)
+                        }
+                    )
+                    .frame(height: 200) // Increased height for better visibility
                     
                     // Spacer for bottom padding
                     Spacer()
@@ -51,6 +51,7 @@ struct RoutinePlayerSelectionView: View {
 
 struct RoutineCarouselView: View {
     let routines: [SavedRoutine]
+    let onRoutineSelected: (SavedRoutine) -> Void
     
     @State private var positions: [Int: CGFloat] = [:]
     @State private var currentIndex: Int = 0
@@ -94,6 +95,9 @@ struct RoutineCarouselView: View {
                         .frame(width: itemWidth)
                         .scaleEffect(currentIndex == index ? 1.0 : 0.8)
                         .animation(.easeInOut(duration: 0.2), value: currentIndex)
+                        .onTapGesture {
+                            onRoutineSelected(routine)
+                        }
                         // Capture each card's center X
                         .background(
                             GeometryReader { geo in
@@ -129,5 +133,9 @@ struct RoutineCarouselView: View {
 
 // MARK: - Preview
 #Preview {
-    RoutinePlayerSelectionView()
+    let config = ModelConfiguration(isStoredInMemoryOnly: true)
+    let container = try! ModelContainer(for: SavedRoutine.self, configurations: config)
+    let viewModel = RoutinePlayerViewModel(modelContext: container.mainContext)
+    
+    return RoutinePlayerSelectionView(viewModel: viewModel)
 } 
