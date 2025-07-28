@@ -186,7 +186,7 @@ struct PreSessionState: View {
             ZStack {
                 // Player Header
                 PlayerHeaderView(
-                    title: viewModel.savedRoutines.count > 1 ? "Select Routine" : viewModel.routineData.name,
+                    title: viewModel.routineData.name,
                     onClose: onClose
                 )
                 
