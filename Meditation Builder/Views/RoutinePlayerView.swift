@@ -183,6 +183,17 @@ struct PreSessionState: View {
     
     var body: some View {
         GeometryReader { geometry in
+				// Beads Progress Indicator - positioned at top center
+			BeadsView(
+				currentBlockIndex: 0,
+				totalBlocks: viewModel.totalBlocks,
+				inBlockProgress: 0.0,
+				blockStartDate: Date(),
+				isRoutineSelected: true,
+				isPlaying: false
+			)
+			.position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 60)
+			
             ZStack {
                 // Player Header
                 PlayerHeaderView(
@@ -191,32 +202,26 @@ struct PreSessionState: View {
                 )
                 
                 // Pre-session content
-                VStack(spacing: 24) {
-                    // Show carousel if any routines are available
-                    if viewModel.savedRoutines.count >= 1 {
-                        // Routine selection carousel
-                                                RoutineSelectionCarousel(
-                            routines: viewModel.savedRoutines,
-                            onRoutineSelected: { routine in
-                                viewModel.selectRoutine(routine)
-                            },
-                            currentlySelectedRoutine: viewModel.currentRoutine
-                        )
-                        .frame(height: 200)
-                    } else {
-                        // Routine info (when only none routines) which will never happen
-                        VStack(spacing: 16) {
-                            Text(viewModel.routineData.name)
-                                .font(.system(size: 28, weight: .bold, design: .default))
-                                .foregroundColor(.white)
-                                .multilineTextAlignment(.center)
-                            
-                            Text("\(viewModel.totalBlocks) blocks • \(viewModel.routineData.blocks.map(\.durationInMinutes).reduce(0, +)) minutes")
-                                .font(.system(size: 17, weight: .regular, design: .default))
-                                .foregroundColor(.white.opacity(0.7))
-                        }
-                    }
-                    
+
+				ZStack {
+					// Show carousel if any routines are available
+					if viewModel.savedRoutines.count >= 1 {
+					// Routine selection carousel
+						RoutineSelectionCarousel(
+							routines: viewModel.savedRoutines,
+							onRoutineSelected: { routine in
+								viewModel.selectRoutine(routine)
+							},
+							currentlySelectedRoutine: viewModel.currentRoutine
+						)
+						.frame(height: 150)
+					}
+				}
+				.position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 220)
+
+				
+				VStack(spacing: 0) {
+                 
                     // Large play button
                     Button(action: onStartSession) {
                         ZStack {
@@ -234,16 +239,6 @@ struct PreSessionState: View {
                 }
                 .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 
-                // Beads Progress Indicator - positioned at top center
-                BeadsView(
-                    currentBlockIndex: 0,
-                    totalBlocks: viewModel.totalBlocks,
-                    inBlockProgress: 0.0,
-                    blockStartDate: Date(),
-                    isRoutineSelected: true,
-                    isPlaying: false
-                )
-                .position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 60)
             }
         }
     }

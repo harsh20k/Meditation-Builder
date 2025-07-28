@@ -20,7 +20,7 @@ struct RoutineSelectionCarousel: View {
     @State private var scrollOffset: CGFloat = 0
     @State private var isProgrammaticScroll: Bool = false
     
-    private let itemWidth = UIScreen.main.bounds.width * 0.7
+    private let itemWidth = UIScreen.main.bounds.width * 0.4
     private let spacing: CGFloat = 16
     
     var body: some View {
@@ -38,16 +38,16 @@ struct RoutineSelectionCarousel: View {
                                 
                                 Image(systemName: routine.routineIcon)
                                     .font(.system(size: 32, weight: .ultraLight))
-                                    .foregroundColor(AppTheme.accentColor)
+                                    .foregroundColor(currentIndex == index ? AppTheme.accentColor : AppTheme.offWhiteText.opacity(0.6))
                             }
                             
-                            // // Routine Name
-                            // Text(routine.routineName)
-                            //     .font(AppTheme.Typography.captionFont)
-                            //     .foregroundColor(AppTheme.offWhiteText)
-                            //     .multilineTextAlignment(.center)
-                            //     .lineLimit(2)
-                            //     .frame(width: itemWidth * 0.8)
+                             // Routine Name
+//                             Text(routine.routineName)
+//                                 .font(AppTheme.Typography.captionFont)
+//                                 .foregroundColor(AppTheme.offWhiteText)
+//                                 .multilineTextAlignment(.center)
+//                                 .lineLimit(2)
+//                                 .frame(width: itemWidth * 0.8)
                         }
                         .frame(width: itemWidth)
                         .scaleEffect(currentIndex == index ? 1.0 : 0.8)
