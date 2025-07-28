@@ -245,7 +245,7 @@ struct ScalableButtonStyle: ButtonStyle {
 	}
 }
 
-// MARK: - Routine Card
+// MARK: - Routine Card OLD
 struct RoutineCard: View {
 	let routine: SavedRoutine
 	let isSelected: Bool
