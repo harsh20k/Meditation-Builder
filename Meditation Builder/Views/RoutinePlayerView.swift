@@ -66,18 +66,27 @@ struct PlayerHeaderView: View {
 // MARK: - Timer Display View
 struct TimerDisplayView: View {
     @Bindable var viewModel: RoutinePlayerViewModel
+    let sessionStarted: Bool
     
     var body: some View {
         VStack(spacing: 16) {
             // Large elapsed timer with TimelineView for efficiency
-            TimelineView(.periodic(from: viewModel.routineStartDate, by: 1.0)) { context in
-                Text(viewModel.formatTime(viewModel.elapsedTime))
-                    .font(.system(size: 72, weight: .bold, design: .default))
-                    .foregroundColor(.white)
+            if sessionStarted {
+                TimelineView(.periodic(from: viewModel.routineStartDate, by: 1.0)) { context in
+                    Text(viewModel.formatTime(viewModel.elapsedTime))
+						.font(.system(size: 72, weight: .light, design: .serif))
+                        .foregroundColor(.white)
+                        .monospacedDigit()
+                        .onChange(of: context.date) { _, newDate in
+                            viewModel.updateCurrentTime(newDate)
+                        }
+                }
+            } else {
+                // Static display when session hasn't started
+                Text(viewModel.formatTime(0))
+					.font(.system(size: 72, weight: .light, design: .serif))
+                    .foregroundColor(.gray)
                     .monospacedDigit()
-                    .onChange(of: context.date) { _, newDate in
-                        viewModel.updateCurrentTime(newDate)
-                    }
             }
             
             // Current block indicator or completion message
@@ -232,6 +241,10 @@ struct PreSessionState: View {
 				.position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 220)
 
 				
+				                // Timer Display - positioned at center
+                TimerDisplayView(viewModel: viewModel, sessionStarted: false)
+                    .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+				
 				// Player Controls - positioned at center for pre-session
 				PlayerControlsView(viewModel: viewModel, onStartSession: onStartSession)
 					.position(x: geometry.size.width / 2, y: geometry.size.height / 2)
@@ -255,7 +268,7 @@ struct ActiveSessionState: View {
                 )
                 
                 // Timer Display - positioned at center
-                TimerDisplayView(viewModel: viewModel)
+                TimerDisplayView(viewModel: viewModel, sessionStarted: true)
                     .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
                 
                 // Player Controls - positioned at bottom
