@@ -90,30 +90,32 @@ struct TimerDisplayView: View {
             }
             
             // Current block indicator or completion message
-            if viewModel.isRoutineComplete {
-                Text(LocalizedStringKey("routine.complete"))
-                    .font(.system(size: 17, weight: .regular, design: .default))
-                    .foregroundColor(.white.opacity(0.8))
-                    .lineLimit(2)
-                    .multilineTextAlignment(.center)
-            } else if let current = viewModel.currentBlock {
-                HStack(spacing: 0) {
-                    Text(current.name)
-                        .font(.system(size: 17, weight: .regular, design: .default))
-                        .foregroundColor(.white)
-                    
-                    if let next = viewModel.nextBlock {
-                        Text(" → ")
-                            .font(.system(size: 17, weight: .regular, design: .default))
-                            .foregroundColor(.white.opacity(0.6))
-                        
-                        Text(next.name)
-                            .font(.system(size: 17, weight: .regular, design: .default))
-                            .foregroundColor(.white.opacity(0.6))
-                    }
-                }
-                .lineLimit(2)
-                .multilineTextAlignment(.center)
+            if sessionStarted {
+				if viewModel.isRoutineComplete {
+					Text(LocalizedStringKey("routine.complete"))
+						.font(.system(size: 17, weight: .regular, design: .default))
+						.foregroundColor(.white.opacity(0.8))
+						.lineLimit(2)
+						.multilineTextAlignment(.center)
+				} else if let current = viewModel.currentBlock {
+					HStack(spacing: 0) {
+						Text(current.name)
+							.font(.system(size: 17, weight: .regular, design: .default))
+							.foregroundColor(.white)
+						
+						if let next = viewModel.nextBlock {
+							Text(" → ")
+								.font(.system(size: 17, weight: .regular, design: .default))
+								.foregroundColor(.white.opacity(0.6))
+							
+							Text(next.name)
+								.font(.system(size: 17, weight: .regular, design: .default))
+								.foregroundColor(.white.opacity(0.6))
+						}
+					}
+					.lineLimit(2)
+					.multilineTextAlignment(.center)
+				}
             }
         }
         .frame(maxWidth: .infinity)
