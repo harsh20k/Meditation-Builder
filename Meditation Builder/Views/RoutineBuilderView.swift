@@ -310,5 +310,91 @@ struct DropIndicatorView: View {
             .padding(.horizontal, AppTheme.Spacing.medium)
             .padding(.leading, 56) // Align with timeline
     }
+}
+
+#Preview("Routine Builder - New Routine") {
+    RoutineBuilderView()
+        .environment(\.modelContext, try! ModelContainer(for: SavedRoutine.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)).mainContext)
+        .environment(\.routineDataManager, RoutineDataManager.shared)
+}
+
+#Preview("Routine Builder - Empty State") {
+    struct EmptyRoutineBuilder: View {
+        var body: some View {
+            RoutineBuilderView()
+                .environment(\.modelContext, try! ModelContainer(for: SavedRoutine.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)).mainContext)
+                .environment(\.routineDataManager, RoutineDataManager.shared)
+                .onAppear {
+                    // This will show the empty state since the default routine has blocks
+                    // In a real scenario, you'd modify the initializer to start with empty blocks
+                }
+        }
+    }
+    
+    return EmptyRoutineBuilder()
+}
+
+#Preview("Routine Builder - Editing Existing") {
+    let sampleRoutine = SavedRoutine(
+        routine: Routine(
+            name: "Morning Meditation",
+            icon: "sunrise.fill",
+            blocks: [
+                RoutineBlock(name: "Breathwork", durationInMinutes: 5, type: .breathwork, blockStartBell: .softBell),
+                RoutineBlock(name: "Silence", durationInMinutes: 10, type: .silence, blockStartBell: .silent),
+                RoutineBlock(name: "Visualization", durationInMinutes: 8, type: .visualization, blockStartBell: .tibetanBowl),
+                RoutineBlock(name: "Body Scan", durationInMinutes: 7, type: .bodyScan, blockStartBell: .digitalChime)
+            ],
+            openingBell: .softBell,
+            closingBell: .tibetanBowl
+        )
+    )
+    
+    return RoutineBuilderView(editingRoutine: sampleRoutine)
+        .environment(\.modelContext, try! ModelContainer(for: SavedRoutine.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)).mainContext)
+        .environment(\.routineDataManager, RoutineDataManager.shared)
+}
+
+#Preview("Routine Builder - Long Routine") {
+    let longRoutine = SavedRoutine(
+        routine: Routine(
+            name: "Extended Meditation Session",
+            icon: "moon.stars.fill",
+            blocks: [
+                RoutineBlock(name: "Opening Breathwork", durationInMinutes: 3, type: .breathwork, blockStartBell: .softBell),
+                RoutineBlock(name: "Mindful Silence", durationInMinutes: 15, type: .silence, blockStartBell: .silent),
+                RoutineBlock(name: "Guided Visualization", durationInMinutes: 12, type: .visualization, blockStartBell: .tibetanBowl),
+                RoutineBlock(name: "Body Awareness", durationInMinutes: 10, type: .bodyScan, blockStartBell: .digitalChime),
+                RoutineBlock(name: "Walking Meditation", durationInMinutes: 8, type: .walking, blockStartBell: .softBell),
+                RoutineBlock(name: "Chanting Practice", durationInMinutes: 6, type: .chanting, blockStartBell: .tibetanBowl),
+                RoutineBlock(name: "Closing Silence", durationInMinutes: 5, type: .silence, blockStartBell: .silent)
+            ],
+            openingBell: .tibetanBowl,
+            closingBell: .digitalChime
+        )
+    )
+    
+    return RoutineBuilderView(editingRoutine: longRoutine)
+        .environment(\.modelContext, try! ModelContainer(for: SavedRoutine.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)).mainContext)
+        .environment(\.routineDataManager, RoutineDataManager.shared)
+}
+
+#Preview("Routine Builder - Short Routine") {
+    let shortRoutine = SavedRoutine(
+        routine: Routine(
+            name: "Quick Focus",
+            icon: "target",
+            blocks: [
+                RoutineBlock(name: "Mindful Breathing", durationInMinutes: 2, type: .breathwork, blockStartBell: .softBell),
+                RoutineBlock(name: "Present Moment", durationInMinutes: 3, type: .silence, blockStartBell: .silent)
+            ],
+            openingBell: .digitalChime,
+            closingBell: .digitalChime
+        )
+    )
+    
+    return RoutineBuilderView(editingRoutine: shortRoutine)
+        .environment(\.modelContext, try! ModelContainer(for: SavedRoutine.self, configurations: ModelConfiguration(isStoredInMemoryOnly: true)).mainContext)
+        .environment(\.routineDataManager, RoutineDataManager.shared)
 } 
  

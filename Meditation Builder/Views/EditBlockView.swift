@@ -125,4 +125,46 @@ struct EditBlockView: View {
             }
         }
     }
+}
+
+#Preview("Edit Block View") {
+    EditBlockView(
+        block: RoutineBlock(
+            name: "Breathwork Session",
+            durationInMinutes: 8,
+            type: .breathwork,
+            blockStartBell: .softBell,
+            blockIcon: "leaf.fill"
+        )
+    ) { updatedBlock in
+        print("Block updated: \(updatedBlock.name) - \(updatedBlock.durationInMinutes) minutes")
+    }
+}
+
+#Preview("Edit Block View - Long Name") {
+    EditBlockView(
+        block: RoutineBlock(
+            name: "Very Long Meditation Block Name That Might Wrap",
+            durationInMinutes: 15,
+            type: .visualization,
+            blockStartBell: .tibetanBowl,
+            blockIcon: "eye.fill"
+        )
+    ) { updatedBlock in
+        print("Block updated: \(updatedBlock.name) - \(updatedBlock.durationInMinutes) minutes")
+    }
+}
+
+#Preview("Edit Block View - Short Duration") {
+    EditBlockView(
+        block: RoutineBlock(
+            name: "Quick Focus",
+            durationInMinutes: 2,
+            type: .silence,
+            blockStartBell: .silent,
+            blockIcon: "bell.slash.fill"
+        )
+    ) { updatedBlock in
+        print("Block updated: \(updatedBlock.name) - \(updatedBlock.durationInMinutes) minutes")
+    }
 } 
