@@ -25,7 +25,8 @@ struct MainTabView: View {
 //                        title: String(localized: "tab.music"),
 //                        description: String(localized: "tab.music.description")
 //                    )
-					AudioTestView()
+//					AudioTestView()
+					MeditationAnimationPlayground()
                 case .timer:
                     RoutinePlayerView(modelContext: modelContext)
                 case .history:
