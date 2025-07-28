@@ -20,7 +20,7 @@ struct RoutinePlayerSelectionView: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                AppTheme.backgroundColor.ignoresSafeArea()
+                // AppTheme.backgroundColor.ignoresSafeArea()
                 
                 VStack(spacing: 0) {
                     // Beads Progress Indicator

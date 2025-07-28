@@ -31,8 +31,6 @@ struct PlayerLayout<Content: View>: View {
     }
 }
 
-
-
 // MARK: - Player Header View
 struct PlayerHeaderView: View {
     let routineName: String
