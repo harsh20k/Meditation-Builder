@@ -944,6 +944,12 @@ class RoutinePlayerViewModel {
         availableRoutines.filter { !$0.isDeleted }
     }
     
+    var currentRoutine: SavedRoutine? {
+        let current = routine ?? nil
+        print("🔍 ViewModel.currentRoutine called: \(current?.routineName ?? "nil")")
+        return current
+    }
+    
     // MARK: - 7. Initialization
     /**
      * Initializes the view model with a routine and model context.
@@ -968,8 +974,10 @@ class RoutinePlayerViewModel {
         // Handle routine selection: use provided routine or select first available
         if let providedRoutine = routine {
             self.routine = providedRoutine
+            print("🎯 ViewModel init: Provided routine set to '\(providedRoutine.routineName)'")
         } else if let firstRoutine = availableRoutines.filter({ !$0.isDeleted }).first {
             self.routine = firstRoutine
+            print("🎯 ViewModel init: Auto-selected first routine '\(firstRoutine.routineName)'")
             logger.info("Auto-selected first available routine: \(firstRoutine.routineName)", category: "RoutineSelection")
         }
     }
@@ -985,6 +993,7 @@ class RoutinePlayerViewModel {
      * - selectRoutine(_ routine: SavedRoutine): Selects a routine for playback.
      */
     func selectRoutine(_ routine: SavedRoutine) {
+        print("🔄 ViewModel.selectRoutine called with: '\(routine.routineName)'")
         self.routine = routine
         logger.info("Routine selected: \(routine.routineName)", category: "RoutineSelection")
     }

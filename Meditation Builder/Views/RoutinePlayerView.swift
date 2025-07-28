@@ -192,14 +192,16 @@ struct PreSessionState: View {
                 
                 // Pre-session content
                 VStack(spacing: 24) {
-                    // Show carousel if multiple routines available
-                    if viewModel.savedRoutines.count > 1 {
+                    // Show carousel if any routines are available
+                    if viewModel.savedRoutines.count >= 1 {
                         // Routine selection carousel
-                        RoutineSelectionCarousel(
+                                                RoutineSelectionCarousel(
                             routines: viewModel.savedRoutines,
                             onRoutineSelected: { routine in
+                                print("🎯 PreSessionState - Carousel selected routine: '\(routine.routineName)'")
                                 viewModel.selectRoutine(routine)
-                            }
+                            },
+                            currentlySelectedRoutine: viewModel.currentRoutine
                         )
                         .frame(height: 200)
                     } else {
