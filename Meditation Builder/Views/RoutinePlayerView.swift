@@ -198,7 +198,6 @@ struct PreSessionState: View {
                                                 RoutineSelectionCarousel(
                             routines: viewModel.savedRoutines,
                             onRoutineSelected: { routine in
-                                print("🎯 PreSessionState - Carousel selected routine: '\(routine.routineName)'")
                                 viewModel.selectRoutine(routine)
                             },
                             currentlySelectedRoutine: viewModel.currentRoutine

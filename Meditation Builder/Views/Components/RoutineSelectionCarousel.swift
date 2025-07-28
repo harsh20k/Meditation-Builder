@@ -18,6 +18,7 @@ struct RoutineSelectionCarousel: View {
     @State private var currentIndex: Int = 0
     @State private var lastSelectedIndex: Int = -1
     @State private var scrollOffset: CGFloat = 0
+    @State private var isProgrammaticScroll: Bool = false
     
     private let itemWidth = UIScreen.main.bounds.width * 0.7
     private let spacing: CGFloat = 16
@@ -76,9 +77,13 @@ struct RoutineSelectionCarousel: View {
                     // Scroll to the selected routine when the view appears
                     if let selectedRoutine = currentlySelectedRoutine,
                        let selectedIndex = routines.firstIndex(where: { $0.id == selectedRoutine.id }) {
-                        print("🎠 Carousel - Scrolling to index \(selectedIndex): '\(selectedRoutine.routineName)'")
+                        isProgrammaticScroll = true
                         withAnimation(.easeInOut(duration: 0.5)) {
                             proxy.scrollTo(selectedRoutine.id, anchor: .center)
+                        }
+                        // Reset the flag after a short delay to allow for the scroll animation
+                        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) {
+                            isProgrammaticScroll = false
                         }
                     }
                 }
@@ -89,23 +94,16 @@ struct RoutineSelectionCarousel: View {
                 detectCenterItem()
             }
             .onAppear {
-                print("🎠 Carousel onAppear - Routines count: \(routines.count)")
-                print("🎠 Carousel onAppear - Currently selected routine: \(currentlySelectedRoutine?.routineName ?? "nil")")
-                
                 // Find the index of the currently selected routine
                 if let selectedRoutine = currentlySelectedRoutine,
                    let selectedIndex = routines.firstIndex(where: { $0.id == selectedRoutine.id }) {
                     // Set carousel to show the currently selected routine
-                    print("🎠 Carousel onAppear - Found selected routine at index \(selectedIndex): '\(selectedRoutine.routineName)'")
                     currentIndex = selectedIndex
                     lastSelectedIndex = selectedIndex
                 } else if !routines.isEmpty && lastSelectedIndex == -1 {
                     // Only auto-select first routine if no routine is currently selected
-                    print("🎠 Carousel onAppear - No routine selected, auto-selecting first routine: '\(routines[0].routineName)'")
                     lastSelectedIndex = 0
                     onRoutineSelected(routines[0])
-                } else {
-                    print("🎠 Carousel onAppear - No action taken")
                 }
             }
         }
@@ -118,11 +116,14 @@ struct RoutineSelectionCarousel: View {
             let newIndex = nearest.key
             if newIndex != currentIndex {
                 currentIndex = newIndex
-                UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                
+                // Only provide haptic feedback for user-initiated scrolls
+                if !isProgrammaticScroll {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
+                }
                 
                 // Automatically select the centered routine
                 if newIndex != lastSelectedIndex && newIndex < routines.count {
-                    print("🎠 Carousel scroll - Auto-selecting routine at index \(newIndex): '\(routines[newIndex].routineName)'")
                     lastSelectedIndex = newIndex
                     onRoutineSelected(routines[newIndex])
                 }
