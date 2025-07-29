@@ -39,15 +39,7 @@ struct BreathworkPillView: View {
 	
 	var body: some View {
 		ZStack {
-				// MARK: • Timeline dots behind the pill
-			VStack(spacing: 8) {
-				ForEach(0..<6, id: \.self) { _ in
-					Circle()
-						.fill(Color.white.opacity(0.15))
-						.frame(width: 4, height: 4)
-				}
-			}
-			
+
 				// MARK: • Capsule + contents
 			HStack(spacing: 10) {
 					// Leaf icon
@@ -159,7 +151,7 @@ struct BreathworkPillView_Previews: PreviewProvider {
 	}
 }
 #Preview {
-	VStack(spacing: 10) {
+	VStack(spacing: 30) {
 		BreathworkPillView()
 		BreathworkPillView()
 		BreathworkPillView()
