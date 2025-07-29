@@ -173,7 +173,7 @@ struct RoutineBuilderView: View {
                                 } dropCompleted: {
                                     // Drag and drop completed
                                 }
-                                .environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.large)
+								.environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.blockCard)
                             }
                             .id(refreshID)
                             .padding(.vertical, AppTheme.Spacing.extraLarge)
