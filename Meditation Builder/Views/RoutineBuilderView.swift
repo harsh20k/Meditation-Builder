@@ -22,7 +22,6 @@ struct RoutineBuilderView: View {
     @State private var routineIcon: String
     @State private var showIconPicker = false
     @State private var isEditMode: Bool
-    @State private var refreshID = UUID()
     @State private var openSwipeCardID: UUID? = nil
     
     @Environment(\.modelContext) private var modelContext
@@ -69,10 +68,12 @@ struct RoutineBuilderView: View {
     func deleteBlock(_ block: RoutineBlock) {
         logger.info("Deleting block: \(block.name)", category: "RoutineBuilder")
         
+        // Reset open swipe state
+        openSwipeCardID = nil
+        
         if let index = routine.blocks.firstIndex(where: { $0.id == block.id }) {
-            withAnimation(.easeInOut(duration: 0.3)) {
+            withAnimation(.easeInOut(duration: 0.4)) {
                 routine.blocks.remove(at: index)
-                refreshID = UUID() // Force view refresh
             }
             logger.info("Block deleted successfully: \(block.name)", category: "RoutineBuilder")
         } else {
@@ -177,7 +178,6 @@ struct RoutineBuilderView: View {
                                 }
 								.environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.blockCard)
                             }
-                            .id(refreshID)
                             .padding(.vertical, AppTheme.Spacing.extraLarge)
                             .padding(.bottom, 120) // Account for floating button and tab bar
                         }
@@ -240,7 +240,6 @@ struct RoutineBuilderView: View {
                         updatedBlocks[idx] = updatedBlock
                     }
                     routine.blocks = updatedBlocks
-                    refreshID = UUID() // Force view refresh
                 }
                 editBlock = nil
             }
@@ -250,7 +249,6 @@ struct RoutineBuilderView: View {
                 logger.info("New block added: \(newBlock.name) (\(newBlock.type))", category: "RoutineBuilder")
                 withAnimation(.easeInOut(duration: 0.2)) {
                     routine.blocks.append(newBlock)
-                    refreshID = UUID() // Force view refresh
                 }
                 showAddBlock = false
             }
@@ -313,6 +311,8 @@ struct SwipeableBlockCard: View {
     @Binding var openSwipeCardID: UUID?
     
     @State private var offset: CGFloat = 0
+    @State private var isPressed: Bool = false
+    @State private var isDeleting: Bool = false
     
     private let deleteButtonWidth: CGFloat = 80
     private let maxSwipeDistance: CGFloat = -120
@@ -327,8 +327,15 @@ struct SwipeableBlockCard: View {
             // Delete background (only visible when swiped)
             HStack {
                 Spacer()
-                Button(action: {
+                                Button(action: {
+                    // Start deletion animation
                     withAnimation(.easeInOut(duration: 0.3)) {
+                        isDeleting = true
+                        offset = -UIScreen.main.bounds.width // Slide completely off screen
+                    }
+                    
+                    // Call onDelete after animation completes
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) {
                         onDelete()
                     }
                 }) {
@@ -339,6 +346,13 @@ struct SwipeableBlockCard: View {
                         .background(Color.red)
                         .clipShape(Circle())
                 }
+                .scaleEffect(isPressed ? 0.9 : 1.0)
+                .animation(.easeInOut(duration: 0.1), value: isPressed)
+                .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        isPressed = pressing
+                    }
+                }, perform: {})
                 .buttonStyle(PlainButtonStyle())
                 .padding(.trailing, 20)
                 .opacity(isSwiped ? 1.0 : 0.0)
@@ -356,6 +370,7 @@ struct SwipeableBlockCard: View {
                 blocksCount: blocksCount
             )
             .offset(x: offset)
+            .opacity(isDeleting ? 0.0 : 1.0)
             .gesture(
                 DragGesture()
                     .onChanged { value in

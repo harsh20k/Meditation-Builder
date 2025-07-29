@@ -74,7 +74,7 @@ struct TimerDisplayView: View {
             if sessionStarted {
                 TimelineView(.periodic(from: viewModel.routineStartDate, by: 1.0)) { context in
                     Text(viewModel.formatTime(viewModel.elapsedTime))
-						.font(.system(size: 72, weight: .light, design: .serif))
+						.font(.system(size: 72, weight: .light, design: .default))
                         .foregroundColor(.white)
                         .monospacedDigit()
                         .onChange(of: context.date) { _, newDate in
@@ -84,7 +84,7 @@ struct TimerDisplayView: View {
             } else {
                 // Static display when session hasn't started
                 Text(viewModel.formatTime(0))
-					.font(.system(size: 72, weight: .light, design: .serif))
+					.font(.system(size: 72, weight: .light, design: .default))
                     .foregroundColor(.gray)
                     .monospacedDigit()
             }
