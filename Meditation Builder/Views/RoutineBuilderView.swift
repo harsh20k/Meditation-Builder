@@ -149,13 +149,13 @@ struct RoutineBuilderView: View {
                             // Timeline vertical line (scrolls with blocks)
                             if routine.blocks.count > 1 {
                                 GeometryReader { geo in
-                                    let blockHeight: CGFloat = 76 // Approximate block height (padding + card)
+                                    let blockHeight: CGFloat = 56 // Approximate block height (padding + card)
                                     let spacing: CGFloat = 20
                                     let totalHeight = CGFloat(routine.blocks.count) * blockHeight + CGFloat(routine.blocks.count - 1) * spacing
                                     Rectangle()
                                         .fill(AppTheme.lightGrey.opacity(AppTheme.Opacity.timeline))
                                         .frame(width: 2, height: totalHeight - blockHeight/2)
-                                        .offset(x: 54, y: blockHeight/2)
+										.offset(x: 58, y: blockHeight/2 + AppTheme.Spacing.titleRoom)
                                 }
                             }
                             
@@ -170,7 +170,7 @@ struct RoutineBuilderView: View {
                                         blocksCount: routine.blocks.count,
                                         openSwipeCardID: $openSwipeCardID
                                     )
-                                    .frame(height: 76)
+                                    .frame(height: 56)
                                 } dropView: { block in
                                     DropIndicatorView(block: block)
                                 } dropCompleted: {
@@ -178,8 +178,9 @@ struct RoutineBuilderView: View {
                                 }
 								.environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.blockCard)
                             }
-                            .padding(.vertical, AppTheme.Spacing.extraLarge)
+                            .padding(.top, AppTheme.Spacing.titleRoom)
                             .padding(.bottom, 120) // Account for floating button and tab bar
+							.padding(.horizontal, 24)
                         }
                     }
                 }

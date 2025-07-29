@@ -11,93 +11,102 @@ import SwiftUI
 
 struct PillDesignTokens {
     // Colors
-    static let lightMint = Color(red: 0.65, green: 0.88, blue: 0.78)
-    static let deepTeal = Color(red: 0.18, green: 0.58, blue: 0.48)
-    static let iconLight = Color(red: 0.45, green: 0.82, blue: 0.72)
-    static let iconDark = Color(red: 0.15, green: 0.55, blue: 0.45)
+    static let mintGreen = Color(red: 0.50, green: 0.83, blue: 0.78)
+    static let deepTeal = Color(red: 0.23, green: 0.56, blue: 0.50)
     
     // Gradients
     static let mainGradient = LinearGradient(
-        colors: [lightMint, deepTeal],
+        gradient: Gradient(colors: [mintGreen, deepTeal]),
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
     
     static let iconGradient = LinearGradient(
-        colors: [iconLight, iconDark],
-        startPoint: .topLeading,
-        endPoint: .bottomTrailing
-    )
-    
-    static let highlightGradient = LinearGradient(
-        colors: [
-            Color.white.opacity(0.3),
-            Color.white.opacity(0.15),
-            Color.clear
-        ],
-        startPoint: .top,
-        endPoint: .center
-    )
-    
-    static let textGradient = LinearGradient(
-        colors: [
-            Color.white.opacity(0.95),
-            Color.white.opacity(0.85)
-        ],
+        gradient: Gradient(colors: [
+            Color.white.opacity(0.8),
+            Color.white.opacity(0.6)
+        ]),
         startPoint: .topLeading,
         endPoint: .bottomTrailing
     )
     
     // Shadows
-    static let primaryShadow = (color: Color.black.opacity(0.25), radius: CGFloat(10), x: CGFloat(0), y: CGFloat(6))
+    static let dropShadow = (color: Color.black.opacity(0.7), radius: CGFloat(12), x: CGFloat(0), y: CGFloat(2))
+    static let highlightShadow = (color: Color.white.opacity(0.4), radius: CGFloat(4), x: CGFloat(-2), y: CGFloat(-2))
+    
+    // Inner shadows and strokes
+    static let innerShadowStroke = (color: Color.black.opacity(0.85), width: CGFloat(2), blur: CGFloat(3))
+    static let innerHighlightStroke = (color: Color.white.opacity(1.0), width: CGFloat(2), blur: CGFloat(1))
+    
+    // Text styles
+    static let primaryTextColor = Color.white.opacity(0.95)
+    static let secondaryTextColor = Color.white.opacity(0.90)
+    
+    // Gradients for text and buttons
+    static let textGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color.white.opacity(0.95),
+            Color.white.opacity(0.85)
+        ]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    // Additional shadows
     static let subtleShadow = (color: Color.black.opacity(0.15), radius: CGFloat(4), x: CGFloat(0), y: CGFloat(2))
-    static let glowShadow = (color: deepTeal.opacity(0.2), radius: CGFloat(16), x: CGFloat(0), y: CGFloat(8))
-    
-    // Icon shadows
-    static let iconShadow = (color: Color.black.opacity(0.3), radius: CGFloat(6), x: CGFloat(0), y: CGFloat(3))
-    static let iconGlow = (color: Color.white.opacity(0.4), radius: CGFloat(6), x: CGFloat(0), y: CGFloat(0))
-    
-    // Text shadows
-    static let textShadow = (color: Color.black.opacity(0.2), radius: CGFloat(2), x: CGFloat(0), y: CGFloat(1))
-    static let subtleTextShadow = (color: Color.black.opacity(0.15), radius: CGFloat(1), x: CGFloat(0), y: CGFloat(1))
 }
 
 struct PillBackground: View {
     var body: some View {
         Capsule()
             .fill(PillDesignTokens.mainGradient)
-            .overlay(
-                // Top highlight
-                Capsule()
-                    .fill(PillDesignTokens.highlightGradient)
+            // soft drop shadow
+            .shadow(
+                color: PillDesignTokens.dropShadow.color,
+                radius: PillDesignTokens.dropShadow.radius,
+                x: PillDesignTokens.dropShadow.x,
+                y: PillDesignTokens.dropShadow.y
             )
+            // subtle top-left highlight for raised effect
+            .shadow(
+                color: PillDesignTokens.highlightShadow.color,
+                radius: PillDesignTokens.highlightShadow.radius,
+                x: PillDesignTokens.highlightShadow.x,
+                y: PillDesignTokens.highlightShadow.y
+            )
+            // inner shadow on bottom-right
             .overlay(
-                // Subtle inner border
                 Capsule()
-                    .stroke(
-                        LinearGradient(
-                            colors: [
-                                Color.white.opacity(0.4),
-                                Color.white.opacity(0.1),
-                                Color.clear
-                            ],
-                            startPoint: .topLeading,
-                            endPoint: .bottomTrailing
-                        ),
-                        lineWidth: 0.5
+                    .stroke(PillDesignTokens.innerShadowStroke.color, lineWidth: PillDesignTokens.innerShadowStroke.width)
+                    .blur(radius: PillDesignTokens.innerShadowStroke.blur)
+                    .offset(x: -1, y: -1)
+                    .mask(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.black, Color.clear]),
+                                    startPoint: .bottomTrailing,
+                                    endPoint: .topLeading
+                                )
+                            )
                     )
             )
-            .shadow(
-                color: PillDesignTokens.primaryShadow.color,
-                radius: PillDesignTokens.primaryShadow.radius,
-                x: PillDesignTokens.primaryShadow.x,
-                y: PillDesignTokens.primaryShadow.y
-            )
-            .shadow(
-                color: PillDesignTokens.glowShadow.color,
-                radius: PillDesignTokens.glowShadow.radius,
-                x: PillDesignTokens.glowShadow.x,
-                y: PillDesignTokens.glowShadow.y
+            // faint inner‐highlight at top edge
+            .overlay(
+                Capsule()
+                    .stroke(PillDesignTokens.innerHighlightStroke.color, lineWidth: PillDesignTokens.innerHighlightStroke.width)
+                    .blur(radius: PillDesignTokens.innerHighlightStroke.blur)
+                    .offset(x: 1, y: 1)
+                    .mask(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.black, Color.clear]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
             )
     }
 }
@@ -106,44 +115,11 @@ struct PillIcon: View {
     let iconName: String
     
     var body: some View {
-        ZStack {
-            // Icon background
-            Circle()
-                .fill(PillDesignTokens.iconGradient)
-                .frame(width: 36, height: 36)
-                .overlay(
-                    Circle()
-                        .stroke(
-                            LinearGradient(
-                                colors: [
-                                    Color.white.opacity(0.5),
-                                    Color.white.opacity(0.2),
-                                    Color.clear
-                                ],
-                                startPoint: .topLeading,
-                                endPoint: .bottomTrailing
-                            ),
-                            lineWidth: 0.5
-                        )
-                )
-                .shadow(
-                    color: PillDesignTokens.iconShadow.color,
-                    radius: PillDesignTokens.iconShadow.radius,
-                    x: PillDesignTokens.iconShadow.x,
-                    y: PillDesignTokens.iconShadow.y
-                )
-            
-            // Icon with gradient
-            Image(systemName: iconName)
-                .foregroundStyle(PillDesignTokens.textGradient)
-                .font(.system(size: 20, weight: .ultraLight))
-                .shadow(
-                    color: PillDesignTokens.iconGlow.color,
-                    radius: PillDesignTokens.iconGlow.radius,
-                    x: PillDesignTokens.iconGlow.x,
-                    y: PillDesignTokens.iconGlow.y
-                )
-        }
+        Image(systemName: iconName)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 24, height: 24)
+            .foregroundStyle(PillDesignTokens.iconGradient)
     }
 }
 
@@ -153,14 +129,12 @@ struct PillText: View {
     
     var body: some View {
         Text(text)
-            .font(isTitle ? AppTheme.Typography.headlineFont : AppTheme.Typography.bodyFont)
-            .foregroundStyle(PillDesignTokens.textGradient)
-            .shadow(
-                color: isTitle ? PillDesignTokens.textShadow.color : PillDesignTokens.subtleTextShadow.color,
-                radius: isTitle ? PillDesignTokens.textShadow.radius : PillDesignTokens.subtleTextShadow.radius,
-                x: isTitle ? PillDesignTokens.textShadow.x : PillDesignTokens.subtleTextShadow.x,
-                y: isTitle ? PillDesignTokens.textShadow.y : PillDesignTokens.subtleTextShadow.y
-            )
+            .font(isTitle ? 
+                .system(size: 20, weight: .medium, design: .serif) :
+                .system(size: 16, weight: .regular, design: .default))
+            .foregroundColor(isTitle ? 
+                PillDesignTokens.primaryTextColor :
+                PillDesignTokens.secondaryTextColor)
     }
 }
 
@@ -218,51 +192,44 @@ struct TimelineBlockCard: View {
     let blocksCount: Int
     
     var body: some View {
-        HStack(alignment: .center, spacing: 16) {
+        HStack(spacing: 10) {
             // Block icon
             PillIcon(iconName: block.blockIcon)
             
             // Block details
-            VStack(alignment: .leading, spacing: 4) {
+            HStack {
                 PillText(text: block.name, isTitle: true)
-                    .lineLimit(2)
+                    .lineLimit(1)
                     .truncationMode(.tail)
-                    .fixedSize(horizontal: false, vertical: true)
                 
-                HStack(spacing: 12) {
-                    // Duration
-                    PillText(
-                        text: String.localizedStringWithFormat(
-                            NSLocalizedString("component.duration.format", comment: "Block duration"),
-                            block.durationInMinutes
-                        ),
-                        isTitle: false
-                    )
-                    
-                    // Bell indicator
-                    if index > 0 && block.blockStartBell != .silent {
-                        HStack(spacing: 4) {
-                            Image(systemName: block.blockStartBell.icon)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundStyle(PillDesignTokens.textGradient)
-                                .shadow(
-                                    color: Color.white.opacity(0.3),
-                                    radius: 2,
-                                    x: 0,
-                                    y: 0
-                                )
-                            
-                            PillText(text: block.blockStartBell.displayName, isTitle: false)
-                                .font(.system(size: 11, weight: .medium, design: .rounded))
-                        }
-                    }
-                }
+                Spacer()
+                
+                // Duration
+                PillText(
+                    text: String.localizedStringWithFormat(
+                        NSLocalizedString("component.duration.format", comment: "Block duration"),
+                        block.durationInMinutes
+                    ),
+                    isTitle: false
+                )
             }
             
-            Spacer()
+            // Bell indicator (commented out for now)
+            /*
+            if index > 0 && block.blockStartBell != .silent {
+                Image(systemName: block.blockStartBell.icon)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(PillDesignTokens.secondaryTextColor)
+                
+                // Bell name hidden for now - might add back later
+                PillText(text: block.blockStartBell.displayName, isTitle: false)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+            }
+            */
+            
         }
-        .padding(.vertical, 14)
-        .padding(.horizontal, 18)
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
         .background(PillBackground())
         .padding(.horizontal, AppTheme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
