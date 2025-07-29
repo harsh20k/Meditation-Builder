@@ -23,6 +23,7 @@ struct RoutineBuilderView: View {
     @State private var showIconPicker = false
     @State private var isEditMode: Bool
     @State private var refreshID = UUID()
+    @State private var openSwipeCardID: UUID? = nil
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -159,13 +160,14 @@ struct RoutineBuilderView: View {
                             
                             LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
                                 DragulaView(items: $routine.blocks) { block in
-                                    TimelineBlockCard(
+                                    SwipeableBlockCard(
                                         block: block,
                                         isLast: block.id == routine.blocks.last?.id,
                                         onEdit: { editBlock = block },
                                         onDelete: { deleteBlock(block) },
                                         index: routine.blocks.firstIndex(where: { $0.id == block.id }) ?? 0,
-                                        blocksCount: routine.blocks.count
+                                        blocksCount: routine.blocks.count,
+                                        openSwipeCardID: $openSwipeCardID
                                     )
                                     .frame(height: 76)
                                 } dropView: { block in
@@ -296,6 +298,102 @@ struct RoutineBuilderView: View {
                 logger.error("Failed to save routine: \(error)", category: "RoutineBuilder")
             }
             isSaving = false
+        }
+    }
+}
+
+// MARK: - Swipeable Block Card
+struct SwipeableBlockCard: View {
+    let block: RoutineBlock
+    let isLast: Bool
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    let index: Int
+    let blocksCount: Int
+    @Binding var openSwipeCardID: UUID?
+    
+    @State private var offset: CGFloat = 0
+    
+    private let deleteButtonWidth: CGFloat = 80
+    private let maxSwipeDistance: CGFloat = -120
+    private let snapThreshold: CGFloat = -80 // Distance to snap to open state
+    
+    private var isSwiped: Bool {
+        openSwipeCardID == block.id
+    }
+    
+    var body: some View {
+        ZStack {
+            // Delete background (only visible when swiped)
+            HStack {
+                Spacer()
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        onDelete()
+                    }
+                }) {
+                    Image(systemName: "trash.fill")
+                        .foregroundColor(.white)
+                        .font(.system(size: 18, weight: .medium))
+                        .frame(width: 60, height: 60)
+                        .background(Color.red)
+                        .clipShape(Circle())
+                }
+                .buttonStyle(PlainButtonStyle())
+                .padding(.trailing, 20)
+                .opacity(isSwiped ? 1.0 : 0.0)
+                .animation(.easeInOut(duration: 0.2), value: isSwiped)
+            }
+            .frame(maxWidth: .infinity)
+            
+            // Main card
+            TimelineBlockCard(
+                block: block,
+                isLast: isLast,
+                onEdit: onEdit,
+                onDelete: onDelete,
+                index: index,
+                blocksCount: blocksCount
+            )
+            .offset(x: offset)
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        // Only allow left swipe (negative values)
+                        if value.translation.width < 0 {
+                            // Limit the swipe distance
+                            offset = max(value.translation.width, maxSwipeDistance)
+                        }
+                    }
+                    .onEnded { value in
+                        withAnimation(.easeInOut(duration: 0.3)) {
+                            if value.translation.width < snapThreshold {
+                                // Snap to open state (show delete button)
+                                offset = maxSwipeDistance
+                                openSwipeCardID = block.id
+                            } else {
+                                // Snap back to closed state
+                                offset = 0
+                                openSwipeCardID = nil
+                            }
+                        }
+                    }
+            )
+            .onTapGesture {
+                // Close swipe state when tapping
+                if isSwiped {
+                    withAnimation(.easeInOut(duration: 0.3)) {
+                        offset = 0
+                        openSwipeCardID = nil
+                    }
+                }
+            }
+            .onChange(of: isSwiped) { _, newValue in
+                // Update offset when swipe state changes externally
+                withAnimation(.easeInOut(duration: 0.3)) {
+                    offset = newValue ? maxSwipeDistance : 0
+                }
+            }
         }
     }
 }

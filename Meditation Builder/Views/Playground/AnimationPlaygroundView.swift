@@ -8,6 +8,35 @@
 import SwiftUI
 
 struct BreathworkPillView: View {
+	@State private var tapLocation: CGPoint?
+	@State private var isGlowing = false
+	
+	// Computed property for glow effect
+	private var glowEffect: some View {
+		Group {
+			if let location = tapLocation, isGlowing {
+				Circle()
+					.fill(
+						RadialGradient(
+							colors: [
+								Color.white.opacity(0.6),
+								Color.white.opacity(0.3),
+								Color.clear
+							],
+							center: .center,
+							startRadius: 0,
+							endRadius: 70
+						)
+					)
+					.frame(width: 140, height: 140)
+					.position(location)
+					.scaleEffect(isGlowing ? 1.0 : 0.8)
+					.opacity(isGlowing ? 1.0 : 0.0)
+					.animation(.easeOut(duration: 0.3), value: isGlowing)
+			}
+		}
+	}
+	
 	var body: some View {
 		ZStack {
 				// MARK: • Timeline dots behind the pill
@@ -101,10 +130,25 @@ struct BreathworkPillView: View {
 							)
 					)
 			)
+			// Interactive glow overlay
+			.overlay(
+				glowEffect
+			)
+			// Tap gesture
+			.onTapGesture { location in
+				tapLocation = location
+				isGlowing = true
+				
+				// Auto-hide the glow after a short delay
+				DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+					withAnimation(.easeInOut(duration: 0.4)) {
+						isGlowing = false
+					}
+				}
+			}
 		}
 			// center in a dark canvas
-		.padding(40)
-		.background(Color.black)
+
 	}
 }
 
@@ -115,5 +159,11 @@ struct BreathworkPillView_Previews: PreviewProvider {
 	}
 }
 #Preview {
-	BreathworkPillView()
+	VStack(spacing: 10) {
+		BreathworkPillView()
+		BreathworkPillView()
+		BreathworkPillView()
+	}
+	.padding(40)
+	.background(Color.black)
 }
