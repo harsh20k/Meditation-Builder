@@ -16,30 +16,32 @@ struct TimelineBlockCard: View {
     let blocksCount: Int
     
     var body: some View {
-        ZStack(alignment: .leading) {
-            // Timeline node
-            VStack {
-                Spacer()
-                Circle()
-                    .fill(AppTheme.accentColor)
-                    .frame(width: 16, height: 16)
-                    .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 2))
-                    .padding(.leading, 28)
-                Spacer()
-            }
-            .frame(width: 40)
+		ZStack(alignment: .center) {
+            // Timeline node - visual connector between blocks
+//            VStack {
+//                Spacer()
+//                Circle()
+//                    .fill(AppTheme.accentColor)
+//                    .frame(width: 16, height: 16)
+//                    .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 2))
+//                    .padding(.leading, 28)
+//                Spacer()
+//            }
+//            .frame(width: 40)
             
-            // Block Card
+            // Main block card content
             HStack(alignment: .center, spacing: AppTheme.Spacing.medium) {
+                // Block icon with background circle
                 ZStack {
                     Circle()
-                        .fill(AppTheme.accentColor)
+						.fill(AppTheme.blockColor.gradient)
                         .frame(width: 40, height: 40)
                     Image(systemName: block.blockIcon)
                         .foregroundColor(.white)
-                        .font(.system(size: 22, weight: .bold))
+                        .font(.system(size: 24, weight: .ultraLight))
                 }
                 
+                // Block details (name, duration, bell info)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(block.name)
                         .font(AppTheme.Typography.headlineFont)
@@ -49,6 +51,7 @@ struct TimelineBlockCard: View {
                         .fixedSize(horizontal: false, vertical: true)
                     
                     HStack(spacing: 8) {
+                        // Duration display
                         Text(String.localizedStringWithFormat(
                     NSLocalizedString("component.duration.format", comment: "Block duration"),
                     block.durationInMinutes
@@ -56,6 +59,7 @@ struct TimelineBlockCard: View {
                             .font(AppTheme.Typography.bodyFont)
                             .foregroundColor(AppTheme.lightGrey)
                         
+                        // Bell indicator (only show for non-first blocks with non-silent bells)
                         if index > 0 && block.blockStartBell != .silent {
                             HStack(spacing: 4) {
                                 Image(systemName: block.blockStartBell.icon)
@@ -70,6 +74,7 @@ struct TimelineBlockCard: View {
                 }
                 Spacer()
                 
+                // Action buttons (edit/delete)
                 HStack(spacing: AppTheme.Spacing.small) {
                     Button(action: onEdit) {
                         Image(systemName: "pencil")
@@ -95,17 +100,17 @@ struct TimelineBlockCard: View {
                 }
             }
             .padding(.vertical, 18)
-            .padding(.horizontal, 20)
+            .padding(.horizontal, 16)
             .background(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
-                    .fill(AppTheme.cardColor)
+				RoundedRectangle(cornerRadius: AppTheme.CornerRadius.blockCard)
+					.fill(AppTheme.blockColor)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
+                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.blockCard)
                     .stroke(Color.white.opacity(AppTheme.Opacity.border), lineWidth: 1)
             )
             .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
-            .padding(.leading, AppTheme.Spacing.medium)
+            .padding(.horizontal, AppTheme.Spacing.medium)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }

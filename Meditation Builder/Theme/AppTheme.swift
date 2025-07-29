@@ -12,6 +12,8 @@ struct AppTheme {
     // MARK: - Colors
     static let backgroundColor = Color(red: 20/255, green: 22/255, blue: 20/255) // #141518
 	static let cardColor = Color(red: 15/255, green: 17/255, blue: 17/255) // #
+	static let blockColor = Color(red: 39/255, green: 76/255, blue: 119/255) // #274c77
+
 //	static let cardColor = Color(red: 30/255, green: 32/255, blue: 32/255) // #
 	static let searchBar = Color(red: 35/255, green: 37/255, blue: 40/255) //232528
 	static let tabBar = Color(red: 35/255, green: 36/255, blue: 39/255) //232427
@@ -20,6 +22,7 @@ struct AppTheme {
 
 //	static let accentColor = Color(red: 221/255, green: 97/255, blue: 27/255) // #dd611b (orange)
 	static let accentColor = Color(red: 77/255, green: 181/255, blue: 172/255) // #4DB6AC (Teal)
+	static let accentCompColor = Color(red: 246/255, green: 239/255, blue: 166/255) // #f6efa6 (yellowgold)
     static let lightGrey = Color(red: 119/255, green: 119/255, blue: 129/255) // #777781
     
     // MARK: - Typography
@@ -69,6 +72,7 @@ struct AppTheme {
         static let large: CGFloat = 16
         static let button: CGFloat = 24
 		static let extraLarge: CGFloat = 32
+		static let blockCard: CGFloat = 40
     }
     
     // MARK: - Shadows

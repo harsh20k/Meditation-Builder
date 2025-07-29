@@ -27,6 +27,7 @@ struct RoutineBuilderView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
     @Environment(\.routineDataManager) private var dataManager
+
     
     // Initializer for creating new routine
     init() {
@@ -91,6 +92,7 @@ struct RoutineBuilderView: View {
                             .frame(width: 32, height: 32)
                     }
                     .buttonStyle(PlainButtonStyle())
+                    .padding(.trailing, AppTheme.Spacing.medium)
                     
                     TextField(LocalizedStringKey("routine.name.placeholder"), text: $routineName)
                         .font(AppTheme.Typography.titleFont)
@@ -304,11 +306,11 @@ struct DropIndicatorView: View {
     
     var body: some View {
         Rectangle()
-            .fill(AppTheme.accentColor.opacity(0.3))
-            .frame(height: 4)
-            .clipShape(.rect(cornerRadius: 2))
+			.fill(AppTheme.accentCompColor.opacity(0.8))
+            .frame(height: 40)
+            .clipShape(.rect(cornerRadius: 32))
             .padding(.horizontal, AppTheme.Spacing.medium)
-            .padding(.leading, 56) // Align with timeline
+            .padding(.horizontal, 20) // Align with timeline
     }
 }
 
