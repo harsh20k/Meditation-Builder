@@ -214,8 +214,6 @@ struct PillActionButton: View {
 struct TimelineBlockCard: View {
     let block: RoutineBlock
     let isLast: Bool
-    var onEdit: () -> Void
-    var onDelete: () -> Void
     let index: Int
     let blocksCount: Int
     
@@ -262,21 +260,6 @@ struct TimelineBlockCard: View {
             }
             
             Spacer()
-            
-            // Action buttons
-            HStack(spacing: 8) {
-                PillActionButton(
-                    iconName: "pencil",
-                    isDestructive: false,
-                    action: onEdit
-                )
-                
-                PillActionButton(
-                    iconName: "trash",
-                    isDestructive: true,
-                    action: onDelete
-                )
-            }
         }
         .padding(.vertical, 14)
         .padding(.horizontal, 18)
@@ -301,8 +284,6 @@ struct TimelineBlockCard: View {
                     blockStartBell: .softBell
                 ),
                 isLast: false,
-                onEdit: {},
-                onDelete: {},
                 index: 0,
                 blocksCount: 3
             )
@@ -316,8 +297,6 @@ struct TimelineBlockCard: View {
                     blockStartBell: .tibetanBowl
                 ),
                 isLast: false,
-                onEdit: {},
-                onDelete: {},
                 index: 1,
                 blocksCount: 3
             )
@@ -331,8 +310,6 @@ struct TimelineBlockCard: View {
                     blockStartBell: .digitalChime
                 ),
                 isLast: true,
-                onEdit: {},
-                onDelete: {},
                 index: 2,
                 blocksCount: 3
             )
@@ -346,8 +323,6 @@ struct TimelineBlockCard: View {
                     blockStartBell: .silent
                 ),
                 isLast: false,
-                onEdit: {},
-                onDelete: {},
                 index: 1,
                 blocksCount: 4
             )
@@ -371,8 +346,6 @@ struct TimelineBlockCard: View {
                             blockStartBell: index == 0 ? .silent : BellSound.allCases[index % BellSound.allCases.count]
                         ),
                         isLast: blockType == .custom,
-                        onEdit: {},
-                        onDelete: {},
                         index: index,
                         blocksCount: MeditationBlock.BlockType.allCases.count
                     )
@@ -395,8 +368,6 @@ struct TimelineBlockCard: View {
                 blockStartBell: .tibetanBowl
             ),
             isLast: true,
-            onEdit: {},
-            onDelete: {},
             index: 1,
             blocksCount: 1
         )

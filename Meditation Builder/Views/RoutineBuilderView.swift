@@ -364,8 +364,6 @@ struct SwipeableBlockCard: View {
             TimelineBlockCard(
                 block: block,
                 isLast: isLast,
-                onEdit: onEdit,
-                onDelete: onDelete,
                 index: index,
                 blocksCount: blocksCount
             )
@@ -395,12 +393,15 @@ struct SwipeableBlockCard: View {
                     }
             )
             .onTapGesture {
-                // Close swipe state when tapping
                 if isSwiped {
+                    // Close swipe state when tapping while swiped
                     withAnimation(.easeInOut(duration: 0.3)) {
                         offset = 0
                         openSwipeCardID = nil
                     }
+                } else {
+                    // Trigger edit action when tapping normally
+                    onEdit()
                 }
             }
             .onChange(of: isSwiped) { _, newValue in
