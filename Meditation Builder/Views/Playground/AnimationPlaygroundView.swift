@@ -69,9 +69,9 @@ struct BreathworkPillView: View {
 				// inner shadow on bottom-right
 					.overlay(
 						Capsule()
-							.stroke(Color.black.opacity(0.25), lineWidth: 2)
-							.blur(radius: 4)
-							.offset(x: 2, y: 2)
+							.stroke(Color.black.opacity(0.85), lineWidth: 2)
+							.blur(radius: 3)
+							.offset(x: -1, y: -1)
 							.mask(
 								Capsule()
 									.fill(
@@ -86,16 +86,16 @@ struct BreathworkPillView: View {
 				// faint inner‐highlight at top edge
 					.overlay(
 						Capsule()
-							.stroke(Color.white.opacity(0.2), lineWidth: 1)
+							.stroke(Color.white.opacity(1.0), lineWidth: 2)
 							.blur(radius: 1)
-							.offset(y: -1)
+							.offset(x: 1 ,y: 1)
 							.mask(
 								Capsule()
 									.fill(
 										LinearGradient(
 											gradient: Gradient(colors: [Color.black, Color.clear]),
-											startPoint: .top,
-											endPoint: .bottom
+											startPoint: .topLeading,
+											endPoint: .bottomTrailing
 										)
 									)
 							)
