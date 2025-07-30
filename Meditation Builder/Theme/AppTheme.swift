@@ -11,7 +11,8 @@ import SwiftUI
 struct AppTheme {
     // MARK: - Colors
     static let backgroundColor = Color(red: 20/255, green: 22/255, blue: 20/255) // #141518
-	static let cardColorlighter = Color(red: 25/255, green: 27/255, blue: 27/255) // Lighter than background
+    static let cardColor = Color(red: 15/255, green: 17/255, blue: 17/255) // #
+	static let cardColorLight = Color(red: 25/255, green: 27/255, blue: 27/255) // Lighter than background
 	static let blockColor = Color(red: 39/255, green: 76/255, blue: 119/255) // #274c77
 
 //	static let cardColor = Color(red: 30/255, green: 32/255, blue: 32/255) // #
@@ -64,7 +65,7 @@ struct AppTheme {
         static let section: CGFloat = 32
 		static let titleRoom: CGFloat = 50
         static let cardGrid: CGFloat = 8
-        static let cardInternal: CGFloat = 8
+        static let cardInternal: CGFloat = 10
     }
     
     // MARK: - Corner Radius
@@ -131,7 +132,7 @@ struct AppTheme {
         
         /// Card button style - used for category cards with icons and text
         static let card = ButtonStyle(
-            backgroundColor: cardColorlighter,
+            backgroundColor: cardColorLight,
             foregroundColor: offWhiteText,
             font: .system(size: 12, weight: .light, design: .serif),
             cornerRadius: CornerRadius.small,
