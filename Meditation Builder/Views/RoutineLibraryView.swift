@@ -21,6 +21,7 @@ struct RoutineLibraryView: View {
 	@State private var routineToDelete: SavedRoutine? = nil
 	@State private var showingDeleteAlert = false
 	@State private var selectedRoutine: SavedRoutine? = nil
+	@State private var selectedRoutineForNavigation: SavedRoutine? = nil
 	
 	// Filter out soft-deleted routines
 	private var savedRoutines: [SavedRoutine] {
@@ -101,6 +102,10 @@ struct RoutineLibraryView: View {
 							ForEach(filteredRoutines) { routine in
 								CompactRoutineCard(
 									routine: routine,
+									onTap: {
+										logger.info("Routine tapped: \(routine.routineName)", category: "RoutineLibrary")
+										selectedRoutineForNavigation = routine
+									},
 									onPlay: {
 										playingRoutine = routine
 										recordPlay(for: routine)
@@ -139,6 +144,20 @@ struct RoutineLibraryView: View {
 		}
 		.fullScreenCover(item: $playingRoutine) { routine in
 			RoutinePlayerView(routine: routine, modelContext: modelContext)
+		}
+		.navigationDestination(item: $selectedRoutineForNavigation) { routine in
+			RitualPageView(
+				routine: routine,
+				onEdit: { routine in
+					selectedRoutineForNavigation = nil
+					editingRoutine = routine
+				},
+				onDelete: { routine in
+					selectedRoutineForNavigation = nil
+					routineToDelete = routine
+					showingDeleteAlert = true
+				}
+			)
 		}
 		.alert(LocalizedStringKey("alert.delete.routine.title"), isPresented: $showingDeleteAlert) {
 			Button(LocalizedStringKey("button.cancel"), role: .cancel) {
@@ -419,6 +438,7 @@ struct RoutineCard: View {
 // MARK: - Compact Routine Card
 struct CompactRoutineCard: View {
     let routine: SavedRoutine
+    var onTap: () -> Void
     var onPlay: () -> Void
     var onEdit: () -> Void
     var onDelete: () -> Void
@@ -430,7 +450,7 @@ struct CompactRoutineCard: View {
     }
     
     var body: some View {
-        Button(action: onPlay) {
+        Button(action: onTap) {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
                 // Icon and Menu
                 HStack {
@@ -446,6 +466,16 @@ struct CompactRoutineCard: View {
                     Spacer()
                     
                     Menu {
+                        Button(action: onPlay) {
+                            HStack {
+                                Image(systemName: "play.fill")
+                                    .font(.system(size: 14, weight: .medium))
+                                Text(LocalizedStringKey("button.play"))
+                                    .font(AppTheme.Typography.bodyFont)
+                            }
+                        }
+                        .foregroundColor(AppTheme.accentColor)
+                        
                         if !routine.isSystemRoutine {
                             Group {
                                 Button(action: onEdit) {
@@ -629,6 +659,7 @@ struct LibraryEmptyStateView: View {
                             ForEach(savedRoutines) { routine in
                                 CompactRoutineCard(
                                     routine: routine,
+                                    onTap: {},
                                     onPlay: {},
                                     onEdit: {},
                                     onDelete: {}
@@ -777,6 +808,7 @@ struct LibraryEmptyStateView: View {
                 ForEach(sampleRoutines) { routine in
                     CompactRoutineCard(
                         routine: routine,
+						onTap: {},
                         onPlay: {},
                         onEdit: {},
                         onDelete: {}

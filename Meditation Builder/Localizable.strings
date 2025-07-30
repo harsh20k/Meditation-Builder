@@ -187,4 +187,13 @@
 "button.refresh" = "Refresh";
 
 // MARK: - Routine Builder
-"routine.name.placeholder" = "Routine Name"; 
+"routine.name.placeholder" = "Routine Name";
+
+// MARK: - Ritual Page
+"ritual.statistics.title" = "Statistics";
+"ritual.statistics.blocks" = "Blocks";
+"ritual.statistics.playCount" = "Play Count";
+"ritual.statistics.created" = "Created";
+"ritual.statistics.modified" = "Modified";
+"ritual.statistics.lastPlayed" = "Last Played";
+"ritual.blocks.title" = "Blocks"; 

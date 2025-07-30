@@ -13,7 +13,8 @@ struct MainTabView: View {
     @Environment(\.modelContext) private var modelContext
     
     var body: some View {
-        ZStack(alignment: .bottom) {
+        NavigationStack {
+            ZStack(alignment: .bottom) {
             // Content based on selected tab
             Group {
                 switch selectedTab {
@@ -40,6 +41,7 @@ struct MainTabView: View {
             VStack {
                 Spacer()
                 CustomTabBar(selectedTab: $selectedTab)
+            }
             }
         }
         .ignoresSafeArea(.keyboard) // Prevent tab bar from moving with keyboard
