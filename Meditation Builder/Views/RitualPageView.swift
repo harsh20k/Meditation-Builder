@@ -107,12 +107,13 @@ struct RitualPageView: View {
                     
                     // Action Buttons
                     actionButtonsSection
+					
+					// Blocks Section
+					blocksSection
+				
+                    // Statistics Section (Scrollable)
+                    statisticsSectionScrollable
                     
-                    // Statistics Section
-                    statisticsSection
-                    
-                    // Blocks Section
-                    blocksSection
                 }
                 .padding(.horizontal, AppTheme.Spacing.medium)
                 .padding(.bottom, AppTheme.Spacing.extraLarge)
@@ -197,6 +198,48 @@ struct RitualPageView: View {
         }
     }
     
+    // MARK: - Statistics Section (Scrollable)
+    private var statisticsSectionScrollable: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+            Text(LocalizedStringKey("ritual.statistics.title"))
+                .font(AppTheme.Typography.headlineFont)
+                .foregroundColor(AppTheme.offWhiteText)
+            
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: AppTheme.Spacing.medium) {
+                    StatRitualPageCard(
+                        title: LocalizedStringKey("ritual.statistics.blocks"),
+                        value: "\(viewModel.blockCount)",
+                        icon: "list.bullet"
+                    )
+                    .frame(width: 160)
+                    
+                    StatRitualPageCard(
+                        title: LocalizedStringKey("ritual.statistics.playCount"),
+                        value: "\(viewModel.routine.playCount)",
+                        icon: "play.circle"
+                    )
+                    .frame(width: 160)
+                    
+                    StatRitualPageCard(
+                        title: LocalizedStringKey("ritual.statistics.created"),
+                        value: viewModel.formattedCreatedDate,
+                        icon: "calendar"
+                    )
+                    .frame(width: 160)
+                    
+                    StatRitualPageCard(
+                        title: LocalizedStringKey("ritual.statistics.modified"),
+                        value: viewModel.formattedLastModified,
+                        icon: "clock"
+                    )
+                    .frame(width: 160)
+                }
+                .padding(.horizontal, AppTheme.Spacing.medium)
+            }
+        }
+    }
+    
     // MARK: - Blocks Section
     private var blocksSection: some View {
         VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
@@ -250,7 +293,7 @@ struct RitualPageView: View {
                         .frame(height: 70)
                 }
             }
-			.padding(.horizontal, AppTheme.Spacing.large)
+			.padding(.horizontal, AppTheme.Spacing.section)
         }
     }
 }
