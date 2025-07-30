@@ -229,47 +229,29 @@ struct RitualPageView: View {
     private var actionButtonsSection: some View {
         VStack(spacing: AppTheme.Spacing.medium) {
             // Play Button (always visible)
-            Button(action: viewModel.playRoutine) {
+            AppTheme.primaryButton(action: viewModel.playRoutine) {
                 HStack {
                     Image(systemName: "play.fill")
                         .font(.system(size: 16, weight: .medium))
                     Text(LocalizedStringKey("button.play"))
-                        .font(AppTheme.Typography.buttonFont)
                 }
-                .foregroundColor(AppTheme.offWhiteText)
-                .frame(maxWidth: .infinity)
-                .padding(AppTheme.Spacing.medium)
-                .background(AppTheme.accentColor)
-                .cornerRadius(AppTheme.CornerRadius.button)
             }
             
             if !viewModel.routine.isSystemRoutine {
-                Button(action: viewModel.editRoutine) {
+                AppTheme.secondaryButton(action: viewModel.editRoutine) {
                     HStack {
                         Image(systemName: "pencil")
                             .font(.system(size: 16, weight: .medium))
                         Text(LocalizedStringKey("button.edit"))
-                            .font(AppTheme.Typography.buttonFont)
                     }
-                    .foregroundColor(AppTheme.offWhiteText)
-                    .frame(maxWidth: .infinity)
-                    .padding(AppTheme.Spacing.medium)
-                    .background(AppTheme.accentColor.opacity(0.8))
-                    .cornerRadius(AppTheme.CornerRadius.button)
                 }
                 
-                Button(action: viewModel.deleteRoutine) {
+                AppTheme.destructiveButton(action: viewModel.deleteRoutine) {
                     HStack {
                         Image(systemName: "trash")
                             .font(.system(size: 16, weight: .medium))
                         Text(LocalizedStringKey("button.delete"))
-                        .font(AppTheme.Typography.buttonFont)
                     }
-                    .foregroundColor(.red.opacity(0.8))
-                    .frame(maxWidth: .infinity)
-                    .padding(AppTheme.Spacing.medium)
-                    .background(Color.red.opacity(0.1))
-                    .cornerRadius(AppTheme.CornerRadius.button)
                 }
             }
         }

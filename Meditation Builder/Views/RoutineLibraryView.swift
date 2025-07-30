@@ -259,15 +259,15 @@ struct RoutineLibraryView: View {
 	}
 }
 
-struct ScalableButtonStyle: ButtonStyle {
-	var scaleAmount: CGFloat = 0.95
-	
-	func makeBody(configuration: Configuration) -> some View {
-		configuration.label
-		.scaleEffect(configuration.isPressed ? scaleAmount : 1)
-		.animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
-	}
-}
+//struct ScalableButtonStyle: ButtonStyle {
+//	var scaleAmount: CGFloat = 0.95
+//	
+//	func makeBody(configuration: Configuration) -> some View {
+//		configuration.label
+//		.scaleEffect(configuration.isPressed ? scaleAmount : 1)
+//		.animation(.easeInOut(duration: 0.1), value: configuration.isPressed)
+//	}
+//}
 
 // MARK: - Routine Card OLD
 struct RoutineCard: View {
