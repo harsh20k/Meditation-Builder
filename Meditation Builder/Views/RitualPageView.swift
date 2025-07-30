@@ -105,14 +105,14 @@ struct RitualPageView: View {
                     // Header Section
                     headerSection
                     
+                    // Action Buttons
+                    actionButtonsSection
+                    
                     // Statistics Section
                     statisticsSection
                     
                     // Blocks Section
                     blocksSection
-                    
-                    // Action Buttons
-                    actionButtonsSection
                 }
                 .padding(.horizontal, AppTheme.Spacing.medium)
                 .padding(.bottom, AppTheme.Spacing.extraLarge)
@@ -142,33 +142,20 @@ struct RitualPageView: View {
     private var headerSection: some View {
         VStack(spacing: AppTheme.Spacing.medium) {
             // Icon and Title
-            HStack {
-                Image(systemName: viewModel.routine.routineIcon)
-                    .font(.system(size: 48, weight: .ultraLight))
-                    .foregroundColor(AppTheme.accentColor)
-                    .frame(width: 80, height: 80)
-                    .background(AppTheme.cardColor)
-                    .clipShape(Circle())
-                
-                VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+                VStack(alignment: .center, spacing: AppTheme.Spacing.small) {
                     Text(viewModel.routine.routineName)
                         .font(AppTheme.Typography.titleFont)
                         .foregroundColor(AppTheme.offWhiteText)
                         .lineLimit(2)
                     
                     Text(String.localizedStringWithFormat(
-                        String(localized: "routine.duration.format"),
+                        String(localized: "routine.duration.format.simplified"),
                         viewModel.totalDuration
                     ))
                     .font(AppTheme.Typography.captionFont)
                     .foregroundColor(AppTheme.lightGrey)
                 }
-                
-                Spacer()
-            }
-            .padding(AppTheme.Spacing.large)
-            .background(AppTheme.cardColor)
-            .cornerRadius(AppTheme.CornerRadius.large)
+			.padding(AppTheme.Spacing.titleRoom)
         }
     }
     
@@ -227,33 +214,43 @@ struct RitualPageView: View {
     
     // MARK: - Action Buttons Section
     private var actionButtonsSection: some View {
-        VStack(spacing: AppTheme.Spacing.medium) {
-            // Play Button (always visible)
-            AppTheme.primaryButton(action: viewModel.playRoutine) {
-                HStack {
-                    Image(systemName: "play.fill")
-                        .font(.system(size: 16, weight: .medium))
-                    Text(LocalizedStringKey("button.play"))
-                }
-            }
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
             
-            if !viewModel.routine.isSystemRoutine {
-                AppTheme.secondaryButton(action: viewModel.editRoutine) {
-                    HStack {
-                        Image(systemName: "pencil")
-                            .font(.system(size: 16, weight: .medium))
-                        Text(LocalizedStringKey("button.edit"))
-                    }
-                }
+            LazyVGrid(columns: [
+                GridItem(.flexible()),
+                GridItem(.flexible()),
+                GridItem(.flexible())
+            ], spacing: AppTheme.Spacing.cardGrid) {
                 
-                AppTheme.destructiveButton(action: viewModel.deleteRoutine) {
-                    HStack {
-                        Image(systemName: "trash")
-                            .font(.system(size: 16, weight: .medium))
-                        Text(LocalizedStringKey("button.delete"))
-                    }
+                // Play Button (always visible)
+                AppTheme.cardButton(
+                    icon: "play.fill",
+                    title: String(localized: "button.play"),
+                    action: viewModel.playRoutine
+                )
+                
+                if !viewModel.routine.isSystemRoutine {
+                    AppTheme.cardButton(
+                        icon: "pencil",
+                        title: String(localized: "button.edit"),
+                        action: viewModel.editRoutine
+                    )
+                    
+                    AppTheme.cardButton(
+                        icon: "trash",
+                        title: String(localized: "button.delete"),
+                        action: viewModel.deleteRoutine
+                    )
+                } else {
+                    // Placeholder cards to maintain grid layout
+                    Color.clear
+                        .frame(height: 70)
+                    
+                    Color.clear
+                        .frame(height: 70)
                 }
             }
+			.padding(.horizontal, AppTheme.Spacing.large)
         }
     }
 }
@@ -269,7 +266,7 @@ struct StatRitualPageCard: View {
             HStack {
                 Image(systemName: icon)
                     .font(.system(size: 16, weight: .medium))
-                    .foregroundColor(AppTheme.accentColor)
+					.foregroundColor(AppTheme.offWhiteText)
                 
                 Text(title)
                     .font(AppTheme.Typography.captionFont)
