@@ -36,8 +36,8 @@ struct CardButtonDemoView: View {
                     // Card Grid
                     LazyVGrid(columns: [
                         GridItem(.flexible(), spacing: AppTheme.Spacing.cardGrid),
-                        GridItem(.flexible(), spacing: AppTheme.Spacing.cardGrid),
-                        GridItem(.flexible(), spacing: AppTheme.Spacing.cardGrid),
+//                        GridItem(.flexible(), spacing: AppTheme.Spacing.cardGrid),
+						GridItem(.flexible(), spacing: AppTheme.Spacing.cardGrid),
                         GridItem(.flexible(), spacing: AppTheme.Spacing.cardGrid)
                     ], spacing: AppTheme.Spacing.cardGrid) {
                         
@@ -91,7 +91,7 @@ struct CardButtonDemoView: View {
                             action: { print("Challenges tapped") }
                         )
                     }
-                    .padding(.horizontal, AppTheme.Spacing.medium)
+					.padding(.horizontal, AppTheme.Spacing.section)
                 }
                 .padding(.bottom, AppTheme.Spacing.extraLarge)
             }
