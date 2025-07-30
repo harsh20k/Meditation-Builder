@@ -23,6 +23,7 @@ struct RoutineBuilderView: View {
     @State private var showIconPicker = false
     @State private var isEditMode: Bool
     @State private var openSwipeCardID: UUID? = nil
+    @State private var dragulaKey = UUID()
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -178,6 +179,7 @@ struct RoutineBuilderView: View {
                                 }
 								.environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.blockCard)
                             }
+                            .id(dragulaKey)
                             .padding(.top, AppTheme.Spacing.titleRoom)
                             .padding(.bottom, 120) // Account for floating button and tab bar
 							.padding(.horizontal, 24)
@@ -242,6 +244,8 @@ struct RoutineBuilderView: View {
                     }
                     routine.blocks = updatedBlocks
                 }
+                // Force DragulaView recreation by updating the key
+                dragulaKey = UUID()
                 editBlock = nil
             }
         }
