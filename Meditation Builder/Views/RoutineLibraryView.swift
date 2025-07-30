@@ -120,6 +120,7 @@ struct RoutineLibraryView: View {
 					}
 				}
 			}
+			.scrollIndicators(.hidden)
 			
 			// Floating Create Button
 			Button(action: { showingRoutineBuilder = true }) {

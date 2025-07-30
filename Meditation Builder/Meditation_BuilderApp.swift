@@ -34,6 +34,7 @@ struct Meditation_BuilderApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .statusBar(hidden: true)
                 .onAppear {
                     // Test if logger is accessible
                     print("Testing logger accessibility...")

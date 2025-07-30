@@ -84,6 +84,8 @@ class RitualPageViewModel: ObservableObject {
 struct RitualPageView: View {
     	@StateObject private var viewModel: RitualPageViewModel
 	@Environment(\.modelContext) private var modelContext
+    @Environment(\.dismiss) private var dismiss
+
     
     let onEdit: (SavedRoutine) -> Void
     let onDelete: (SavedRoutine) -> Void
@@ -118,8 +120,8 @@ struct RitualPageView: View {
                 .padding(.horizontal, AppTheme.Spacing.medium)
                 .padding(.bottom, AppTheme.Spacing.extraLarge)
             }
+            .scrollIndicators(.hidden)
         }
-        		.navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $viewModel.showingEditSheet) {
             RoutineBuilderView(editingRoutine: viewModel.routine)
         }
@@ -154,7 +156,7 @@ struct RitualPageView: View {
                         viewModel.totalDuration
                     ))
                     .font(AppTheme.Typography.captionFont)
-                    .foregroundColor(AppTheme.lightGrey)
+                        .foregroundColor(AppTheme.lightGrey)
                 }
 			.padding(AppTheme.Spacing.titleRoom)
         }
@@ -212,28 +214,28 @@ struct RitualPageView: View {
                         value: "\(viewModel.blockCount)",
                         icon: "list.bullet"
                     )
-                    .frame(width: 160)
+                    .frame(width: 140)
                     
                     StatRitualPageCard(
                         title: LocalizedStringKey("ritual.statistics.playCount"),
                         value: "\(viewModel.routine.playCount)",
                         icon: "play.circle"
                     )
-                    .frame(width: 160)
+                    .frame(width: 140)
                     
                     StatRitualPageCard(
                         title: LocalizedStringKey("ritual.statistics.created"),
                         value: viewModel.formattedCreatedDate,
                         icon: "calendar"
                     )
-                    .frame(width: 160)
+                    .frame(width: 140)
                     
                     StatRitualPageCard(
                         title: LocalizedStringKey("ritual.statistics.modified"),
                         value: viewModel.formattedLastModified,
                         icon: "clock"
                     )
-                    .frame(width: 160)
+                    .frame(width: 140)
                 }
                 .padding(.horizontal, AppTheme.Spacing.medium)
             }
@@ -397,4 +399,6 @@ struct BlockRowView: View {
             onPlay: { _ in }
         )
     }
-} 
+}
+
+
