@@ -156,6 +156,11 @@ struct RoutineLibraryView: View {
 					selectedRoutineForNavigation = nil
 					routineToDelete = routine
 					showingDeleteAlert = true
+				},
+				onPlay: { routine in
+					selectedRoutineForNavigation = nil
+					playingRoutine = routine
+					recordPlay(for: routine)
 				}
 			)
 		}

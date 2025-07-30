@@ -16,6 +16,7 @@ class RitualPageViewModel: ObservableObject {
     @Published var isLoading = false
     @Published var showingEditSheet = false
     @Published var showingDeleteAlert = false
+    @Published var showingPlaySheet = false
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.meditationbuilder", category: "RitualPage")
     
@@ -72,6 +73,11 @@ class RitualPageViewModel: ObservableObject {
 		logger.info("Confirming deletion of routine: \(self.routine.routineName)")
         // This will be handled by the parent view
     }
+    
+    func playRoutine() {
+        logger.info("Play routine requested: \(self.routine.routineName)")
+        showingPlaySheet = true
+    }
 }
 
 // MARK: - Ritual Page View
@@ -81,11 +87,13 @@ struct RitualPageView: View {
     
     let onEdit: (SavedRoutine) -> Void
     let onDelete: (SavedRoutine) -> Void
+    let onPlay: (SavedRoutine) -> Void
     
-    init(routine: SavedRoutine, onEdit: @escaping (SavedRoutine) -> Void, onDelete: @escaping (SavedRoutine) -> Void) {
+    init(routine: SavedRoutine, onEdit: @escaping (SavedRoutine) -> Void, onDelete: @escaping (SavedRoutine) -> Void, onPlay: @escaping (SavedRoutine) -> Void) {
         self._viewModel = StateObject(wrappedValue: RitualPageViewModel(routine: routine))
         self.onEdit = onEdit
         self.onDelete = onDelete
+        self.onPlay = onPlay
     }
     
     var body: some View {
@@ -113,6 +121,9 @@ struct RitualPageView: View {
         		.navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: $viewModel.showingEditSheet) {
             RoutineBuilderView(editingRoutine: viewModel.routine)
+        }
+        .fullScreenCover(isPresented: $viewModel.showingPlaySheet) {
+            RoutinePlayerView(routine: viewModel.routine, modelContext: modelContext)
         }
         .alert(LocalizedStringKey("alert.delete.routine.title"), isPresented: $viewModel.showingDeleteAlert) {
             Button(LocalizedStringKey("button.cancel"), role: .cancel) { }
@@ -217,6 +228,21 @@ struct RitualPageView: View {
     // MARK: - Action Buttons Section
     private var actionButtonsSection: some View {
         VStack(spacing: AppTheme.Spacing.medium) {
+            // Play Button (always visible)
+            Button(action: viewModel.playRoutine) {
+                HStack {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 16, weight: .medium))
+                    Text(LocalizedStringKey("button.play"))
+                        .font(AppTheme.Typography.buttonFont)
+                }
+                .foregroundColor(AppTheme.offWhiteText)
+                .frame(maxWidth: .infinity)
+                .padding(AppTheme.Spacing.medium)
+                .background(AppTheme.accentColor)
+                .cornerRadius(AppTheme.CornerRadius.button)
+            }
+            
             if !viewModel.routine.isSystemRoutine {
                 Button(action: viewModel.editRoutine) {
                     HStack {
@@ -228,7 +254,7 @@ struct RitualPageView: View {
                     .foregroundColor(AppTheme.offWhiteText)
                     .frame(maxWidth: .infinity)
                     .padding(AppTheme.Spacing.medium)
-                    .background(AppTheme.accentColor)
+                    .background(AppTheme.accentColor.opacity(0.8))
                     .cornerRadius(AppTheme.CornerRadius.button)
                 }
                 
@@ -237,7 +263,7 @@ struct RitualPageView: View {
                         Image(systemName: "trash")
                             .font(.system(size: 16, weight: .medium))
                         Text(LocalizedStringKey("button.delete"))
-                            .font(AppTheme.Typography.buttonFont)
+                        .font(AppTheme.Typography.buttonFont)
                     }
                     .foregroundColor(.red.opacity(0.8))
                     .frame(maxWidth: .infinity)
@@ -345,7 +371,8 @@ struct BlockRowView: View {
                 )
             ),
             onEdit: { _ in },
-            onDelete: { _ in }
+            onDelete: { _ in },
+            onPlay: { _ in }
         )
     }
 } 
