@@ -8,6 +8,12 @@
 import SwiftUI
 import os.log
 
+// MARK: - Navigation Destination Types
+enum RoutineBuilderDestination: Hashable {
+    case create
+    case edit(SavedRoutine)
+}
+
 struct MainTabView: View {
     @State private var selectedTab: TabSelection = .library
     @Environment(\.modelContext) private var modelContext
@@ -57,6 +63,14 @@ struct MainTabView: View {
                             // Note: We'll need to handle play state differently
                         }
                     )
+                }
+                .navigationDestination(for: RoutineBuilderDestination.self) { destination in
+                    switch destination {
+                    case .create:
+                        RoutineBuilderView()
+                    case .edit(let routine):
+                        RoutineBuilderView(editingRoutine: routine)
+                    }
                 }
             }
             .ignoresSafeArea(.keyboard) // Prevent tab bar from moving with keyboard

@@ -10,22 +10,23 @@ import SwiftData
 import os.log
 
 struct RoutineLibraryView: View {
-	@Query(sort: \SavedRoutine.lastModified, order: .reverse) private var allSavedRoutines: [SavedRoutine]
+	@Query(filter: #Predicate<SavedRoutine> { routine in
+		!routine.isDeleted
+	}, sort: \SavedRoutine.lastModified, order: .reverse) private var allSavedRoutines: [SavedRoutine]
 	@Environment(\.modelContext) private var modelContext
 	@Environment(\.routineDataManager) private var dataManager
 	@Binding var navigationPath: NavigationPath
 	
 	@State private var searchText = ""
-	@State private var showingRoutineBuilder = false
 	@State private var editingRoutine: SavedRoutine? = nil
 	@State private var playingRoutine: SavedRoutine? = nil
 	@State private var routineToDelete: SavedRoutine? = nil
 	@State private var showingDeleteAlert = false
 	@State private var selectedRoutine: SavedRoutine? = nil
 	
-	// Filter out soft-deleted routines
+	// Use allSavedRoutines directly since query already filters deleted routines
 	private var savedRoutines: [SavedRoutine] {
-		allSavedRoutines.filter { !$0.isDeleted }
+		allSavedRoutines
 	}
 	
 	var filteredRoutines: [SavedRoutine] {
@@ -191,14 +192,14 @@ struct RoutineLibraryView: View {
 					backgroundColor: AppTheme.tabBar,
 					foregroundColor: AppTheme.lightGrey,
 					size: 56,
-					action: { showingRoutineBuilder = true }
+					action: { 
+						// Navigate to routine builder instead of showing sheet
+						navigationPath.append(RoutineBuilderDestination.create)
+					}
 				)
 				.padding(.trailing, AppTheme.Spacing.extraLarge)
 				.padding(.bottom, calculateFloatingButtonBottomPadding(for: geometry)) // Dynamic padding based on screen size
 			}
-		}
-		.sheet(isPresented: $showingRoutineBuilder) {
-			RoutineBuilderView()
 		}
 		.sheet(item: $editingRoutine) { routine in
 			RoutineBuilderView(editingRoutine: routine)
