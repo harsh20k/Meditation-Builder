@@ -11,40 +11,67 @@ import os.log
 struct MainTabView: View {
     @State private var selectedTab: TabSelection = .library
     @Environment(\.modelContext) private var modelContext
+    @State private var navigationPath = NavigationPath()
     
     var body: some View {
-        NavigationStack {
-            ZStack(alignment: .bottom) {
-            // Content based on selected tab
-            Group {
-                switch selectedTab {
-                case .library:
-                    RoutineLibraryView()
-                case .music:
-//                    PlaceholderView(
-//                        icon: "music.note",
-//                        title: String(localized: "tab.music"),
-//                        description: String(localized: "tab.music.description")
-//                    )
-//					AudioTestView()
-					MeditationAnimationPlayground()
-                case .timer:
-                    RoutinePlayerView(modelContext: modelContext)
-                case .history:
-                    SessionHistoryView()
-                case .settings:
-                    LoggingSettingsView()
+        ZStack(alignment: .bottom) {
+            // Main content area with NavigationStack
+            NavigationStack(path: $navigationPath) {
+                // Content based on selected tab
+                Group {
+                    switch selectedTab {
+                    case .library:
+                        RoutineLibraryView(navigationPath: $navigationPath)
+                    case .music:
+//                        PlaceholderView(
+//                            icon: "music.note",
+//                            title: String(localized: "tab.music"),
+//                            description: String(localized: "tab.music.description")
+//                        )
+//                        AudioTestView()
+                        MeditationAnimationPlayground()
+                    case .timer:
+                        RoutinePlayerView(modelContext: modelContext)
+                    case .history:
+                        SessionHistoryView()
+                    case .settings:
+                        LoggingSettingsView()
+                    }
+                }
+                .navigationDestination(for: SavedRoutine.self) { routine in
+                    RitualPageView(
+                        routine: routine,
+                        onEdit: { routine in
+                            // Navigate back and show edit sheet
+                            navigationPath.removeLast()
+                            // Note: We'll need to handle edit state differently
+                        },
+                        onDelete: { routine in
+                            // Navigate back and show delete alert
+                            navigationPath.removeLast()
+                            // Note: We'll need to handle delete state differently
+                        },
+                        onPlay: { routine in
+                            // Navigate back and start playing
+                            navigationPath.removeLast()
+                            // Note: We'll need to handle play state differently
+                        }
+                    )
                 }
             }
+            .ignoresSafeArea(.keyboard) // Prevent tab bar from moving with keyboard
             
-            // Custom Tab Bar
+            // Global Custom Tab Bar - always visible
             VStack {
                 Spacer()
-                CustomTabBar(selectedTab: $selectedTab)
-            }
+                CustomTabBar(
+                    selectedTab: $selectedTab,
+                    onTabTap: { tappedTab in
+                        handleTabTap(tappedTab)
+                    }
+                )
             }
         }
-        .ignoresSafeArea(.keyboard) // Prevent tab bar from moving with keyboard
         .onAppear {
             logger.info("MainTabView appeared", category: "Navigation")
         }
@@ -53,7 +80,24 @@ struct MainTabView: View {
         }
     }
     
-
+    // MARK: - Tab Navigation Logic
+    
+    private func handleTabTap(_ tappedTab: TabSelection) {
+        if tappedTab == selectedTab {
+            // Same tab tapped - pop to root (native iOS behavior)
+            logger.info("Same tab tapped, popping to root: \(tappedTab)", category: "Navigation")
+            withAnimation(.easeInOut(duration: 0.3)) {
+                navigationPath = NavigationPath()
+            }
+        } else {
+            // Different tab tapped - switch tabs and reset navigation
+            logger.info("Different tab tapped, switching to: \(tappedTab)", category: "Navigation")
+            withAnimation(.easeInOut(duration: 0.3)) {
+                selectedTab = tappedTab
+                navigationPath = NavigationPath()
+            }
+        }
+    }
 }
 
 // MARK: - Placeholder View for Unimplemented Tabs

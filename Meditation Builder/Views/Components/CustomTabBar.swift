@@ -50,14 +50,14 @@ enum TabSelection: Int, CaseIterable {
 struct CustomTabBar: View {
 	@Binding var selectedTab: TabSelection
 	@State private var pressedTab: TabSelection?
+	var onTabTap: ((TabSelection) -> Void)?
 	
 	var body: some View {
 		HStack(spacing: 0) {
 			ForEach(TabSelection.allCases, id: \.self) { tab in
 				Button(action: {
-					withAnimation(.easeInOut(duration: 0.1)) {
-						selectedTab = tab
-					}
+					// Call the callback instead of directly setting selectedTab
+					onTabTap?(tab)
 				}) {
 					HStack(spacing: 8) {
 						Image(systemName: tab.icon)
@@ -110,7 +110,12 @@ struct CustomTabBar_Previews: PreviewProvider {
 		var body: some View {
 			VStack {
 				Spacer()
-				CustomTabBar(selectedTab: $selectedTab)
+				CustomTabBar(
+					selectedTab: $selectedTab,
+					onTabTap: { tab in
+						selectedTab = tab
+					}
+				)
 			}
 			.background(AppTheme.backgroundColor)
 			.previewLayout(.sizeThatFits)

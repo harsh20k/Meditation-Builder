@@ -13,6 +13,7 @@ struct RoutineLibraryView: View {
 	@Query(sort: \SavedRoutine.lastModified, order: .reverse) private var allSavedRoutines: [SavedRoutine]
 	@Environment(\.modelContext) private var modelContext
 	@Environment(\.routineDataManager) private var dataManager
+	@Binding var navigationPath: NavigationPath
 	
 	@State private var searchText = ""
 	@State private var showingRoutineBuilder = false
@@ -21,7 +22,6 @@ struct RoutineLibraryView: View {
 	@State private var routineToDelete: SavedRoutine? = nil
 	@State private var showingDeleteAlert = false
 	@State private var selectedRoutine: SavedRoutine? = nil
-	@State private var selectedRoutineForNavigation: SavedRoutine? = nil
 	
 	// Filter out soft-deleted routines
 	private var savedRoutines: [SavedRoutine] {
@@ -73,7 +73,7 @@ struct RoutineLibraryView: View {
 							routine: routine,
 							onTap: {
 								logger.info("Favorite routine tapped: \(routine.routineName)", category: "RoutineLibrary")
-								selectedRoutineForNavigation = routine
+								navigationPath.append(routine)
 							},
 							onPlay: {
 								playingRoutine = routine
@@ -92,27 +92,26 @@ struct RoutineLibraryView: View {
 	}
 	
 	var body: some View {
-		NavigationStack {
-			GeometryReader { geometry in
-				ZStack(alignment: .bottomTrailing) {
-					AppTheme.backgroundColor.ignoresSafeArea()
-					
-					ScrollView {
-					VStack(spacing: 0) {
-						// Header
-						HStack {
-							VStack(spacing: AppTheme.Spacing.small) {
-								Text(LocalizedStringKey("routine.library.title"))
-									.font(AppTheme.Typography.titleFont)
-									.foregroundColor(AppTheme.offWhiteText)
-								Text(LocalizedStringKey("routine.library.title"))
-									.font(AppTheme.Typography.captionFont)
-									.foregroundColor(AppTheme.lightGrey)
-							}
+		GeometryReader { geometry in
+			ZStack(alignment: .bottomTrailing) {
+				AppTheme.backgroundColor.ignoresSafeArea()
+				
+				ScrollView {
+				VStack(spacing: 0) {
+					// Header
+					HStack {
+						VStack(spacing: AppTheme.Spacing.small) {
+							Text(LocalizedStringKey("routine.library.title"))
+								.font(AppTheme.Typography.titleFont)
+								.foregroundColor(AppTheme.offWhiteText)
+							Text(LocalizedStringKey("routine.library.title"))
+								.font(AppTheme.Typography.captionFont)
+								.foregroundColor(AppTheme.lightGrey)
 						}
-						.padding(.horizontal, AppTheme.Spacing.medium)
-						.padding(.top, AppTheme.Spacing.section)
-						.padding(.bottom, AppTheme.Spacing.large)
+					}
+					.padding(.horizontal, AppTheme.Spacing.medium)
+					.padding(.top, AppTheme.Spacing.section)
+					.padding(.bottom, AppTheme.Spacing.large)
 						
 						// Search Bar Hidden
 						if false {
@@ -164,12 +163,12 @@ struct RoutineLibraryView: View {
 								GridItem(.flexible(), spacing: AppTheme.Spacing.small)
 							], spacing: AppTheme.Spacing.small) {
 								ForEach(filteredRoutines) { routine in
-									CompactRoutineCard(
-										routine: routine,
-										onTap: {
-											logger.info("Routine tapped: \(routine.routineName)", category: "RoutineLibrary")
-											selectedRoutineForNavigation = routine
-										},
+																	CompactRoutineCard(
+									routine: routine,
+									onTap: {
+										logger.info("Routine tapped: \(routine.routineName)", category: "RoutineLibrary")
+										navigationPath.append(routine)
+									},
 										onPlay: {
 											playingRoutine = routine
 											recordPlay(for: routine)
@@ -207,25 +206,6 @@ struct RoutineLibraryView: View {
 		.fullScreenCover(item: $playingRoutine) { routine in
 			RoutinePlayerView(routine: routine, modelContext: modelContext)
 		}
-		.navigationDestination(item: $selectedRoutineForNavigation) { routine in
-			RitualPageView(
-				routine: routine,
-				onEdit: { routine in
-					selectedRoutineForNavigation = nil
-					editingRoutine = routine
-				},
-				onDelete: { routine in
-					selectedRoutineForNavigation = nil
-					routineToDelete = routine
-					showingDeleteAlert = true
-				},
-				onPlay: { routine in
-					selectedRoutineForNavigation = nil
-					playingRoutine = routine
-					recordPlay(for: routine)
-				}
-			)
-		}
 		.alert(LocalizedStringKey("alert.delete.routine.title"), isPresented: $showingDeleteAlert) {
 			Button(LocalizedStringKey("button.cancel"), role: .cancel) {
 				routineToDelete = nil
@@ -242,7 +222,6 @@ struct RoutineLibraryView: View {
 			}
 		}
 		.statusBar(hidden: true)
-		}
 	}
 	
 	// MARK: - Dynamic Layout Calculations
