@@ -198,4 +198,5 @@
 "ritual.statistics.created" = "Created";
 "ritual.statistics.modified" = "Modified";
 "ritual.statistics.lastPlayed" = "Last Played";
-"ritual.blocks.title" = "Blocks"; 
+"ritual.blocks.title" = "Blocks";
+"pinned.rituals.title" = "Pinned Rituals"; 

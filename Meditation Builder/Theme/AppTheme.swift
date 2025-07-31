@@ -556,4 +556,18 @@ extension AppTheme {
             action: action
         )
     }
+    
+    /// Create a customizable separator line
+    static func separator(
+        color: Color = lightGrey.opacity(0.2),
+        height: CGFloat = 1,
+        horizontalPadding: CGFloat = 0,
+        verticalPadding: CGFloat = Spacing.medium
+    ) -> some View {
+        Rectangle()
+            .fill(color)
+            .frame(height: height)
+            .padding(.horizontal, horizontalPadding)
+            .padding(.vertical, verticalPadding)
+    }
 } 

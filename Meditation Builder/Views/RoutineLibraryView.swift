@@ -29,16 +29,66 @@ struct RoutineLibraryView: View {
 	}
 	
 	var filteredRoutines: [SavedRoutine] {
+		let nonFavoriteRoutines = savedRoutines.filter { !$0.isFavorite }
+		
 		if searchText.isEmpty {
-			return savedRoutines
+			return nonFavoriteRoutines
 		}
-		return savedRoutines.filter { routine in
+		return nonFavoriteRoutines.filter { routine in
 			routine.routineName.localizedCaseInsensitiveContains(searchText) ||
 			routine.getRoutine().blocks.contains { block in
 				block.name.localizedCaseInsensitiveContains(searchText) ||
 				block.type.displayName.localizedCaseInsensitiveContains(searchText)
 			}
 		}
+	}
+	
+	var favoriteRoutines: [SavedRoutine] {
+		savedRoutines.filter { $0.isFavorite }
+	}
+	
+	// MARK: - Pinned Rituals Section
+	private var pinnedRitualsSection: some View {
+		VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+			// Section Header
+			HStack {
+				Text(LocalizedStringKey("pinned.rituals.title"))
+					.font(AppTheme.Typography.headlineFont)
+					.foregroundColor(AppTheme.offWhiteText)
+				
+				Spacer()
+				
+				// Pin icon
+				Image(systemName: "pin.fill")
+					.font(.system(size: 16, weight: .medium))
+					.foregroundColor(AppTheme.accentColor)
+			}
+			.padding(.horizontal)
+			
+			// Horizontal Scrollable Carousel
+			ScrollView(.horizontal, showsIndicators: false) {
+				LazyHStack(spacing: AppTheme.Spacing.medium) {
+					ForEach(favoriteRoutines) { routine in
+						FavoriteRoutineCard(
+							routine: routine,
+							onTap: {
+								logger.info("Favorite routine tapped: \(routine.routineName)", category: "RoutineLibrary")
+								selectedRoutineForNavigation = routine
+							},
+							onPlay: {
+								playingRoutine = routine
+								recordPlay(for: routine)
+							},
+							onEdit: { editingRoutine = routine },
+							onDelete: { deleteRoutine(routine) }
+						)
+						.frame(width: 200)
+					}
+				}
+				.padding(.horizontal)
+			}
+		}
+		.padding(.bottom, AppTheme.Spacing.large)
 	}
 	
 	var body: some View {
@@ -89,6 +139,18 @@ struct RoutineLibraryView: View {
 						.cornerRadius(AppTheme.CornerRadius.button)
 						.padding(.horizontal)
 						.padding(.bottom, AppTheme.Spacing.large)
+					}
+					
+					// Pinned Rituals Section
+					if !favoriteRoutines.isEmpty {
+						pinnedRitualsSection
+						
+						// Subtle separator
+						AppTheme.separator(
+							color: AppTheme.lightGrey.opacity(0.2),
+							horizontalPadding: AppTheme.Spacing.medium,
+							verticalPadding: AppTheme.Spacing.small
+						)
 					}
 					
 					// Routines List
@@ -441,6 +503,191 @@ struct RoutineCard: View {
 	}
 }
 
+// MARK: - Base Routine Card
+struct BaseRoutineCard<Content: View>: View {
+    let routine: SavedRoutine
+    let onTap: () -> Void
+    let onPlay: () -> Void
+    let onEdit: () -> Void
+    let onDelete: () -> Void
+    let content: Content
+    let cardStyle: CardStyle
+    
+    @State private var showingMenu = false
+    
+    private var totalDuration: Int {
+        routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
+    }
+    
+    init(
+        routine: SavedRoutine,
+        onTap: @escaping () -> Void,
+        onPlay: @escaping () -> Void,
+        onEdit: @escaping () -> Void,
+        onDelete: @escaping () -> Void,
+        cardStyle: CardStyle = .standard,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.routine = routine
+        self.onTap = onTap
+        self.onPlay = onPlay
+        self.onEdit = onEdit
+        self.onDelete = onDelete
+        self.cardStyle = cardStyle
+        self.content = content()
+    }
+    
+    var body: some View {
+        Button(action: onTap) {
+            content
+                .frame(maxWidth: .infinity, minHeight: cardStyle.minHeight, alignment: .leading)
+                .padding(cardStyle.padding)
+                .background(
+                    RoundedRectangle(cornerRadius: cardStyle.cornerRadius)
+                        .fill(cardStyle.backgroundColor)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: cardStyle.cornerRadius)
+                        .stroke(cardStyle.borderColor, lineWidth: cardStyle.borderWidth)
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+    
+    // MARK: - Common UI Components
+    
+    @ViewBuilder
+    func headerContent() -> some View {
+        HStack {
+            Image(systemName: routine.routineIcon)
+                .font(.system(size: 24, weight: .ultraLight))
+                .foregroundColor(AppTheme.accentColor)
+            
+            if cardStyle.showDurationInHeader {
+                Text(String.localizedStringWithFormat(
+                    String(localized: "routine.duration.format.simplified"),
+                    totalDuration
+                ))
+                .font(AppTheme.Typography.captionFont)
+                .foregroundColor(AppTheme.lightGrey)
+            }
+            
+            Spacer()
+            
+            menuButton
+        }
+    }
+    
+    @ViewBuilder
+    func titleContent() -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(routine.routineName)
+                .font(cardStyle.titleFont)
+                .foregroundColor(AppTheme.offWhiteText)
+                .lineLimit(cardStyle.titleLineLimit)
+                .multilineTextAlignment(.leading)
+            
+            if !cardStyle.showDurationInHeader {
+                Text(String.localizedStringWithFormat(
+                    String(localized: "routine.duration.format.simplified"),
+                    totalDuration
+                ))
+                .font(AppTheme.Typography.captionFont)
+                .foregroundColor(AppTheme.lightGrey)
+            }
+        }
+    }
+    
+    @ViewBuilder
+    var menuButton: some View {
+        Menu {
+            Button(action: onPlay) {
+                HStack {
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 14, weight: .medium))
+                    Text(LocalizedStringKey("button.play"))
+                        .font(AppTheme.Typography.bodyFont)
+                }
+            }
+            .foregroundColor(AppTheme.accentColor)
+            
+            if !routine.isSystemRoutine {
+                Group {
+                    Button(action: onEdit) {
+                        Text(LocalizedStringKey("button.edit"))
+                            .font(AppTheme.Typography.bodyFont)
+                    }
+                    .foregroundColor(AppTheme.lightGrey)
+                    
+                    Button(action: onDelete) {
+                        Text(LocalizedStringKey("button.delete"))
+                            .font(AppTheme.Typography.bodyFont)
+                    }
+                    .foregroundColor(Color.red.opacity(0.7))
+                }
+                .padding(.vertical, 2)
+                .background(AppTheme.backgroundColor)
+            } else {
+                Button(action: {}) {
+                    HStack {
+                        Image(systemName: "info.circle")
+                            .font(.system(size: 14, weight: .medium))
+                        Text("System Routine")
+                            .font(AppTheme.Typography.bodyFont)
+                    }
+                }
+                .foregroundColor(AppTheme.lightGrey)
+                .disabled(true)
+            }
+        } label: {
+            Image(systemName: "ellipsis")
+                .font(.system(size: 16, weight: .medium))
+                .frame(width: 32, height: 32)
+                .clipShape(Circle())
+                .foregroundColor(routine.isSystemRoutine ? AppTheme.lightGrey.opacity(0.5) : AppTheme.lightGrey)
+                .background(Color.black.opacity(0.3))
+        }
+        .menuStyle(CustomMenuStyle())
+    }
+}
+
+// MARK: - Card Style Configuration
+struct CardStyle {
+    let backgroundColor: Color
+    let borderColor: Color
+    let borderWidth: CGFloat
+    let cornerRadius: CGFloat
+    let padding: CGFloat
+    let minHeight: CGFloat
+    let titleFont: Font
+    let titleLineLimit: Int
+    let showDurationInHeader: Bool
+    
+    static let standard = CardStyle(
+        backgroundColor: AppTheme.cardColor,
+        borderColor: Color.clear,
+        borderWidth: 0,
+        cornerRadius: AppTheme.CornerRadius.medium,
+        padding: AppTheme.Spacing.large,
+        minHeight: 110.0,
+        titleFont: AppTheme.Typography.headlineFont,
+        titleLineLimit: 2,
+        showDurationInHeader: true
+    )
+    
+    static let favorite = CardStyle(
+        backgroundColor: AppTheme.cardColor,
+        borderColor: AppTheme.accentColor.opacity(0.3),
+        borderWidth: 1,
+        cornerRadius: AppTheme.CornerRadius.medium,
+        padding: AppTheme.Spacing.large,
+        minHeight: 150.0,
+        titleFont: AppTheme.Typography.headlineFont,
+        titleLineLimit: 2,
+        showDurationInHeader: false
+    )
+}
+
 // MARK: - Compact Routine Card
 struct CompactRoutineCard: View {
     let routine: SavedRoutine
@@ -449,26 +696,29 @@ struct CompactRoutineCard: View {
     var onEdit: () -> Void
     var onDelete: () -> Void
     
-    @State private var showingMenu = false
-    
-    private var totalDuration: Int {
-        routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
-    }
-    
     var body: some View {
-        Button(action: onTap) {
+        BaseRoutineCard(
+            routine: routine,
+            onTap: onTap,
+            onPlay: onPlay,
+            onEdit: onEdit,
+            onDelete: onDelete,
+            cardStyle: .standard
+        ) {
             VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
-                // Icon and Menu
+                // Header with icon, duration, and menu
                 HStack {
                     Image(systemName: routine.routineIcon)
                         .font(.system(size: 24, weight: .ultraLight))
                         .foregroundColor(AppTheme.accentColor)
+                    
                     Text(String.localizedStringWithFormat(
                         String(localized: "routine.duration.format.simplified"),
-                        totalDuration
+                        routine.getRoutine().blocks.map(\.durationInMinutes).reduce(0, +)
                     ))
                     .font(AppTheme.Typography.captionFont)
                     .foregroundColor(AppTheme.lightGrey)
+                    
                     Spacer()
                     
                     Menu {
@@ -499,7 +749,6 @@ struct CompactRoutineCard: View {
                             .padding(.vertical, 2)
                             .background(AppTheme.backgroundColor)
                         } else {
-                            // Show info for system routines instead of edit/delete
                             Button(action: {}) {
                                 HStack {
                                     Image(systemName: "info.circle")
@@ -524,19 +773,14 @@ struct CompactRoutineCard: View {
                 
                 Spacer()
                 
-                // Name and Duration
+                // Title
                 Text(routine.routineName)
                     .font(AppTheme.Typography.headlineFont)
                     .foregroundColor(AppTheme.offWhiteText)
                     .lineLimit(2)
                     .multilineTextAlignment(.leading)
             }
-            .padding(AppTheme.Spacing.large)
-            .frame(maxWidth: .infinity, minHeight: 150.0, alignment: .leading)
-            .background(AppTheme.cardColor)
-            .cornerRadius(AppTheme.CornerRadius.medium)
         }
-        .buttonStyle(PlainButtonStyle())
     }
 }
 
@@ -547,6 +791,58 @@ struct CustomMenuStyle: MenuStyle {
             .background(AppTheme.backgroundColor)
             .foregroundColor(AppTheme.lightGrey)
             .menuIndicator(.hidden)
+    }
+}
+
+// MARK: - Favorite Routine Card
+struct FavoriteRoutineCard: View {
+    let routine: SavedRoutine
+    var onTap: () -> Void
+    var onPlay: () -> Void
+    var onEdit: () -> Void
+    var onDelete: () -> Void
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
+            // Header with icon and circular play button
+            HStack {
+                Image(systemName: routine.routineIcon)
+                    .font(.system(size: 32, weight: .ultraLight))
+                    .foregroundColor(AppTheme.accentColor)
+                
+                Spacer()
+                
+                // Circular play button
+                Button(action: onPlay) {
+                    ZStack {
+                        Circle()
+                            .fill(AppTheme.offWhiteText)
+                            .frame(width: 44, height: 44)
+                        
+                        Image(systemName: "play.fill")
+                            .font(.system(size: 16, weight: .medium))
+                            .foregroundColor(AppTheme.backgroundColor)
+                    }
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+            
+            Spacer()
+            
+            // Routine name
+            Text(routine.routineName)
+                .font(AppTheme.Typography.headlineFont)
+                .foregroundColor(AppTheme.offWhiteText)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+        }
+        .padding(AppTheme.Spacing.medium)
+        .frame(maxWidth: .infinity, minHeight: 140.0, alignment: .leading)
+        .background(AppTheme.cardColor)
+        .cornerRadius(AppTheme.CornerRadius.medium)
+        .onTapGesture {
+            onTap()
+        }
     }
 }
 
