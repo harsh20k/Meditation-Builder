@@ -81,16 +81,24 @@ class RitualPageViewModel: ObservableObject {
     
     func toggleFavorite() {
         logger.info("Toggle favorite requested for routine: \(self.routine.routineName)")
+        
+        // Optimistically update the UI immediately
+        withAnimation(.easeInOut(duration: 0.2)) {
+            routine.isFavorite.toggle()
+        }
+        
         do {
             if routine.isFavorite {
-                try RoutineDataManager.shared.unsetRoutineFavorite(routine)
-            } else {
                 try RoutineDataManager.shared.setRoutineFavorite(routine)
+            } else {
+                try RoutineDataManager.shared.unsetRoutineFavorite(routine)
             }
-            // Update the local routine object to reflect the change
-            routine = routine
         } catch {
             logger.error("Failed to toggle favorite status: \(error.localizedDescription)")
+            // Revert the optimistic update if the operation failed
+            withAnimation(.easeInOut(duration: 0.2)) {
+                routine.isFavorite.toggle()
+            }
         }
     }
 }
@@ -291,9 +299,12 @@ struct RitualPageView: View {
                 )
                 
                 // Pin/Unpin Button (always visible)
-                AppTheme.cardButton(
-                    icon: viewModel.routine.isFavorite ? "pin.fill" : "pin",
-                    title: viewModel.routine.isFavorite ? String(localized: "button.unpin") : String(localized: "button.pin"),
+                AppTheme.toggleButton(
+                    icon: "pin",
+                    activeIcon: "pin.fill",
+                    title: String(localized: "button.pin"),
+                    activeTitle: String(localized: "button.unpin"),
+                    isActive: viewModel.routine.isFavorite,
                     action: viewModel.toggleFavorite
                 )
                 

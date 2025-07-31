@@ -139,6 +139,24 @@ struct AppTheme {
             cornerRadius: CornerRadius.small,
             padding: Spacing.cardInternal
         )
+        
+        /// Toggle button style - used for pin/unpin, favorite, and other toggle actions
+        static let toggle = ButtonStyle(
+            backgroundColor: cardColor,
+            foregroundColor: lightGrey,
+            font: Typography.captionFont,
+            cornerRadius: CornerRadius.medium,
+            padding: Spacing.medium
+        )
+        
+        /// Toggle button style (active state) - used when toggle is active
+        static let toggleActive = ButtonStyle(
+            backgroundColor: accentColor.opacity(0.1),
+            foregroundColor: accentColor,
+            font: Typography.captionFont,
+            cornerRadius: CornerRadius.medium,
+            padding: Spacing.medium
+        )
     }
 }
 
@@ -266,14 +284,127 @@ struct ReactiveThemedButton<Content: View>: View {
     }
 }
 
+// MARK: - Toggle Style Button
+struct ToggleStyleButton: View {
+    let icon: String
+    let activeIcon: String
+    let title: String
+    let activeTitle: String
+    let isActive: Bool
+    let action: () -> Void
+    
+    init(
+        icon: String,
+        activeIcon: String,
+        title: String,
+        activeTitle: String,
+        isActive: Bool,
+        action: @escaping () -> Void
+    ) {
+        self.icon = icon
+        self.activeIcon = activeIcon
+        self.title = title
+        self.activeTitle = activeTitle
+        self.isActive = isActive
+        self.action = action
+    }
+    
+    var body: some View {
+        BaseCardStyleButton(isEnabled: true, action: action) {
+            VStack(spacing: AppTheme.Spacing.small) {
+                // Icon with animation
+                Image(systemName: isActive ? activeIcon : icon)
+                    .font(.system(size: 20, weight: .medium))
+                    .foregroundColor(isActive ? AppTheme.accentColor : AppTheme.lightGrey)
+                    .scaleEffect(isActive ? 1.1 : 1.0)
+                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isActive)
+                
+                // Title with animation
+                Text(isActive ? activeTitle : title)
+                    .font(AppTheme.Typography.captionFont)
+                    .foregroundColor(isActive ? AppTheme.accentColor : AppTheme.lightGrey)
+                    .animation(.easeInOut(duration: 0.2), value: isActive)
+            }
+        }
+        .background(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                .fill(isActive ? AppTheme.ButtonStyles.toggleActive.backgroundColor : AppTheme.ButtonStyles.toggle.backgroundColor)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                .stroke(isActive ? AppTheme.accentColor.opacity(0.3) : Color.clear, lineWidth: 1)
+        )
+        .animation(.easeInOut(duration: 0.2), value: isActive)
+    }
+}
+
+// MARK: - Base Card Style Button
+struct BaseCardStyleButton<Content: View>: View {
+    let isEnabled: Bool
+    let action: () -> Void
+    let content: Content
+    
+    @State private var isPressed: Bool = false
+    
+    init(
+        isEnabled: Bool = true,
+        action: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.isEnabled = isEnabled
+        self.action = action
+        self.content = content()
+    }
+    
+    var body: some View {
+        Button(action: {
+            if isEnabled {
+                // Haptic feedback
+                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
+                impactFeedback.impactOccurred()
+                
+                // Execute action
+                action()
+            }
+        }) {
+            content
+                .frame(maxWidth: .infinity, minHeight: 70)
+                .padding(AppTheme.Spacing.cardInternal)
+                .background(
+                    RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+                        .fill(AppTheme.ButtonStyles.card.backgroundColor)
+                        .opacity(isPressed ? 0.8 : 1.0)
+                        .overlay(
+                            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
+                                .stroke(AppTheme.lightGrey.opacity(AppTheme.Opacity.border), lineWidth: 1)
+                        )
+                )
+                .scaleEffect(isPressed ? 0.95 : 1.0)
+                .shadow(
+                    color: AppTheme.Shadows.card,
+                    radius: isPressed ? 2 : 6,
+                    x: 0,
+                    y: isPressed ? 1 : 3
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+        .disabled(!isEnabled)
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            if isEnabled {
+                withAnimation(.easeInOut(duration: 0.15)) {
+                    isPressed = pressing
+                }
+            }
+        }, perform: {})
+    }
+}
+
 // MARK: - Card Style Button
 struct CardStyleButton: View {
     let icon: String
     let title: String
     let isEnabled: Bool
     let action: () -> Void
-    
-    @State private var isPressed: Bool = false
     
     init(
         icon: String,
@@ -288,16 +419,7 @@ struct CardStyleButton: View {
     }
     
     var body: some View {
-        Button(action: {
-            if isEnabled {
-                // Haptic feedback
-                let impactFeedback = UIImpactFeedbackGenerator(style: .light)
-                impactFeedback.impactOccurred()
-                
-                // Execute action
-                action()
-            }
-        }) {
+        BaseCardStyleButton(isEnabled: isEnabled, action: action) {
             VStack(spacing: AppTheme.Spacing.cardInternal) {
                 // Icon
                 Image(systemName: icon)
@@ -312,34 +434,7 @@ struct CardStyleButton: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
             }
-            .frame(maxWidth: .infinity, minHeight: 70)
-            .padding(AppTheme.Spacing.cardInternal)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
-                    .fill(AppTheme.ButtonStyles.card.backgroundColor)
-                    .opacity(isPressed ? 0.8 : 1.0)
-                    .overlay(
-                        RoundedRectangle(cornerRadius: AppTheme.CornerRadius.small)
-                            .stroke(AppTheme.lightGrey.opacity(AppTheme.Opacity.border), lineWidth: 1)
-                    )
-            )
-            .scaleEffect(isPressed ? 0.95 : 1.0)
-            .shadow(
-                color: AppTheme.Shadows.card,
-                radius: isPressed ? 2 : 6,
-                x: 0,
-                y: isPressed ? 1 : 3
-            )
         }
-        .buttonStyle(PlainButtonStyle())
-        .disabled(!isEnabled)
-        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
-            if isEnabled {
-                withAnimation(.easeInOut(duration: 0.15)) {
-                    isPressed = pressing
-                }
-            }
-        }, perform: {})
     }
 }
 
@@ -426,6 +521,38 @@ extension AppTheme {
             icon: icon,
             title: title,
             isEnabled: isEnabled,
+            action: action
+        )
+    }
+    
+    /// Create a base card style button with custom content
+    static func baseCardButton<Content: View>(
+        isEnabled: Bool = true,
+        action: @escaping () -> Void,
+        @ViewBuilder content: () -> Content
+    ) -> BaseCardStyleButton<Content> {
+        BaseCardStyleButton(
+            isEnabled: isEnabled,
+            action: action,
+            content: content
+        )
+    }
+    
+    /// Create a toggle style button for pin/unpin, favorite, and other toggle actions
+    static func toggleButton(
+        icon: String,
+        activeIcon: String,
+        title: String,
+        activeTitle: String,
+        isActive: Bool,
+        action: @escaping () -> Void
+    ) -> ToggleStyleButton {
+        ToggleStyleButton(
+            icon: icon,
+            activeIcon: activeIcon,
+            title: title,
+            activeTitle: activeTitle,
+            isActive: isActive,
             action: action
         )
     }
