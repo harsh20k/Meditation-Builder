@@ -49,22 +49,45 @@ enum TabSelection: Int, CaseIterable {
 
 struct CustomTabBar: View {
 	@Binding var selectedTab: TabSelection
+	@State private var pressedTab: TabSelection?
 	
 	var body: some View {
 		HStack(spacing: 0) {
 			ForEach(TabSelection.allCases, id: \.self) { tab in
 				Button(action: {
-					selectedTab = tab
+					withAnimation(.easeInOut(duration: 0.1)) {
+						selectedTab = tab
+					}
 				}) {
 					HStack(spacing: 8) {
 						Image(systemName: tab.icon)
 							.font(.system(size: 20, weight: .medium))
 							.foregroundColor(selectedTab == tab ? AppTheme.accentColor : .gray)
+							.scaleEffect(pressedTab == tab ? 0.9 : 1.0)
+							.animation(.easeInOut(duration: 0.1), value: pressedTab)
 					}
 					.padding(.horizontal, 12)
 					.padding(.vertical, 8)
+					.background(
+						RoundedRectangle(cornerRadius: 8)
+							.fill(pressedTab == tab ? AppTheme.accentColor.opacity(0.2) : Color.clear)
+							.animation(.easeInOut(duration: 0.1), value: pressedTab)
+					)
 				}
 				.buttonStyle(PlainButtonStyle())
+				.simultaneousGesture(
+					DragGesture(minimumDistance: 0)
+						.onChanged { _ in
+							withAnimation(.easeInOut(duration: 0.1)) {
+								pressedTab = tab
+							}
+						}
+						.onEnded { _ in
+							withAnimation(.easeInOut(duration: 0.1)) {
+								pressedTab = nil
+							}
+						}
+				)
 				
 				if tab != TabSelection.allCases.last {
 					Spacer()
@@ -73,19 +96,8 @@ struct CustomTabBar: View {
 		}
 		.padding(.horizontal, 16)
 		.padding(.vertical, 8)
-		.background(
-			RoundedRectangle(cornerRadius: AppTheme.CornerRadius.button)
-				.fill(AppTheme.tabBar)
-				.shadow(color: .black.opacity(0.1), radius: 4, x: 0, y: 2)
-		)
+		.background(AppTheme.tabBar)
 		.frame(height: 48)
-		.padding(.horizontal, 20)
-		.padding(.bottom, 0)
-			// Apply background color and a slight blur for a softer look
-		.background(
-			AppTheme.backgroundColor
-				.blur(radius: 8)
-		)
 		.ignoresSafeArea(edges: .bottom)
 	}
 }

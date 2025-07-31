@@ -93,112 +93,114 @@ struct RoutineLibraryView: View {
 	
 	var body: some View {
 		NavigationStack {
-			ZStack(alignment: .bottomTrailing) {
-				AppTheme.backgroundColor.ignoresSafeArea()
-				
-				ScrollView {
-				VStack(spacing: 0) {
-					// Header
-					HStack {
-						VStack(spacing: AppTheme.Spacing.small) {
-							Text(LocalizedStringKey("routine.library.title"))
-								.font(AppTheme.Typography.titleFont)
-								.foregroundColor(AppTheme.offWhiteText)
-							Text(LocalizedStringKey("routine.library.title"))
-								.font(AppTheme.Typography.captionFont)
-								.foregroundColor(AppTheme.lightGrey)
-						}
-					}
-					.padding(.horizontal, AppTheme.Spacing.medium)
-					.padding(.top, AppTheme.Spacing.section)
-					.padding(.bottom, AppTheme.Spacing.large)
+			GeometryReader { geometry in
+				ZStack(alignment: .bottomTrailing) {
+					AppTheme.backgroundColor.ignoresSafeArea()
 					
-					// Search Bar Hidden
-					if false {
+					ScrollView {
+					VStack(spacing: 0) {
+						// Header
 						HStack {
-							Image(systemName: "magnifyingglass")
-								.foregroundColor(AppTheme.accentColor)
-								.font(.system(size: 16, weight: .medium))
-							
-							TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
-								.foregroundColor(.white)
-								.font(AppTheme.Typography.bodyFont)
-							
-							if !searchText.isEmpty {
-								Button(action: {
-									searchText = ""
-								}) {
-									Image(systemName: "xmark.circle.fill")
-										.foregroundColor(AppTheme.lightGrey)
-										.font(.system(size: 16, weight: .medium))
-								}
-								.buttonStyle(PlainButtonStyle())
-							}
-						}
-						.padding(AppTheme.Spacing.medium)
-						.background(AppTheme.searchBar)
-						.cornerRadius(AppTheme.CornerRadius.button)
-						.padding(.horizontal)
-						.padding(.bottom, AppTheme.Spacing.large)
-					}
-					
-					// Pinned Rituals Section
-					if !favoriteRoutines.isEmpty {
-						pinnedRitualsSection
-						
-						// Subtle separator
-						AppTheme.separator(
-							color: AppTheme.lightGrey.opacity(0.2),
-							horizontalPadding: AppTheme.Spacing.medium,
-							verticalPadding: AppTheme.Spacing.medium
-						)
-					}
-					
-					// Routines List
-					if filteredRoutines.isEmpty {
-						LibraryEmptyStateView(searchText: searchText)
-					} else {
-						LazyVGrid(columns: [
-							GridItem(.flexible(), spacing: AppTheme.Spacing.small),
-							GridItem(.flexible(), spacing: AppTheme.Spacing.small)
-						], spacing: AppTheme.Spacing.small) {
-							ForEach(filteredRoutines) { routine in
-								CompactRoutineCard(
-									routine: routine,
-									onTap: {
-										logger.info("Routine tapped: \(routine.routineName)", category: "RoutineLibrary")
-										selectedRoutineForNavigation = routine
-									},
-									onPlay: {
-										playingRoutine = routine
-										recordPlay(for: routine)
-									},
-									onEdit: { editingRoutine = routine },
-									onDelete: { deleteRoutine(routine) }
-								)
+							VStack(spacing: AppTheme.Spacing.small) {
+								Text(LocalizedStringKey("routine.library.title"))
+									.font(AppTheme.Typography.titleFont)
+									.foregroundColor(AppTheme.offWhiteText)
+								Text(LocalizedStringKey("routine.library.title"))
+									.font(AppTheme.Typography.captionFont)
+									.foregroundColor(AppTheme.lightGrey)
 							}
 						}
 						.padding(.horizontal, AppTheme.Spacing.medium)
-						.padding(.bottom, AppTheme.Spacing.extraLarge) // Account for floating button and tab bar
+						.padding(.top, AppTheme.Spacing.section)
+						.padding(.bottom, AppTheme.Spacing.large)
+						
+						// Search Bar Hidden
+						if false {
+							HStack {
+								Image(systemName: "magnifyingglass")
+									.foregroundColor(AppTheme.accentColor)
+									.font(.system(size: 16, weight: .medium))
+								
+								TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
+									.foregroundColor(.white)
+									.font(AppTheme.Typography.bodyFont)
+								
+								if !searchText.isEmpty {
+									Button(action: {
+										searchText = ""
+									}) {
+										Image(systemName: "xmark.circle.fill")
+											.foregroundColor(AppTheme.lightGrey)
+											.font(.system(size: 16, weight: .medium))
+									}
+									.buttonStyle(PlainButtonStyle())
+								}
+							}
+							.padding(AppTheme.Spacing.medium)
+							.background(AppTheme.searchBar)
+							.cornerRadius(AppTheme.CornerRadius.button)
+							.padding(.horizontal)
+							.padding(.bottom, AppTheme.Spacing.large)
+						}
+						
+						// Pinned Rituals Section
+						if !favoriteRoutines.isEmpty {
+							pinnedRitualsSection
+							
+							// Subtle separator
+							AppTheme.separator(
+								color: AppTheme.lightGrey.opacity(0.2),
+								horizontalPadding: AppTheme.Spacing.medium,
+								verticalPadding: AppTheme.Spacing.medium
+							)
+						}
+						
+						// Routines List
+						if filteredRoutines.isEmpty {
+							LibraryEmptyStateView(searchText: searchText)
+						} else {
+							LazyVGrid(columns: [
+								GridItem(.flexible(), spacing: AppTheme.Spacing.small),
+								GridItem(.flexible(), spacing: AppTheme.Spacing.small)
+							], spacing: AppTheme.Spacing.small) {
+								ForEach(filteredRoutines) { routine in
+									CompactRoutineCard(
+										routine: routine,
+										onTap: {
+											logger.info("Routine tapped: \(routine.routineName)", category: "RoutineLibrary")
+											selectedRoutineForNavigation = routine
+										},
+										onPlay: {
+											playingRoutine = routine
+											recordPlay(for: routine)
+										},
+										onEdit: { editingRoutine = routine },
+										onDelete: { deleteRoutine(routine) }
+									)
+								}
+							}
+							.padding(.horizontal, AppTheme.Spacing.medium)
+							.padding(.bottom, calculateBottomPadding(for: geometry)) // Dynamic padding based on screen size
+						}
 					}
 				}
-			}
-			.scrollIndicators(.hidden)
-			
-			// Floating Create Button
-			Button(action: { showingRoutineBuilder = true }) {
-				ZStack {
-					Circle()
-						.fill(AppTheme.tabBar)
-						.frame(width: 56, height: 56)
-					Image(systemName: "plus")
-						.foregroundColor(.gray)
-						.font(.system(size: 28, weight: .bold))
+				.scrollIndicators(.hidden)
+				
+				// Floating Create Button
+				Button(action: { showingRoutineBuilder = true }) {
+					ZStack {
+						Circle()
+							.fill(AppTheme.tabBar)
+							.frame(width: 56, height: 56)
+						Image(systemName: "plus")
+							.foregroundColor(.gray)
+							.font(.system(size: 28, weight: .bold))
+					}
 				}
+				.padding(.trailing, AppTheme.Spacing.extraLarge)
+				.padding(.bottom, calculateFloatingButtonBottomPadding(for: geometry)) // Dynamic padding based on screen size
+				.shadow(radius: 8)
 			}
-			.padding(.trailing, AppTheme.Spacing.extraLarge)
-			.padding(.bottom, AppTheme.Spacing.extraLarge)
-			.shadow(radius: 8)
 		}
 		.sheet(isPresented: $showingRoutineBuilder) {
 			RoutineBuilderView()
@@ -247,7 +249,35 @@ struct RoutineLibraryView: View {
 		}
 	}
 	
-		// MARK: - Private Methods
+	// MARK: - Dynamic Layout Calculations
+	
+	/// Calculates bottom padding for the content to account for floating button and tab bar
+	private func calculateBottomPadding(for geometry: GeometryProxy) -> CGFloat {
+		let tabBarHeight: CGFloat = 48 // Custom tab bar height
+		let floatingButtonHeight: CGFloat = 56 // Floating button height
+		let safeAreaBottom = geometry.safeAreaInsets.bottom
+		let gridSpacing: CGFloat = 16 // 8-point grid spacing (2 * 8)
+		
+		// Calculate total space needed for tab bar + safe area + grid spacing
+		let totalBottomSpace = tabBarHeight + safeAreaBottom + gridSpacing
+		
+		// Add extra space for floating button clearance
+		let floatingButtonClearance = floatingButtonHeight + gridSpacing
+		
+		return totalBottomSpace + floatingButtonClearance
+	}
+	
+	/// Calculates bottom padding for the floating button to position it above the tab bar
+	private func calculateFloatingButtonBottomPadding(for geometry: GeometryProxy) -> CGFloat {
+		let tabBarHeight: CGFloat = 48 // Custom tab bar height
+		let safeAreaBottom = geometry.safeAreaInsets.bottom
+		let gridSpacing: CGFloat = 16 // 8-point grid spacing (2 * 8)
+		
+		// Position button above tab bar with proper spacing
+		return tabBarHeight + safeAreaBottom + gridSpacing
+	}
+	
+	// MARK: - Private Methods
 	
 	private func recordPlay(for routine: SavedRoutine) {
 		logger.info("Starting routine playback: \(routine.routineName)", category: "RoutineLibrary")
