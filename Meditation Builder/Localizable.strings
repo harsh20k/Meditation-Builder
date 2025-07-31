@@ -32,6 +32,8 @@
 "button.add" = "Add";
 "button.back" = "Back";
 "button.play" = "Play";
+"button.pin" = "Pin";
+"button.unpin" = "Unpin";
 "button.discard" = "Discard";
 "button.save.and.exit" = "Save & Exit";
 "button.try.again" = "Try Again";

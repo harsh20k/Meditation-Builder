@@ -78,6 +78,21 @@ class RitualPageViewModel: ObservableObject {
         logger.info("Play routine requested: \(self.routine.routineName)")
         showingPlaySheet = true
     }
+    
+    func toggleFavorite() {
+        logger.info("Toggle favorite requested for routine: \(self.routine.routineName)")
+        do {
+            if routine.isFavorite {
+                try RoutineDataManager.shared.unsetRoutineFavorite(routine)
+            } else {
+                try RoutineDataManager.shared.setRoutineFavorite(routine)
+            }
+            // Update the local routine object to reflect the change
+            routine = routine
+        } catch {
+            logger.error("Failed to toggle favorite status: \(error.localizedDescription)")
+        }
+    }
 }
 
 // MARK: - Ritual Page View
@@ -264,6 +279,7 @@ struct RitualPageView: View {
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible()),
+                GridItem(.flexible()),
                 GridItem(.flexible())
             ], spacing: AppTheme.Spacing.cardGrid) {
                 
@@ -272,6 +288,13 @@ struct RitualPageView: View {
                     icon: "play.fill",
                     title: String(localized: "button.play"),
                     action: viewModel.playRoutine
+                )
+                
+                // Pin/Unpin Button (always visible)
+                AppTheme.cardButton(
+                    icon: viewModel.routine.isFavorite ? "pin.fill" : "pin",
+                    title: viewModel.routine.isFavorite ? String(localized: "button.unpin") : String(localized: "button.pin"),
+                    action: viewModel.toggleFavorite
                 )
                 
                 if !viewModel.routine.isSystemRoutine {
