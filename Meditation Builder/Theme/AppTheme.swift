@@ -602,7 +602,7 @@ struct FloatingActionButton: View {
     var body: some View {
         Button(action: {
             // Haptic feedback
-            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+			let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
             impactFeedback.impactOccurred()
             
             // Execute action
@@ -619,10 +619,9 @@ struct FloatingActionButton: View {
                         x: 0,
                         y: isPressed ? 2 : 4
                     )
-                
                 Image(systemName: icon)
                     .font(.system(size: size * 0.5, weight: .bold))
-                    .foregroundColor(foregroundColor)
+                    .foregroundColor(isPressed ? AppTheme.offWhiteText : foregroundColor)
                     .scaleEffect(isPressed ? 0.95 : 1.0)
             }
         }
