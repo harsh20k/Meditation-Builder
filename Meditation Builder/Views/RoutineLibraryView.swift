@@ -187,19 +187,15 @@ struct RoutineLibraryView: View {
 				.scrollIndicators(.hidden)
 				
 				// Floating Create Button
-				Button(action: { showingRoutineBuilder = true }) {
-					ZStack {
-						Circle()
-							.fill(AppTheme.tabBar)
-							.frame(width: 56, height: 56)
-						Image(systemName: "plus")
-							.foregroundColor(.gray)
-							.font(.system(size: 28, weight: .bold))
-					}
-				}
+				AppTheme.floatingActionButton(
+					icon: "plus",
+					backgroundColor: AppTheme.tabBar,
+					foregroundColor: AppTheme.lightGrey,
+					size: 56,
+					action: { showingRoutineBuilder = true }
+				)
 				.padding(.trailing, AppTheme.Spacing.extraLarge)
 				.padding(.bottom, calculateFloatingButtonBottomPadding(for: geometry)) // Dynamic padding based on screen size
-				.shadow(radius: 8)
 			}
 		}
 		.sheet(isPresented: $showingRoutineBuilder) {

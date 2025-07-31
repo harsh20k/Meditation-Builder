@@ -570,4 +570,67 @@ extension AppTheme {
             .padding(.horizontal, horizontalPadding)
             .padding(.vertical, verticalPadding)
     }
+    
+    /// Create a responsive floating action button
+    static func floatingActionButton(
+        icon: String,
+        backgroundColor: Color = tabBar,
+        foregroundColor: Color = lightGrey,
+        size: CGFloat = 56,
+        action: @escaping () -> Void
+    ) -> FloatingActionButton {
+        FloatingActionButton(
+            icon: icon,
+            backgroundColor: backgroundColor,
+            foregroundColor: foregroundColor,
+            size: size,
+            action: action
+        )
+    }
+}
+
+// MARK: - Floating Action Button
+struct FloatingActionButton: View {
+    let icon: String
+    let backgroundColor: Color
+    let foregroundColor: Color
+    let size: CGFloat
+    let action: () -> Void
+    
+    @State private var isPressed: Bool = false
+    
+    var body: some View {
+        Button(action: {
+            // Haptic feedback
+            let impactFeedback = UIImpactFeedbackGenerator(style: .medium)
+            impactFeedback.impactOccurred()
+            
+            // Execute action
+            action()
+        }) {
+            ZStack {
+                Circle()
+                    .fill(isPressed ? AppTheme.accentColor : backgroundColor)
+                    .frame(width: size, height: size)
+                    .scaleEffect(isPressed ? 0.9 : 1.0)
+                    .shadow(
+                        color: .black.opacity(0.2),
+                        radius: isPressed ? 4 : 8,
+                        x: 0,
+                        y: isPressed ? 2 : 4
+                    )
+                
+                Image(systemName: icon)
+                    .font(.system(size: size * 0.5, weight: .bold))
+                    .foregroundColor(foregroundColor)
+                    .scaleEffect(isPressed ? 0.95 : 1.0)
+            }
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
+            withAnimation(.easeInOut(duration: 0.1)) {
+                isPressed = pressing
+            }
+        }, perform: {})
+    }
 } 
