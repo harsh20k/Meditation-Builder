@@ -88,7 +88,7 @@ struct RoutineLibraryView: View {
 				.padding(.horizontal)
 			}
 		}
-		.padding(.bottom, AppTheme.Spacing.large)
+//		.padding(.bottom, AppTheme.Spacing.large)
 	}
 	
 	var body: some View {
@@ -149,7 +149,7 @@ struct RoutineLibraryView: View {
 						AppTheme.separator(
 							color: AppTheme.lightGrey.opacity(0.2),
 							horizontalPadding: AppTheme.Spacing.medium,
-							verticalPadding: AppTheme.Spacing.small
+							verticalPadding: AppTheme.Spacing.large
 						)
 					}
 					
