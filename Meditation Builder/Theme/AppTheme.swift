@@ -58,15 +58,15 @@ struct AppTheme {
     
     // MARK: - Spacing
     struct Spacing {
-        static let small: CGFloat = 8
-        static let medium: CGFloat = 16
-        static let large: CGFloat = 20
-        static let extraLarge: CGFloat = 24
-		static let xxLarge: CGFloat = 28
-        static let section: CGFloat = 32
-		static let titleRoom: CGFloat = 50
-        static let cardGrid: CGFloat = 8
-        static let cardInternal: CGFloat = 8
+        static let small: CGFloat = 8      // 1x grid unit
+        static let medium: CGFloat = 16    // 2x grid unit
+        static let large: CGFloat = 24     // 3x grid unit
+        static let extraLarge: CGFloat = 32 // 4x grid unit
+        static let xxLarge: CGFloat = 40   // 5x grid unit
+        static let section: CGFloat = 48   // 6x grid unit
+        static let titleRoom: CGFloat = 56 // 7x grid unit
+        static let cardGrid: CGFloat = 8   // 1x grid unit
+        static let cardInternal: CGFloat = 8 // 1x grid unit
     }
     
     // MARK: - Corner Radius

@@ -63,11 +63,11 @@ struct RoutineLibraryView: View {
 					.font(.system(size: 16, weight: .medium))
 					.foregroundColor(AppTheme.accentColor)
 			}
-			.padding(.horizontal)
+			.padding(.horizontal, AppTheme.Spacing.medium)
 			
 			// Horizontal Scrollable Carousel
 			ScrollView(.horizontal, showsIndicators: false) {
-				LazyHStack(spacing: AppTheme.Spacing.medium) {
+				LazyHStack(spacing: AppTheme.Spacing.small) {
 					ForEach(favoriteRoutines) { routine in
 						FavoriteRoutineCard(
 							routine: routine,
@@ -85,7 +85,7 @@ struct RoutineLibraryView: View {
 						.frame(width: 200)
 					}
 				}
-				.padding(.horizontal)
+				.padding(.horizontal, AppTheme.Spacing.medium)
 			}
 		}
 //		.padding(.bottom, AppTheme.Spacing.large)
@@ -99,7 +99,7 @@ struct RoutineLibraryView: View {
 				VStack(spacing: 0) {
 					// Header
 					HStack {
-						VStack {
+						VStack(spacing: AppTheme.Spacing.small) {
 							Text(LocalizedStringKey("routine.library.title"))
 								.font(AppTheme.Typography.titleFont)
 								.foregroundColor(AppTheme.offWhiteText)
@@ -108,9 +108,9 @@ struct RoutineLibraryView: View {
 								.foregroundColor(AppTheme.lightGrey)
 						}
 					}
-					.padding(.horizontal)
-					.padding(.top, AppTheme.Spacing.titleRoom)
-					.padding(.bottom, AppTheme.Spacing.titleRoom)
+					.padding(.horizontal, AppTheme.Spacing.medium)
+					.padding(.top, AppTheme.Spacing.section)
+					.padding(.bottom, AppTheme.Spacing.large)
 					
 					// Search Bar Hidden
 					if false {
@@ -149,7 +149,7 @@ struct RoutineLibraryView: View {
 						AppTheme.separator(
 							color: AppTheme.lightGrey.opacity(0.2),
 							horizontalPadding: AppTheme.Spacing.medium,
-							verticalPadding: AppTheme.Spacing.large
+							verticalPadding: AppTheme.Spacing.medium
 						)
 					}
 					
@@ -158,9 +158,9 @@ struct RoutineLibraryView: View {
 						LibraryEmptyStateView(searchText: searchText)
 					} else {
 						LazyVGrid(columns: [
-							GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
-							GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
-						], spacing: AppTheme.Spacing.medium) {
+							GridItem(.flexible(), spacing: AppTheme.Spacing.small),
+							GridItem(.flexible(), spacing: AppTheme.Spacing.small)
+						], spacing: AppTheme.Spacing.small) {
 							ForEach(filteredRoutines) { routine in
 								CompactRoutineCard(
 									routine: routine,
@@ -177,8 +177,8 @@ struct RoutineLibraryView: View {
 								)
 							}
 						}
-						.padding(.horizontal)
-						.padding(.bottom, 120) // Account for floating button and tab bar
+						.padding(.horizontal, AppTheme.Spacing.medium)
+						.padding(.bottom, AppTheme.Spacing.extraLarge) // Account for floating button and tab bar
 					}
 				}
 			}
@@ -196,7 +196,7 @@ struct RoutineLibraryView: View {
 				}
 			}
 			.padding(.trailing, AppTheme.Spacing.extraLarge)
-			.padding(.bottom, 92)
+			.padding(.bottom, AppTheme.Spacing.extraLarge)
 			.shadow(radius: 8)
 		}
 		.sheet(isPresented: $showingRoutineBuilder) {
@@ -668,8 +668,8 @@ struct CardStyle {
         borderColor: Color.clear,
         borderWidth: 0,
         cornerRadius: AppTheme.CornerRadius.medium,
-        padding: AppTheme.Spacing.large,
-        minHeight: 110.0,
+        padding: AppTheme.Spacing.medium,
+        minHeight: 120.0,
         titleFont: AppTheme.Typography.headlineFont,
         titleLineLimit: 2,
         showDurationInHeader: true
@@ -680,8 +680,8 @@ struct CardStyle {
         borderColor: AppTheme.accentColor.opacity(0.3),
         borderWidth: 1,
         cornerRadius: AppTheme.CornerRadius.medium,
-        padding: AppTheme.Spacing.large,
-        minHeight: 150.0,
+        padding: AppTheme.Spacing.medium,
+        minHeight: 140.0,
         titleFont: AppTheme.Typography.headlineFont,
         titleLineLimit: 2,
         showDurationInHeader: false

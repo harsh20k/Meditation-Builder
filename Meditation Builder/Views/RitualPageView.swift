@@ -126,7 +126,7 @@ struct RitualPageView: View {
             AppTheme.backgroundColor.ignoresSafeArea()
             
             ScrollView {
-                VStack(spacing: AppTheme.Spacing.large) {
+                VStack(spacing: AppTheme.Spacing.medium) {
                     // Header Section
                     headerSection
                     
@@ -168,20 +168,20 @@ struct RitualPageView: View {
     private var headerSection: some View {
         VStack(spacing: AppTheme.Spacing.medium) {
             // Icon and Title
-                VStack(alignment: .center, spacing: AppTheme.Spacing.small) {
-                    Text(viewModel.routine.routineName)
-                        .font(AppTheme.Typography.titleFont)
-                        .foregroundColor(AppTheme.offWhiteText)
-                        .lineLimit(2)
-                    
-                    Text(String.localizedStringWithFormat(
-                        String(localized: "routine.duration.format.simplified"),
-                        viewModel.totalDuration
-                    ))
-                    .font(AppTheme.Typography.captionFont)
-                        .foregroundColor(AppTheme.lightGrey)
-                }
-			.padding(AppTheme.Spacing.titleRoom)
+            VStack(alignment: .center, spacing: AppTheme.Spacing.small) {
+                Text(viewModel.routine.routineName)
+                    .font(AppTheme.Typography.titleFont)
+                    .foregroundColor(AppTheme.offWhiteText)
+                    .lineLimit(2)
+                
+                Text(String.localizedStringWithFormat(
+                    String(localized: "routine.duration.format.simplified"),
+                    viewModel.totalDuration
+                ))
+                .font(AppTheme.Typography.captionFont)
+                    .foregroundColor(AppTheme.lightGrey)
+            }
+            .padding(AppTheme.Spacing.section)
         }
     }
     
@@ -195,7 +195,7 @@ struct RitualPageView: View {
             LazyVGrid(columns: [
                 GridItem(.flexible()),
                 GridItem(.flexible())
-            ], spacing: AppTheme.Spacing.medium) {
+            ], spacing: AppTheme.Spacing.small) {
 				StatRitualPageCard(
                     title: LocalizedStringKey("ritual.statistics.blocks"),
                     value: "\(viewModel.blockCount)",
@@ -231,7 +231,7 @@ struct RitualPageView: View {
                 .foregroundColor(AppTheme.offWhiteText)
             
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: AppTheme.Spacing.medium) {
+                HStack(spacing: AppTheme.Spacing.small) {
                     StatRitualPageCard(
                         title: LocalizedStringKey("ritual.statistics.blocks"),
                         value: "\(viewModel.blockCount)",
@@ -289,7 +289,7 @@ struct RitualPageView: View {
                 GridItem(.flexible()),
                 GridItem(.flexible()),
                 GridItem(.flexible())
-            ], spacing: AppTheme.Spacing.cardGrid) {
+            ], spacing: AppTheme.Spacing.small) {
                 
                 // Play Button (always visible)
                 AppTheme.cardButton(
@@ -323,13 +323,13 @@ struct RitualPageView: View {
                 } else {
                     // Placeholder cards to maintain grid layout
                     Color.clear
-                        .frame(height: 70)
+                        .frame(height: 72) // 9x grid unit
                     
                     Color.clear
-                        .frame(height: 70)
+                        .frame(height: 72) // 9x grid unit
                 }
             }
-			.padding(.horizontal, AppTheme.Spacing.section)
+            .padding(.horizontal, AppTheme.Spacing.medium)
         }
     }
 }
@@ -386,7 +386,7 @@ struct BlockRowView: View {
                 .frame(width: 32, height: 32)
             
             // Block info
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
                 Text(block.name)
                     .font(AppTheme.Typography.bodyFont)
                     .foregroundColor(AppTheme.offWhiteText)
