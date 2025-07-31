@@ -92,10 +92,11 @@ struct RoutineLibraryView: View {
 	}
 	
 	var body: some View {
-		ZStack(alignment: .bottomTrailing) {
-			AppTheme.backgroundColor.ignoresSafeArea()
-			
-			ScrollView {
+		NavigationStack {
+			ZStack(alignment: .bottomTrailing) {
+				AppTheme.backgroundColor.ignoresSafeArea()
+				
+				ScrollView {
 				VStack(spacing: 0) {
 					// Header
 					HStack {
@@ -243,6 +244,7 @@ struct RoutineLibraryView: View {
 			}
 		}
 		.statusBar(hidden: true)
+		}
 	}
 	
 		// MARK: - Private Methods
@@ -803,43 +805,49 @@ struct FavoriteRoutineCard: View {
     var onDelete: () -> Void
     
     var body: some View {
-        VStack(alignment: .leading, spacing: AppTheme.Spacing.small) {
-            // Header with icon and circular play button
-            HStack {
-                Image(systemName: routine.routineIcon)
-                    .font(.system(size: 32, weight: .ultraLight))
-                    .foregroundColor(AppTheme.accentColor)
-                
-                Spacer()
-                
-                // Circular play button
-                Button(action: onPlay) {
-                    ZStack {
-                        Circle()
-                            .fill(AppTheme.offWhiteText)
-                            .frame(width: 44, height: 44)
-                        
-                        Image(systemName: "play.fill")
-                            .font(.system(size: 16, weight: .medium))
-                            .foregroundColor(AppTheme.backgroundColor)
-                    }
-                }
-                .buttonStyle(PlainButtonStyle())
-            }
-            
-            Spacer()
-            
+        HStack(alignment: .center, spacing: AppTheme.Spacing.medium) {
             // Routine name
             Text(routine.routineName)
                 .font(AppTheme.Typography.headlineFont)
                 .foregroundColor(AppTheme.offWhiteText)
-                .lineLimit(2)
+                .lineLimit(1...2)
                 .multilineTextAlignment(.leading)
+            
+            Spacer()
+            
+            // Circular play button
+            Button(action: onPlay) {
+                ZStack {
+                    Circle()
+                        .fill(AppTheme.offWhiteText)
+                        .frame(width: 44, height: 44)
+                    
+                    Image(systemName: "play.fill")
+                        .font(.system(size: 16, weight: .medium))
+                        .foregroundColor(AppTheme.backgroundColor)
+                }
+            }
+            .buttonStyle(PlainButtonStyle())
         }
         .padding(AppTheme.Spacing.medium)
-        .frame(maxWidth: .infinity, minHeight: 140.0, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 80.0, alignment: .leading)
         .background(AppTheme.cardColor)
         .cornerRadius(AppTheme.CornerRadius.medium)
+        .overlay(
+            RoundedRectangle(cornerRadius: AppTheme.CornerRadius.medium)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            AppTheme.offWhiteText.opacity(0.3),
+                            AppTheme.offWhiteText.opacity(0.1),
+                            AppTheme.offWhiteText.opacity(0.0)
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    ),
+                    lineWidth: 1
+                )
+        )
         .onTapGesture {
             onTap()
         }
@@ -931,8 +939,41 @@ struct LibraryEmptyStateView: View {
                     openingBell: .digitalChime,
                     closingBell: .digitalChime
                 )
+            ),
+            SavedRoutine(
+                routine: Routine(
+                    name: "Deep Sleep",
+                    icon: "bed.double.fill",
+                    blocks: [
+                        RoutineBlock(name: "Progressive Relaxation", durationInMinutes: 8, type: .bodyScan, blockStartBell: .silent),
+                        RoutineBlock(name: "Sleep Induction", durationInMinutes: 12, type: .silence, blockStartBell: .tibetanBowl)
+                    ],
+                    openingBell: .softBell,
+                    closingBell: .digitalChime
+                )
+            ),
+            SavedRoutine(
+                routine: Routine(
+                    name: "Energy Boost",
+                    icon: "bolt.fill",
+                    blocks: [
+                        RoutineBlock(name: "Quick Breathing", durationInMinutes: 2, type: .breathwork, blockStartBell: .silent),
+                        RoutineBlock(name: "Energy Visualization", durationInMinutes: 6, type: .visualization, blockStartBell: .digitalChime)
+                    ],
+                    openingBell: .digitalChime,
+                    closingBell: .softBell
+                )
             )
         ]
+        
+        // Set some routines as favorites
+        init() {
+            savedRoutines[0].isFavorite = true  // Morning Meditation
+            savedRoutines[1].isFavorite = true  // Evening Wind Down
+            savedRoutines[2].isFavorite = true  // Quick Focus
+            savedRoutines[3].isFavorite = true  // Deep Sleep
+            savedRoutines[4].isFavorite = true  // Energy Boost
+        }
         
         var body: some View {
             ZStack {
@@ -954,21 +995,59 @@ struct LibraryEmptyStateView: View {
                     .padding(.bottom, AppTheme.Spacing.small)
                     
                     ScrollView {
-                        LazyVGrid(columns: [
-                            GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
-                            GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
-                        ], spacing: AppTheme.Spacing.medium) {
-                            ForEach(savedRoutines) { routine in
-                                CompactRoutineCard(
-                                    routine: routine,
-                                    onTap: {},
-                                    onPlay: {},
-                                    onEdit: {},
-                                    onDelete: {}
-                                )
+                        VStack(spacing: AppTheme.Spacing.large) {
+                            // Favorites Section
+                            let favoriteRoutines = savedRoutines.filter { $0.isFavorite }
+                            if !favoriteRoutines.isEmpty {
+                                VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                                    Text("Favorites")
+                                        .font(AppTheme.Typography.headlineFont)
+                                        .foregroundColor(AppTheme.offWhiteText)
+                                        .padding(.horizontal)
+                                    
+                                    LazyVGrid(columns: [
+                                        GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
+                                        GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
+                                    ], spacing: AppTheme.Spacing.medium) {
+                                        ForEach(favoriteRoutines) { routine in
+                                            FavoriteRoutineCard(
+                                                routine: routine,
+                                                onTap: {},
+                                                onPlay: {},
+                                                onEdit: {},
+                                                onDelete: {}
+                                            )
+                                        }
+                                    }
+                                    .padding(.horizontal)
+                                }
+                            }
+                            
+                            // All Routines Section
+                            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                                Text("All Routines")
+                                    .font(AppTheme.Typography.headlineFont)
+                                    .foregroundColor(AppTheme.offWhiteText)
+                                    .padding(.horizontal)
+                                
+                                LazyVGrid(columns: [
+                                    GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
+                                    GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
+                                ], spacing: AppTheme.Spacing.medium) {
+                                    ForEach(savedRoutines) { routine in
+                                        CompactRoutineCard(
+                                            routine: routine,
+                                            onTap: {},
+                                            onPlay: {},
+                                            onEdit: {},
+                                            onDelete: {}
+                                        )
+                                    }
+                                }
+                                .padding(.horizontal)
                             }
                         }
-                        .padding()
+                        .padding(.bottom, AppTheme.Spacing.extraLarge)
                     }
                 }
             }
@@ -1038,6 +1117,8 @@ struct LibraryEmptyStateView: View {
     
     return EmptyLibraryView()
 }
+
+
 
 #Preview("Single Routine Card") {
 	ZStack {

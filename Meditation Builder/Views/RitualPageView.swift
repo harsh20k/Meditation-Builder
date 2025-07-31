@@ -164,6 +164,8 @@ struct RitualPageView: View {
         }
     }
     
+
+    
     // MARK: - Header Section
     private var headerSection: some View {
         VStack(spacing: AppTheme.Spacing.medium) {
@@ -411,6 +413,8 @@ struct BlockRowView: View {
         .cornerRadius(AppTheme.CornerRadius.medium)
     }
 }
+
+
 
 #Preview {
     NavigationView {
