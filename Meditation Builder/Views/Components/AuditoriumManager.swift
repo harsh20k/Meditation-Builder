@@ -169,7 +169,7 @@ final class AuditoriumEngine: ObservableObject {
 		let blocks = savedRoutine.blocks.sorted { $0.orderIndex < $1.orderIndex }
 		
 #if DEBUG
-		let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
+		let isDebugMode = false // Set to true for 5-second blocks, false for normal duration
 #else
 		let isDebugMode = false
 #endif

@@ -40,7 +40,7 @@ class RoutineDataManager: ObservableObject {
     // MARK: - Debug Configuration
     
     #if DEBUG
-    private let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
+    private let isDebugMode = false // Set to true for 5-second blocks, false for normal duration
     #else
     private let isDebugMode = false
     #endif

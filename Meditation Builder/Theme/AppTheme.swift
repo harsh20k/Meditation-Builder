@@ -559,7 +559,7 @@ extension AppTheme {
     
     /// Create a customizable separator line
     static func separator(
-        color: Color = lightGrey.opacity(0.2),
+        color: Color = lightGrey.opacity(0.01),
         height: CGFloat = 1,
         horizontalPadding: CGFloat = 0,
         verticalPadding: CGFloat = Spacing.medium

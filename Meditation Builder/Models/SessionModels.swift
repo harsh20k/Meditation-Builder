@@ -488,7 +488,7 @@ final class MeditationSession: Identifiable {
                 let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10)
 				
 				#if DEBUG
-				let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
+				let isDebugMode = false // Set to true for 5-second blocks, false for normal duration
 				#else
 				let isDebugMode = false
 				#endif
@@ -961,7 +961,7 @@ class RoutinePlayerViewModel {
         self.dataManager = RoutineDataManager.shared
         
         #if DEBUG
-        self.isDebugMode = true
+        self.isDebugMode = false
         #else
         self.isDebugMode = false
         #endif

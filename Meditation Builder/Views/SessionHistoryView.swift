@@ -424,7 +424,7 @@ struct BlockRecordRow: View {
             let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10)
 			
 			#if DEBUG
-			let isDebugMode = true // Set to true for 5-second blocks, false for normal duration
+			let isDebugMode = false // Set to true for 5-second blocks, false for normal duration
 			#else
 			let isDebugMode = false
 			#endif
@@ -459,7 +459,7 @@ struct BlockRecordRow: View {
             let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10)
 			
 			#if DEBUG
-			let isDebugMode = true // Set to true for 5-seconds blocks, false for normal duration
+			let isDebugMode = false // Set to true for 5-seconds blocks, false for normal duration
 			#else
 			let isDebugMode = false
 			#endif
