@@ -8,20 +8,10 @@
 import SwiftUI
 
 struct BellPickerView: View {
-    @State var selected: TransitionBell?
-    var onSelect: (TransitionBell?) -> Void
+    @State var selected: BellSound
+    var onSelect: (BellSound) -> Void
     @Environment(\.dismiss) var dismiss
-    let bells = ["None", "Soft Bell", "Tibetan Bowl", "Digital Chime"]
-    
-    var bellIcon: (String) -> String = { name in
-        switch name {
-        case "None": return "bell.slash.fill"
-        case "Soft Bell": return "bell.fill"
-        case "Tibetan Bowl": return "circle.grid.cross"
-        case "Digital Chime": return "waveform"
-        default: return "bell"
-        }
-    }
+    let bells = BellSound.allCases
     
     var body: some View {
         NavigationView {
@@ -41,23 +31,23 @@ struct BellPickerView: View {
                             }
                         }
                         VStack(spacing: AppTheme.Spacing.large) {
-                            ForEach(bells, id: \.self) { name in
+                            ForEach(bells, id: \.self) { bellSound in
                                 HStack(alignment: .center, spacing: AppTheme.Spacing.medium) {
                                     ZStack {
                                         Circle()
                                             .fill(AppTheme.accentColor)
                                             .frame(width: 40, height: 40)
-                                        Image(systemName: bellIcon(name))
+                                        Image(systemName: bellSound.icon)
                                             .foregroundColor(.white)
                                             .font(.system(size: 22, weight: .bold))
                                     }
                                     VStack(alignment: .leading, spacing: 2) {
-                                        Text(name)
+                                        Text(bellSound.titleKey)
                                             .font(AppTheme.Typography.headlineFont)
                                             .foregroundColor(.white)
                                     }
                                     Spacer()
-                                    if selected?.soundName == name || (selected == nil && name == "None") {
+                                    if selected == bellSound {
                                         Image(systemName: "checkmark.circle.fill")
                                             .foregroundColor(AppTheme.accentColor)
                                             .font(.system(size: 24, weight: .bold))
@@ -76,7 +66,7 @@ struct BellPickerView: View {
                                 .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
                                 .frame(height: 76)
                                 .onTapGesture {
-                                    onSelect(name == "None" ? nil : TransitionBell(soundName: name))
+                                    onSelect(bellSound)
                                     dismiss()
                                 }
                             }
@@ -86,11 +76,11 @@ struct BellPickerView: View {
                     }
                 }
             }
-            .navigationTitle("Select Bell")
+            .navigationTitle(LocalizedStringKey("bell.picker.title"))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Cancel") {
+                    Button(LocalizedStringKey("button.cancel")) {
                         dismiss()
                     }
                     .foregroundColor(AppTheme.accentColor)

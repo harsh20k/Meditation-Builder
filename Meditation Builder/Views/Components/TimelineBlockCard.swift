@@ -1,98 +1,237 @@
-//
-//  TimelineBlockCard.swift
-//  Meditation Builder
-//
-//  Created by harsh  on 09/07/25.
-//
+	//
+	//  TimelineBlockCard.swift
+	//  Meditation Builder
+	//
+	//  Created by harsh  on 09/07/25.
+	//
 
 import SwiftUI
 
-struct TimelineBlockCard: View {
-    let block: MeditationBlock
-    let isLast: Bool
-    var onEdit: () -> Void
-    var onDrag: (_ dragState: (from: Int?, to: Int?)) -> Void
-    let index: Int
-    let blocksCount: Int
-    @Binding var draggingBlock: MeditationBlock?
-    let bell: TransitionBell?
-    var onBellTap: (() -> Void)? = nil
+// MARK: - Design System Components
+
+struct PillDesignTokens {
+    // Colors
+    static let mintGreen = Color(red: 0.50, green: 0.83, blue: 0.78)
+    static let deepTeal = Color(red: 0.23, green: 0.56, blue: 0.50)
     
-    @State private var offset: CGFloat = 0
-    @GestureState private var dragTranslation: CGSize = .zero
-    @State private var isSwiped: Bool = false
+    // Gradients
+    static let mainGradient = LinearGradient(
+        gradient: Gradient(colors: [mintGreen, deepTeal]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    static let iconGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color.white.opacity(0.8),
+            Color.white.opacity(0.6)
+        ]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    // Shadows
+    static let dropShadow = (color: Color.black.opacity(0.7), radius: CGFloat(12), x: CGFloat(0), y: CGFloat(2))
+    static let highlightShadow = (color: Color.white.opacity(0.4), radius: CGFloat(4), x: CGFloat(-2), y: CGFloat(-2))
+    
+    // Inner shadows and strokes
+    static let innerShadowStroke = (color: Color.black.opacity(0.85), width: CGFloat(2), blur: CGFloat(3))
+    static let innerHighlightStroke = (color: Color.white.opacity(1.0), width: CGFloat(2), blur: CGFloat(1))
+    
+    // Text styles
+    static let primaryTextColor = Color.white.opacity(0.95)
+    static let secondaryTextColor = Color.white.opacity(0.90)
+    
+    // Gradients for text and buttons
+    static let textGradient = LinearGradient(
+        gradient: Gradient(colors: [
+            Color.white.opacity(0.95),
+            Color.white.opacity(0.85)
+        ]),
+        startPoint: .topLeading,
+        endPoint: .bottomTrailing
+    )
+    
+    // Additional shadows
+    static let subtleShadow = (color: Color.black.opacity(0.15), radius: CGFloat(4), x: CGFloat(0), y: CGFloat(2))
+}
+
+struct PillBackground: View {
+    var body: some View {
+        Capsule()
+            .fill(PillDesignTokens.mainGradient)
+            // soft drop shadow
+            .shadow(
+                color: PillDesignTokens.dropShadow.color,
+                radius: PillDesignTokens.dropShadow.radius,
+                x: PillDesignTokens.dropShadow.x,
+                y: PillDesignTokens.dropShadow.y
+            )
+            // subtle top-left highlight for raised effect
+            .shadow(
+                color: PillDesignTokens.highlightShadow.color,
+                radius: PillDesignTokens.highlightShadow.radius,
+                x: PillDesignTokens.highlightShadow.x,
+                y: PillDesignTokens.highlightShadow.y
+            )
+            // inner shadow on bottom-right
+            .overlay(
+                Capsule()
+                    .stroke(PillDesignTokens.innerShadowStroke.color, lineWidth: PillDesignTokens.innerShadowStroke.width)
+                    .blur(radius: PillDesignTokens.innerShadowStroke.blur)
+                    .offset(x: -1, y: -1)
+                    .mask(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.black, Color.clear]),
+                                    startPoint: .bottomTrailing,
+                                    endPoint: .topLeading
+                                )
+                            )
+                    )
+            )
+            // faint inner‐highlight at top edge
+            .overlay(
+                Capsule()
+                    .stroke(PillDesignTokens.innerHighlightStroke.color, lineWidth: PillDesignTokens.innerHighlightStroke.width)
+                    .blur(radius: PillDesignTokens.innerHighlightStroke.blur)
+                    .offset(x: 1, y: 1)
+                    .mask(
+                        Capsule()
+                            .fill(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [Color.black, Color.clear]),
+                                    startPoint: .topLeading,
+                                    endPoint: .bottomTrailing
+                                )
+                            )
+                    )
+            )
+    }
+}
+
+struct PillIcon: View {
+    let iconName: String
     
     var body: some View {
-        ZStack(alignment: .leading) {
-            // Timeline node
-            VStack {
-                Spacer()
-                Circle()
-                    .fill(AppTheme.accentColor)
-                    .frame(width: 16, height: 16)
-                    .overlay(Circle().stroke(Color.white.opacity(0.15), lineWidth: 2))
-                    .padding(.leading, 28)
-                Spacer()
-            }
-            .frame(width: 40)
-            
-            // Block Card
-            HStack(alignment: .center, spacing: AppTheme.Spacing.medium) {
-                ZStack {
+        Image(systemName: iconName)
+            .resizable()
+            .aspectRatio(contentMode: .fit)
+            .frame(width: 24, height: 24)
+            .foregroundStyle(PillDesignTokens.iconGradient)
+    }
+}
+
+struct PillText: View {
+    let text: String
+    let isTitle: Bool
+    
+    var body: some View {
+        Text(text)
+            .font(isTitle ? 
+                .system(size: 20, weight: .medium, design: .serif) :
+                .system(size: 16, weight: .regular, design: .default))
+            .foregroundColor(isTitle ? 
+                PillDesignTokens.primaryTextColor :
+                PillDesignTokens.secondaryTextColor)
+    }
+}
+
+struct PillActionButton: View {
+    let iconName: String
+    let isDestructive: Bool
+    let action: () -> Void
+    
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: iconName)
+                .foregroundStyle(PillDesignTokens.textGradient)
+                .font(.system(size: 14, weight: .medium))
+                .frame(width: 28, height: 28)
+                .background(
                     Circle()
-                        .fill(AppTheme.accentColor)
-                        .frame(width: 40, height: 40)
-                    Image(systemName: block.type.icon)
-                        .foregroundColor(.white)
-                        .font(.system(size: 22, weight: .bold))
-                }
+                        .fill(
+                            LinearGradient(
+                                colors: isDestructive ? [
+                                    Color.red.opacity(0.7),
+                                    Color.red.opacity(0.5)
+                                ] : [
+                                    Color.white.opacity(0.25),
+                                    Color.white.opacity(0.15)
+                                ],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                        .overlay(
+                            Circle()
+                                .stroke(
+                                    Color.white.opacity(0.3),
+                                    lineWidth: 0.5
+                                )
+                        )
+                )
+                .shadow(
+                    color: PillDesignTokens.subtleShadow.color,
+                    radius: PillDesignTokens.subtleShadow.radius,
+                    x: PillDesignTokens.subtleShadow.x,
+                    y: PillDesignTokens.subtleShadow.y
+                )
+        }
+        .buttonStyle(PlainButtonStyle())
+    }
+}
+
+// MARK: - Main TimelineBlockCard
+
+struct TimelineBlockCard: View {
+    let block: RoutineBlock
+    let isLast: Bool
+    let index: Int
+    let blocksCount: Int
+    
+    var body: some View {
+        HStack(spacing: 10) {
+            // Block icon
+            PillIcon(iconName: block.blockIcon)
+            
+            // Block details
+            HStack {
+                PillText(text: block.name, isTitle: true)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
                 
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(block.name)
-                        .font(AppTheme.Typography.headlineFont)
-                        .foregroundColor(.white)
-                        .lineLimit(2)
-                        .truncationMode(.tail)
-                        .fixedSize(horizontal: false, vertical: true)
-                    Text("\(block.durationInMinutes) min")
-                        .font(AppTheme.Typography.bodyFont)
-                        .foregroundColor(AppTheme.lightGrey)
-                }
                 Spacer()
                 
-                if !isLast {
-                    Button(action: { onBellTap?() }) {
-                        Image(systemName: "bell.fill")
-                            .foregroundColor(AppTheme.accentColor)
-                            .font(.system(size: 18, weight: .bold))
-                    }
-                    .padding(.bottom, 2)
-                }
-                
-                Button(action: onEdit) {
-                    Image(systemName: "pencil")
-                        .foregroundColor(.white)
-                        .font(.system(size: 16, weight: .medium))
-                        .frame(width: 32, height: 32)
-                        .background(
-                            Circle()
-                                .fill(Color.white.opacity(AppTheme.Opacity.overlay))
-                        )
-                }
+                // Duration
+                PillText(
+                    text: String.localizedStringWithFormat(
+                        NSLocalizedString("component.duration.format", comment: "Block duration"),
+                        block.durationInMinutes
+                    ),
+                    isTitle: false
+                )
             }
-            .padding(.vertical, 18)
-            .padding(.horizontal, 20)
-            .background(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
-                    .fill(AppTheme.cardColor)
-            )
-            .overlay(
-                RoundedRectangle(cornerRadius: AppTheme.CornerRadius.large)
-                    .stroke(Color.white.opacity(AppTheme.Opacity.border), lineWidth: 1)
-            )
-            .shadow(color: AppTheme.Shadows.card, radius: 4, x: 0, y: 2)
-            .padding(.leading, AppTheme.Spacing.medium)
+            
+            // Bell indicator (commented out for now)
+            /*
+            if index > 0 && block.blockStartBell != .silent {
+                Image(systemName: block.blockStartBell.icon)
+                    .font(.system(size: 11, weight: .medium))
+                    .foregroundColor(PillDesignTokens.secondaryTextColor)
+                
+                // Bell name hidden for now - might add back later
+                PillText(text: block.blockStartBell.displayName, isTitle: false)
+                    .font(.system(size: 11, weight: .medium, design: .rounded))
+            }
+            */
+            
         }
+        .padding(.vertical, 10)
+        .padding(.horizontal, 16)
+        .background(PillBackground())
+        .padding(.horizontal, AppTheme.Spacing.medium)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 }
@@ -100,79 +239,59 @@ struct TimelineBlockCard: View {
 // MARK: - Preview
 #Preview("TimelineBlockCard") {
     ZStack {
-        AppTheme.backgroundColor.ignoresSafeArea()
+        Color.black.ignoresSafeArea()
         
         VStack(spacing: 20) {
-            // Preview with bell (not last block)
+            // Preview first block (no bell shown since index 0)
             TimelineBlockCard(
-                block: MeditationBlock(
-                    id: UUID(),
+                block: RoutineBlock(
                     name: "Breathwork",
                     durationInMinutes: 5,
-                    type: .breathwork
+                    type: .breathwork,
+                    blockStartBell: .softBell
                 ),
                 isLast: false,
-                onEdit: {},
-                onDrag: { _ in },
                 index: 0,
-                blocksCount: 3,
-                draggingBlock: .constant(nil),
-                bell: TransitionBell(soundName: "Soft Bell"),
-                onBellTap: {}
+                blocksCount: 3
             )
             
-            // Preview without bell (last block)
+            // Preview second block (shows bell since index > 0)
             TimelineBlockCard(
-                block: MeditationBlock(
-                    id: UUID(),
-                    name: "Silence",
-                    durationInMinutes: 10,
-                    type: .silence
+                block: RoutineBlock(
+                    name: "Visualization",
+                    durationInMinutes: 8,
+                    type: .visualization,
+                    blockStartBell: .tibetanBowl
+                ),
+                isLast: false,
+                index: 1,
+                blocksCount: 3
+            )
+            
+            // Preview last block
+            TimelineBlockCard(
+                block: RoutineBlock(
+                    name: "Body Scan",
+                    durationInMinutes: 12,
+                    type: .bodyScan,
+                    blockStartBell: .digitalChime
                 ),
                 isLast: true,
-                onEdit: {},
-                onDrag: { _ in },
                 index: 2,
-                blocksCount: 3,
-                draggingBlock: .constant(nil),
-                bell: nil,
-                onBellTap: {}
+                blocksCount: 3
             )
             
-            // Preview with long name
+            // Preview with silent bell
             TimelineBlockCard(
-                block: MeditationBlock(
-                    id: UUID(),
-                    name: "Very Long Meditation Block Name That Might Wrap",
-                    durationInMinutes: 15,
-                    type: .visualization
-                ),
-                isLast: false,
-                onEdit: {},
-                onDrag: { _ in },
-                index: 1,
-                blocksCount: 3,
-                draggingBlock: .constant(nil),
-                bell: TransitionBell(soundName: "Tibetan Bowl"),
-                onBellTap: {}
-            )
-            
-            // Preview with custom block
-            TimelineBlockCard(
-                block: MeditationBlock(
-                    id: UUID(),
+                block: RoutineBlock(
                     name: "Custom Block",
                     durationInMinutes: 8,
-                    type: .custom
+                    type: .custom,
+                    blockStartBell: .silent
                 ),
                 isLast: false,
-                onEdit: {},
-                onDrag: { _ in },
-                index: 3,
-                blocksCount: 4,
-                draggingBlock: .constant(nil),
-                bell: TransitionBell(soundName: "Digital Chime"),
-                onBellTap: {}
+                index: 1,
+                blocksCount: 4
             )
         }
         .padding()
@@ -181,26 +300,21 @@ struct TimelineBlockCard: View {
 
 #Preview("All Block Types") {
     ZStack {
-        AppTheme.backgroundColor.ignoresSafeArea()
+        Color.black.ignoresSafeArea()
         
         ScrollView {
             VStack(spacing: 16) {
-                ForEach(MeditationBlock.BlockType.allCases, id: \.self) { blockType in
+                ForEach(Array(MeditationBlock.BlockType.allCases.enumerated()), id: \.element) { index, blockType in
                     TimelineBlockCard(
-                        block: MeditationBlock(
-                            id: UUID(),
+                        block: RoutineBlock(
                             name: blockType.rawValue,
                             durationInMinutes: blockType.defaultDuration,
-                            type: blockType
+                            type: blockType,
+                            blockStartBell: index == 0 ? .silent : BellSound.allCases[index % BellSound.allCases.count]
                         ),
                         isLast: blockType == .custom,
-                        onEdit: {},
-                        onDrag: { _ in },
-                        index: MeditationBlock.BlockType.allCases.firstIndex(of: blockType) ?? 0,
-                        blocksCount: MeditationBlock.BlockType.allCases.count,
-                        draggingBlock: .constant(nil),
-                        bell: blockType != .custom ? TransitionBell(soundName: "Soft Bell") : nil,
-                        onBellTap: {}
+                        index: index,
+                        blocksCount: MeditationBlock.BlockType.allCases.count
                     )
                 }
             }
@@ -211,24 +325,19 @@ struct TimelineBlockCard: View {
 
 #Preview("Single Block") {
     ZStack {
-        AppTheme.backgroundColor.ignoresSafeArea()
+        Color.black.ignoresSafeArea()
         
         TimelineBlockCard(
-            block: MeditationBlock(
-                id: UUID(),
+            block: RoutineBlock(
                 name: "Body Scan",
                 durationInMinutes: 12,
-                type: .bodyScan
+                type: .bodyScan,
+                blockStartBell: .tibetanBowl
             ),
             isLast: true,
-            onEdit: {},
-            onDrag: { _ in },
-            index: 0,
-            blocksCount: 1,
-            draggingBlock: .constant(nil),
-            bell: nil,
-            onBellTap: {}
+            index: 1,
+            blocksCount: 1
         )
         .padding()
     }
-} 
+}

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bucket
+   uuid = "C626A2BD-4126-42CC-92B8-5D7B96C0659E"
+   type = "1"
+   version = "2.0">
+   <Breakpoints>
+      <BreakpointProxy
+         BreakpointExtensionID = "Xcode.Breakpoint.FileBreakpoint">
+         <BreakpointContent
+            uuid = "8E0A21A6-EA19-4F2B-855B-E81C28D8C345"
+            shouldBeEnabled = "Yes"
+            ignoreCount = "0"
+            continueAfterRunningActions = "No"
+            filePath = "Meditation Builder/Models/MeditationModels.swift"
+            startingColumnNumber = "9223372036854775807"
+            endingColumnNumber = "9223372036854775807"
+            startingLineNumber = "585"
+            endingLineNumber = "585"
+            landmarkName = "init(id:routineId:routineName:routineIcon:sessionStartTime:sessionEndTime:totalPlannedDurationInMinutes:totalActualDurationInSeconds:wasCompleted:wasDiscarded:completedBlocksCount:totalBlocksCount:overshootTimeInSeconds:actualMeditationTimeInSeconds:blockRecords:)"
+            landmarkType = "7">
+         </BreakpointContent>
+      </BreakpointProxy>
+   </Breakpoints>
+</Bucket>

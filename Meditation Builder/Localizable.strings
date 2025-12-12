@@ -1,0 +1,202 @@
+/* 
+  Localizable.strings
+  Meditation Builder
+
+  Created by harsh on 09/07/25.
+  
+*/
+
+// MARK: - Tab Bar
+"tab.library" = "Library";
+"tab.music" = "Music";
+"tab.timer" = "Timer";
+"tab.tools" = "Tools";
+"tab.settings" = "Settings";
+"History" = "History";
+
+// MARK: - Tab Descriptions
+"tab.music.description" = "Background music and sounds coming soon...";
+"tab.tools.description" = "Meditation tools and utilities coming soon...";
+"tab.settings.description" = "App settings and preferences coming soon...";
+
+// MARK: - Common UI
+"coming.soon" = "Coming Soon";
+
+// MARK: - Common Buttons
+"button.save" = "Save";
+"button.update" = "Update";
+"button.done" = "Done";
+"button.cancel" = "Cancel";
+"button.delete" = "Delete";
+"button.edit" = "Edit";
+"button.add" = "Add";
+"button.back" = "Back";
+"button.play" = "Play";
+"button.pin" = "Pin";
+"button.unpin" = "Unpin";
+"button.discard" = "Discard";
+"button.save.and.exit" = "Save & Exit";
+"button.try.again" = "Try Again";
+"button.end.session" = "End Session";
+"button.discard.session" = "Discard Session";
+"button.finish" = "Finish";
+
+// MARK: - Alert Messages
+"alert.unsaved.changes.title" = "Unsaved Changes";
+"alert.unsaved.changes.message" = "You have unsaved changes. What would you like to do?";
+"alert.end.session.title" = "End Session";
+"alert.end.session.message" = "Are you sure you want to end this meditation session? Your progress will be saved.";
+"alert.discard.session.title" = "Discard Session";
+"alert.discard.session.message" = "Are you sure you want to discard this session? Your progress will not be recorded.";
+"alert.finish.session.title" = "Finish Session";
+"alert.finish.session.message" = "Are you sure you want to finish this meditation session? Your session will be recorded.";
+"alert.delete.routine.title" = "Delete Routine";
+"alert.delete.routine.message" = "Are you sure you want to delete '%@'? This action cannot be undone.";
+
+// MARK: - Error Messages
+"error.title" = "Error";
+"error.message" = "Something went wrong. Please try again.";
+
+// MARK: - Routine Library
+"routine.library.title" = "Rituals";
+"search.routines.placeholder" = "Search";
+"empty.no.routines" = "No Rituals Yet";
+"empty.no.results" = "No Results Found";
+"empty.create.first.routine" = "Create your first meditation ritual to get started";
+"empty.adjust.search.terms" = "Try adjusting your search terms";
+"routine.duration.format" = "⏱ Duration: %d min";
+"routine.duration.format.simplified" = "%d min";
+"routine.more.blocks.format" = "+%d more";
+
+// MARK: - Routine Builder
+"routine.builder.title" = "Ritual";
+"routine.edit.title" = "Edit Ritual";
+"total.time.format" = "Total: %d min";
+
+// MARK: - Routine Player
+"player.title" = "Routine Player";
+"player.playing.format" = "Playing: %@";
+"player.coming.soon" = "Player functionality coming soon...";
+"routine.complete" = "Ritual Complete";
+
+// MARK: - Add Block View
+"block.add.title" = "Add Block";
+"blocks.tab.default" = "Default Blocks";
+"blocks.tab.custom" = "Custom Block";
+"search.blocks.placeholder" = "Search blocks...";
+"block.name.placeholder" = "Name";
+"block.create.custom" = "Create Custom Block";
+
+// MARK: - Edit Block View
+"block.edit.title" = "Edit Block";
+"duration.with.value.format" = "Duration: %d min";
+
+// MARK: - Bell Picker View
+"bell.picker.title" = "Select Bell";
+
+// MARK: - Block Types
+"block.type.silence" = "Silence";
+"block.type.breathwork" = "Breathwork";
+"block.type.chanting" = "Chanting";
+"block.type.visualization" = "Visualization";
+"block.type.body_scan" = "Body Scan";
+"block.type.walking" = "Walking";
+"block.type.custom" = "Custom";
+
+// MARK: - Bell Types
+"bell.silent" = "Silent";
+"bell.soft" = "Soft Bell";
+"bell.tibetan" = "Tibetan Bowl";
+"bell.digital" = "Digital Chime";
+
+// MARK: - Content Types
+"content.type.bell" = "Bell";
+"content.type.audio" = "Audio";
+"content.type.video" = "Video";
+"content.type.ambient" = "Ambient";
+
+// MARK: - Session History
+"session.history.total.format" = "Total Sessions: %d";
+"session.history.filtered.format" = "Filtered Sessions: %d";
+"session.history.debug.info" = "Debug Info";
+"session.history.details" = "Session Details";
+"session.history.block.details" = "Block Details";
+"session.history.no.blocks" = "No block records found";
+"session.history.empty.title" = "No Sessions Yet";
+"session.history.empty.message" = "Complete your first meditation session to see it here.";
+
+// MARK: - Session Statistics
+"statistics.recent.activity" = "Recent Activity";
+"statistics.no.recent.sessions" = "No recent sessions";
+"statistics.insights" = "Insights";
+"statistics.empty.title" = "No Statistics Available";
+"statistics.empty.message" = "Complete some meditation sessions to see your statistics and insights.";
+
+// MARK: - Logging Settings
+"logging.settings.title" = "Logging Settings";
+"logging.enable.title" = "Enable Logging";
+"logging.enable.description" = "Enable or disable logging throughout the app";
+"logging.level.title" = "Log Level";
+"logging.level.description" = "Select the minimum log level to record";
+"logging.management.title" = "Log Management";
+"logging.view.recent" = "View Recent Logs";
+"logging.clear.all" = "Clear All Logs";
+"logging.about.title" = "About Logging";
+"logging.about.local.storage" = "• Logs are stored locally on your device";
+"logging.about.rotation" = "• Log files are automatically rotated when they reach 5MB";
+"logging.about.retention" = "• Only the 10 most recent log files are kept";
+"logging.about.debug" = "• Debug logs are only shown in debug builds";
+"logging.clear.confirmation" = "This will permanently delete all log files. This action cannot be undone.";
+
+// MARK: - Animation Playground
+"animation.playground.title" = "Block Completion Animations";
+"animation.block.settings" = "Block Settings";
+"animation.current.block" = "Current Block:";
+"animation.total.blocks" = "Total Blocks:";
+"animation.progress.format" = "Progress: %d%%";
+"animation.bounce.rise.title" = "Bounce Rise Animation";
+"animation.duration.format" = "Animation Duration: %.1fs";
+"animation.intensity.format" = "Bounce Intensity: %.1fx";
+"animation.loop.delay.format" = "Loop Delay: %.1fs";
+"animation.manual.controls" = "Manual Controls";
+"animation.progress.increase" = "Progress +20%%";
+"animation.progress.decrease" = "Progress -20%%";
+"animation.reset.progress" = "Reset Progress";
+"animation.description" = "The bounce rise animation creates a spring-based bouncing effect on the progress indicators as they fill up. Each indicator bounces sequentially as progress moves through them, creating a lively";
+
+// MARK: - Components
+"component.duration.format" = "%d min";
+"component.completed.blocks" = "%d";
+"component.remaining.blocks" = "%d";
+"component.completion.percentage" = "%d%%";
+
+// MARK: - Routine Builder
+"routine.builder.add.block" = "+ Add a Block";
+
+// MARK: - Edit Block
+"edit.block.start.bell.format" = "Start Bell: %@";
+
+// MARK: - Icon Picker
+"icon.picker.title" = "Choose Icon";
+
+// MARK: - Session History
+"session.history.title" = "Session History";
+
+// MARK: - Session Statistics
+"statistics.title" = "Statistics";
+
+// MARK: - Common Buttons
+"button.refresh" = "Refresh";
+
+// MARK: - Routine Builder
+"routine.name.placeholder" = "Routine Name";
+
+// MARK: - Ritual Page
+"ritual.statistics.title" = "Statistics";
+"ritual.statistics.blocks" = "Blocks";
+"ritual.statistics.playCount" = "Play Count";
+"ritual.statistics.created" = "Created";
+"ritual.statistics.modified" = "Modified";
+"ritual.statistics.lastPlayed" = "Last Played";
+"ritual.blocks.title" = "Blocks";
+"pinned.rituals.title" = "Pinned Rituals"; 
