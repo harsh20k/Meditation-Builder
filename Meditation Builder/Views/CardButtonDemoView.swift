@@ -102,7 +102,7 @@ struct CardButtonDemoView: View {
 }
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         CardButtonDemoView()
     }
 } 

@@ -14,7 +14,7 @@ struct BellPickerView: View {
     let bells = BellSound.allCases
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AppTheme.backgroundColor.ignoresSafeArea()
                 ScrollView(showsIndicators: false) {
@@ -38,13 +38,13 @@ struct BellPickerView: View {
                                             .fill(AppTheme.accentColor)
                                             .frame(width: 40, height: 40)
                                         Image(systemName: bellSound.icon)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(AppTheme.offWhiteText)
                                             .font(.system(size: 22, weight: .bold))
                                     }
                                     VStack(alignment: .leading, spacing: 2) {
                                         Text(bellSound.titleKey)
                                             .font(AppTheme.Typography.headlineFont)
-                                            .foregroundColor(.white)
+                                            .foregroundColor(AppTheme.offWhiteText)
                                     }
                                     Spacer()
                                     if selected == bellSound {

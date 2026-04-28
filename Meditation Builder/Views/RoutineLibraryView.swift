@@ -93,113 +93,80 @@ struct RoutineLibraryView: View {
 	}
 	
 	var body: some View {
-		GeometryReader { geometry in
-			ZStack(alignment: .bottomTrailing) {
-				AppTheme.backgroundColor.ignoresSafeArea()
-				
-				ScrollView {
+		ZStack(alignment: .bottomTrailing) {
+			AppTheme.backgroundColor.ignoresSafeArea()
+
+			ScrollView {
 				VStack(spacing: 0) {
 					// Header
 					HStack {
-						VStack(spacing: AppTheme.Spacing.small) {
-							Text(LocalizedStringKey("routine.library.title"))
-								.font(AppTheme.Typography.titleFont)
-								.foregroundColor(AppTheme.offWhiteText)
-							Text(LocalizedStringKey("routine.library.title"))
-								.font(AppTheme.Typography.captionFont)
-								.foregroundColor(AppTheme.lightGrey)
-						}
+						Text(LocalizedStringKey("routine.library.title"))
+							.font(AppTheme.Typography.titleFont)
+							.foregroundColor(AppTheme.offWhiteText)
+						Spacer()
 					}
 					.padding(.horizontal, AppTheme.Spacing.medium)
 					.padding(.top, AppTheme.Spacing.section)
 					.padding(.bottom, AppTheme.Spacing.large)
-						
-						// Search Bar Hidden
-						if false {
-							HStack {
-								Image(systemName: "magnifyingglass")
-									.foregroundColor(AppTheme.accentColor)
-									.font(.system(size: 16, weight: .medium))
-								
-								TextField(LocalizedStringKey("search.routines.placeholder"), text: $searchText)
-									.foregroundColor(.white)
-									.font(AppTheme.Typography.bodyFont)
-								
-								if !searchText.isEmpty {
-									Button(action: {
-										searchText = ""
-									}) {
-										Image(systemName: "xmark.circle.fill")
-											.foregroundColor(AppTheme.lightGrey)
-											.font(.system(size: 16, weight: .medium))
-									}
-									.buttonStyle(PlainButtonStyle())
-								}
-							}
-							.padding(AppTheme.Spacing.medium)
-							.background(AppTheme.searchBar)
-							.cornerRadius(AppTheme.CornerRadius.button)
-							.padding(.horizontal)
-							.padding(.bottom, AppTheme.Spacing.large)
-						}
-						
-						// Pinned Rituals Section
-						if !favoriteRoutines.isEmpty {
-							pinnedRitualsSection
-							
-							// Subtle separator
-							AppTheme.separator(
-								color: AppTheme.lightGrey.opacity(0.2),
-								horizontalPadding: AppTheme.Spacing.medium,
-								verticalPadding: AppTheme.Spacing.medium
-							)
-						}
-						
-						// Routines List
-						if filteredRoutines.isEmpty {
-							LibraryEmptyStateView(searchText: searchText)
-						} else {
-							LazyVGrid(columns: [
-								GridItem(.flexible(), spacing: AppTheme.Spacing.small),
-								GridItem(.flexible(), spacing: AppTheme.Spacing.small)
-							], spacing: AppTheme.Spacing.small) {
-								ForEach(filteredRoutines) { routine in
-																	CompactRoutineCard(
+
+					// Pinned Rituals Section
+					if !favoriteRoutines.isEmpty {
+						pinnedRitualsSection
+
+						AppTheme.separator(
+							color: AppTheme.lightGrey.opacity(0.2),
+							horizontalPadding: AppTheme.Spacing.medium,
+							verticalPadding: AppTheme.Spacing.medium
+						)
+					}
+
+					// Routines List
+					if filteredRoutines.isEmpty {
+						LibraryEmptyStateView(searchText: searchText)
+					} else {
+						LazyVGrid(columns: [
+							GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
+							GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
+						], spacing: AppTheme.Spacing.medium) {
+							ForEach(filteredRoutines) { routine in
+								CompactRoutineCard(
 									routine: routine,
 									onTap: {
 										logger.info("Routine tapped: \(routine.routineName)", category: "RoutineLibrary")
 										navigationPath.append(routine)
 									},
-										onPlay: {
-											playingRoutine = routine
-											recordPlay(for: routine)
-										},
-										onEdit: { editingRoutine = routine },
-										onDelete: { deleteRoutine(routine) }
-									)
+									onPlay: {
+										playingRoutine = routine
+										recordPlay(for: routine)
+									},
+									onEdit: { editingRoutine = routine },
+									onDelete: { deleteRoutine(routine) }
+								)
+								.scrollTransition(.animated(.easeInOut)) { content, phase in
+									content.opacity(phase.isIdentity ? 1 : 0.6)
 								}
 							}
-							.padding(.horizontal, AppTheme.Spacing.medium)
-							.padding(.bottom, calculateBottomPadding(for: geometry)) // Dynamic padding based on screen size
 						}
+						.padding(.horizontal, AppTheme.Spacing.medium)
+						.padding(.bottom, AppTheme.Spacing.extraLarge)
 					}
 				}
-				.scrollIndicators(.hidden)
-				
-				// Floating Create Button
-				AppTheme.floatingActionButton(
-					icon: "plus",
-					backgroundColor: AppTheme.tabBar,
-					foregroundColor: AppTheme.lightGrey,
-					size: 56,
-					action: { 
-						// Navigate to routine builder instead of showing sheet
-						navigationPath.append(RoutineBuilderDestination.create)
-					}
-				)
-				.padding(.trailing, AppTheme.Spacing.extraLarge)
-				.padding(.bottom, calculateFloatingButtonBottomPadding(for: geometry)) // Dynamic padding based on screen size
 			}
+			.scrollIndicators(.hidden)
+
+			// Floating Create Button
+			AppTheme.floatingActionButton(
+				icon: "plus",
+				backgroundColor: AppTheme.accentColor,
+				foregroundColor: AppTheme.backgroundColor,
+				size: 56,
+				action: {
+					navigationPath.append(RoutineBuilderDestination.create)
+				}
+			)
+			.accessibilityLabel("Create new ritual")
+			.padding(.trailing, AppTheme.Spacing.extraLarge)
+			.padding(.bottom, AppTheme.Spacing.extraLarge)
 		}
 		.sheet(item: $editingRoutine) { routine in
 			RoutineBuilderView(editingRoutine: routine)
@@ -223,34 +190,7 @@ struct RoutineLibraryView: View {
 			}
 		}
 		.statusBar(hidden: true)
-	}
-	
-	// MARK: - Dynamic Layout Calculations
-	
-	/// Calculates bottom padding for the content to account for floating button and tab bar
-	private func calculateBottomPadding(for geometry: GeometryProxy) -> CGFloat {
-		let tabBarHeight: CGFloat = 48 // Custom tab bar height
-		let floatingButtonHeight: CGFloat = 56 // Floating button height
-		let safeAreaBottom = geometry.safeAreaInsets.bottom
-		let gridSpacing: CGFloat = 16 // 8-point grid spacing (2 * 8)
-		
-		// Calculate total space needed for tab bar + safe area + grid spacing
-		let totalBottomSpace = tabBarHeight + safeAreaBottom + gridSpacing
-		
-		// Add extra space for floating button clearance
-		let floatingButtonClearance = floatingButtonHeight + gridSpacing
-		
-		return totalBottomSpace + floatingButtonClearance
-	}
-	
-	/// Calculates bottom padding for the floating button to position it above the tab bar
-	private func calculateFloatingButtonBottomPadding(for geometry: GeometryProxy) -> CGFloat {
-		let tabBarHeight: CGFloat = 48 // Custom tab bar height
-		let safeAreaBottom = geometry.safeAreaInsets.bottom
-		let gridSpacing: CGFloat = 16 // 8-point grid spacing (2 * 8)
-		
-		// Position button above tab bar with proper spacing
-		return tabBarHeight + safeAreaBottom + gridSpacing
+		.sensoryFeedback(.impact(flexibility: .soft), trigger: filteredRoutines.count)
 	}
 	
 	// MARK: - Private Methods
@@ -454,7 +394,7 @@ struct RoutineCard: View {
 							Text(LocalizedStringKey("button.play"))
 								.font(.system(size: 16, weight: .semibold, design: .rounded))
 						}
-						.foregroundColor(.white)
+						.foregroundColor(AppTheme.offWhiteText)
 						.padding(.horizontal, AppTheme.Spacing.large)
 						.padding(.vertical, AppTheme.Spacing.small)
 						.background(
@@ -484,7 +424,7 @@ struct RoutineCard: View {
 					Button(action: onDelete) {
 						Image(systemName: "trash")
 							.font(.system(size: 14, weight: .medium))
-							.foregroundColor(.white)
+							.foregroundColor(AppTheme.offWhiteText)
 							.padding(.horizontal, AppTheme.Spacing.medium)
 							.padding(.vertical, AppTheme.Spacing.small)
 							.background(
@@ -863,43 +803,71 @@ struct FavoriteRoutineCard: View {
 // MARK: - Library Empty State View
 struct LibraryEmptyStateView: View {
 	let searchText: String
-	
+	@State private var breatheScale: CGFloat = 1.0
+	@State private var breatheOpacity: Double = 0.3
+	@Environment(\.accessibilityReduceMotion) private var reduceMotion
+
 	var body: some View {
 		VStack(spacing: AppTheme.Spacing.extraLarge) {
 			Spacer()
-			
+
 			ZStack {
+				if searchText.isEmpty && !reduceMotion {
+					// Breathing rings — only when no search and reduce motion is off
+					Circle()
+						.stroke(AppTheme.accentColor.opacity(breatheOpacity * 0.5), lineWidth: 1)
+						.frame(width: 120, height: 120)
+						.scaleEffect(breatheScale * 1.4)
+					Circle()
+						.stroke(AppTheme.accentColor.opacity(breatheOpacity * 0.3), lineWidth: 1)
+						.frame(width: 120, height: 120)
+						.scaleEffect(breatheScale * 1.8)
+				}
+
 				Circle()
-					.fill(AppTheme.cardColor)
-					.frame(width: 80, height: 80)
-				
+					.fill(AppTheme.accentColor.opacity(0.1))
+					.frame(width: 100, height: 100)
+					.scaleEffect(breatheScale)
+
 				if searchText.isEmpty {
-					Image(systemName: "plus.circle.fill")
+					Image(systemName: "sparkle")
 						.foregroundColor(AppTheme.accentColor)
-						.font(.system(size: 40, weight: .bold))
+						.font(.system(size: 38, weight: .ultraLight))
+						.symbolEffect(.pulse, isActive: !reduceMotion)
 				} else {
 					Image(systemName: "magnifyingglass")
 						.foregroundColor(AppTheme.lightGrey)
-						.font(.system(size: 32, weight: .medium))
+						.font(.system(size: 32, weight: .light))
 				}
 			}
-			
-			VStack(spacing: AppTheme.Spacing.small) {
+			.onAppear {
+				guard searchText.isEmpty && !reduceMotion else { return }
+				withAnimation(
+					.easeInOut(duration: 4.0).repeatForever(autoreverses: true)
+				) {
+					breatheScale = 1.12
+					breatheOpacity = 0.7
+				}
+			}
+
+			VStack(spacing: AppTheme.Spacing.medium) {
 				Text(LocalizedStringKey(searchText.isEmpty ? "empty.no.routines" : "empty.no.results"))
-					.font(.system(size: 20, weight: .semibold, design: .rounded))
-					.foregroundColor(.white)
-				
+					.font(AppTheme.Typography.headlineFontLarge)
+					.foregroundColor(AppTheme.offWhiteText)
+
 				Text(LocalizedStringKey(searchText.isEmpty
 										? "empty.create.first.routine"
 										: "empty.adjust.search.terms"))
-				.font(AppTheme.Typography.bodyFont)
-				.foregroundColor(AppTheme.lightGrey)
-				.multilineTextAlignment(.center)
-				.padding(.horizontal, AppTheme.Spacing.extraLarge)
+					.font(AppTheme.Typography.bodyFont)
+					.foregroundColor(AppTheme.lightGrey)
+					.multilineTextAlignment(.center)
+					.padding(.horizontal, AppTheme.Spacing.extraLarge)
 			}
-			
+
 			Spacer()
 		}
+		.accessibilityElement(children: .combine)
+		.accessibilityLabel(searchText.isEmpty ? "No rituals yet. Tap the plus button to create your first ritual." : "No results found for your search.")
 	}
 }
 

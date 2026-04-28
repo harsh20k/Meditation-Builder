@@ -5,6 +5,7 @@
 	//  Created by harsh  on 09/07/25.
 	//
 
+#if DEBUG
 import SwiftUI
 
 struct BreathworkPillView: View {
@@ -159,3 +160,4 @@ struct BreathworkPillView_Previews: PreviewProvider {
 	.padding(40)
 	.background(Color.black)
 }
+#endif

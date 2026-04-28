@@ -109,7 +109,7 @@ struct BlockProgressIndicator: View {
                     completedBlocks
                 ))
 							.font(.system(size: 8, weight: .bold))
-							.foregroundColor(.white)
+							.foregroundColor(AppTheme.offWhiteText)
 							.background(Color.black.opacity(0.7))
 							.clipShape(Circle())
 							.frame(width: 12, height: 12)
@@ -157,7 +157,7 @@ struct BlockProgressIndicator: View {
                     remainingBlocks
                 ))
 							.font(.system(size: 8, weight: .bold))
-							.foregroundColor(.white)
+							.foregroundColor(AppTheme.offWhiteText)
 							.background(Color.black.opacity(0.7))
 							.clipShape(Circle())
 							.frame(width: 12, height: 12)

@@ -13,13 +13,10 @@ import os.log
 
 @main
 struct Meditation_BuilderApp: App {
-    // Initialize logger at app startup
-    @StateObject private var appLogger = AppLogger.shared
+    @State private var appLogger = AppLogger.shared
     private let modelContainer: ModelContainer
     
     init() {
-        print("Meditation_BuilderApp: init() called")
-        // Test logger immediately
         logger.info("App initialization started", category: "AppLifecycle")
         
         // Initialize ModelContainer first
@@ -36,10 +33,7 @@ struct Meditation_BuilderApp: App {
             ContentView()
                 .statusBar(hidden: true)
                 .onAppear {
-                    // Test if logger is accessible
-                    print("Testing logger accessibility...")
                     logger.info("App launched", category: "AppLifecycle")
-                    print("Logger test completed")
                     
                     // Initialize sample data if needed
                     Task {
@@ -74,47 +68,44 @@ struct Meditation_BuilderApp: App {
         }
     }
     
-    // Make createModelContainer static so it can be called during initialization
     private static func createModelContainer() -> ModelContainer {
         logger.info("Creating SwiftData model container", category: "Data")
-        
-        let schema = Schema([
-            SavedRoutine.self,
-            MeditationBlock.self, 
-            MediaResource.self,
-            MeditationSession.self,
-            SessionBlockRecord.self
-        ])
-        
+
+        let schema = Schema(SchemaV1.models)
         let modelConfiguration = ModelConfiguration(
             schema: schema,
             isStoredInMemoryOnly: false
         )
-        
+
         do {
-            let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+            let container = try ModelContainer(
+                for: schema,
+                migrationPlan: MeditationMigrationPlan.self,
+                configurations: [modelConfiguration]
+            )
             logger.info("SwiftData model container created successfully", category: "Data")
             return container
         } catch {
-            // If container creation fails due to schema changes, clear and recreate
             logger.error("Failed to create model container: \(error)", category: "Data")
             logger.info("Attempting to create fresh container...", category: "Data")
-            
-            // Try to clear the existing database files
+
             clearDatabaseFiles()
-            
+
             do {
-                let container = try ModelContainer(for: schema, configurations: [modelConfiguration])
+                let container = try ModelContainer(
+                    for: schema,
+                    migrationPlan: MeditationMigrationPlan.self,
+                    configurations: [modelConfiguration]
+                )
                 logger.info("Fresh model container created successfully", category: "Data")
                 return container
             } catch {
-                // Last resort: use in-memory store for this session
                 logger.error("Still failed, using in-memory store: \(error)", category: "Data")
                 let memoryConfiguration = ModelConfiguration(
                     schema: schema,
                     isStoredInMemoryOnly: true
                 )
-                
+
                 do {
                     let container = try ModelContainer(for: schema, configurations: [memoryConfiguration])
                     logger.warning("Using in-memory model container as fallback", category: "Data")

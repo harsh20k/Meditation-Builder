@@ -8,11 +8,13 @@
 import Foundation
 import os.log
 import OSLog
+import Observation
 
 /// Centralized logging utility for the Meditation Builder app
 /// Provides multiple log levels, file persistence, and rotation capabilities
 @MainActor
-class AppLogger: ObservableObject {
+@Observable
+class AppLogger {
     static let shared = AppLogger()
     
     // MARK: - Log Levels
@@ -52,8 +54,8 @@ class AppLogger: ObservableObject {
     private let maxLogFiles = 10
     private let dateFormatter: DateFormatter
     
-    @Published var isLoggingEnabled = true
-    @Published var currentLogLevel: LogLevel = .info
+    var isLoggingEnabled = true
+    var currentLogLevel: LogLevel = .info
     
     // MARK: - Initialization
     private init() {

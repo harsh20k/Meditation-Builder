@@ -28,20 +28,19 @@
 import Foundation
 import SwiftData
 import SwiftUI
+import Observation
 import os.log
 
 @MainActor
-class RoutineDataManager: ObservableObject {
+@Observable
+class RoutineDataManager {
     // MARK: - Singleton
     static let shared = RoutineDataManager()
     
     private var context: ModelContext?
     
     // MARK: - Debug Configuration
-    
     #if DEBUG
-    private let isDebugMode = false // Set to true for 5-second blocks, false for normal duration
-    #else
     private let isDebugMode = false
     #endif
     
@@ -211,170 +210,8 @@ class RoutineDataManager: ObservableObject {
     }
     
     // MARK: - Session Management
-    
-    /// Create a new meditation session (DEPRECATED - use event-based approach instead)
-    @available(*, deprecated, message: "Use event-based SessionRecord approach instead")
-    func createSession(for routine: SavedRoutine, startTime: Date = Date()) -> MeditationSession {
-        logger.warning("Using deprecated createSession - consider switching to event-based approach", category: "Session")
-        
-        // Validate that the routine is not soft-deleted
-        guard !routine.isDeleted else {
-            logger.error("Cannot create session for soft-deleted routine: \(routine.routineName)", category: "Session")
-            fatalError("Attempted to create session for soft-deleted routine")
-        }
-        
-        let routineData = routine.getRoutine()
-        let totalPlannedDuration = routineData.blocks.reduce(0) { $0 + $1.durationInMinutes }
-        
-        let session = MeditationSession(
-            routineId: routine.id,
-            routineName: routine.routineName,
-            routineIcon: routine.routineIcon,
-            sessionStartTime: startTime,
-            totalPlannedDurationInMinutes: totalPlannedDuration,
-            totalBlocksCount: routineData.blocks.count
-        )
-        
-        // Pre-create block records for all blocks
-        for (index, block) in routineData.blocks.enumerated() {
-            let blockRecord = SessionBlockRecord(
-                blockId: block.id,
-                blockName: block.name,
-                blockType: block.type,
-                plannedDurationInMinutes: block.durationInMinutes,
-                orderIndex: index,
-                startTime: startTime // Will be updated when block actually starts
-            )
-            session.addBlockRecord(blockRecord)
-        }
-        
-        safeContext.insert(session)
-        
-        // Console logging for session creation
-        print("🧘‍♀️ LEGACY SESSION CREATED")
-        print("   Routine: \(routine.routineName)")
-        print("   Session ID: \(session.id)")
-        print("   Start Time: \(startTime)")
-        print("   Planned Duration: \(totalPlannedDuration) minutes")
-        print("   Total Blocks: \(routineData.blocks.count)")
-        
-        // Verify session was inserted
-        do {
-            try safeContext.save()
-            logger.info("Legacy session created and saved successfully: \(session.id)", category: "Session")
-        } catch {
-            logger.error("Failed to save legacy session: \(error)", category: "Session")
-        }
-        
-        return session
-    }
-    
-    /// Update block record when block starts (DEPRECATED - use event-based approach instead)
-    @available(*, deprecated, message: "Use event-based SessionRecord approach instead")
-    func startBlock(_ blockId: UUID, in session: MeditationSession, startTime: Date) async throws {
-        logger.warning("Using deprecated startBlock - consider switching to event-based approach", category: "Session")
-        
-        if let record = session.blockRecords.first(where: { $0.blockId == blockId }) {
-            record.startTime = startTime
-            try safeContext.save()
-            logger.debug("Legacy block start time updated", category: "Session")
-        }
-    }
-    
-    /// Update block record when block ends (DEPRECATED - use event-based approach instead)
-    @available(*, deprecated, message: "Use event-based SessionRecord approach instead")
-    func endBlock(_ blockId: UUID, in session: MeditationSession, endTime: Date, wasSkipped: Bool = false, actualDuration: Int? = nil) async throws {
-        logger.warning("Using deprecated endBlock - consider switching to event-based approach", category: "Session")
-        
-        if let record = session.blockRecords.first(where: { $0.blockId == blockId }) {
-            let finalDuration: Int
-            if wasSkipped {
-                finalDuration = 0
-            } else if let providedDuration = actualDuration {
-                finalDuration = providedDuration
-            } else {
-                finalDuration = Int(endTime.timeIntervalSince(record.startTime))
-            }
-            
-            session.updateBlockRecord(blockId, actualDuration: finalDuration, wasSkipped: wasSkipped, endTime: endTime)
-            try safeContext.save()
-            logger.debug("Legacy block end time and duration updated: \(finalDuration)s", category: "Session")
-        }
-    } 
-    
-    /// Complete and save a meditation session (legacy method - still used for existing sessions)
-    func completeSession(_ session: MeditationSession, endTime: Date, wasDiscarded: Bool = false, actualMeditationTime: Int? = nil) async throws {
-        logger.info("Completing session \(session.id) (discarded: \(wasDiscarded))", category: "Session")
-        
-        session.completeSession(endTime: endTime, wasDiscarded: wasDiscarded, actualMeditationTime: actualMeditationTime)
-        
-        if !wasDiscarded {
-            // Also record the play for the routine
-            if let routine = try? fetchRoutine(by: session.routineId) {
-                routine.recordPlay()
-            }
-        }
-        
-        try safeContext.save()
-        
-        // Console logging for session completion
-        let status = wasDiscarded ? "DISCARDED" : "COMPLETED"
-        let durationFormatted = session.sessionDurationFormatted
-        let completionRate = session.completionRatePercentage
-        let overshootInfo = session.hasOvershoot ? " (Overshoot: \(session.overshootTimeFormatted))" : ""
-        
-        print("🏁 SESSION \(status)")
-        print("   Routine: \(session.routineName)")
-        print("   Duration: \(durationFormatted)")
-        print("   Completion: \(session.completedBlocksCount)/\(session.totalBlocksCount) blocks (\(completionRate)%)")
-        print("   End Time: \(endTime)\(overshootInfo)")
-        
-        // Log block summary with detailed timing
-        print("   Block Summary:")
-        for record in session.blockRecords.sorted(by: { $0.orderIndex < $1.orderIndex }) {
-            let blockStatus: String
-            if record.wasSkipped {
-                blockStatus = "SKIPPED"
-            } else if record.endTime == nil {
-                blockStatus = "NOT_STARTED"
-            } else {
-                // Use the same completion criteria as in MeditationSession
-                let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10) // 10 seconds or 10% of planned, whichever is smaller
-                if record.actualDurationInSeconds >= minimumDurationForCompletion {
-                    blockStatus = "COMPLETED"
-                } else if record.actualDurationInSeconds > 0 {
-                    blockStatus = "STARTED_ONLY"
-                } else {
-                    blockStatus = "INTERRUPTED"
-                }
-            }
-            
-            let blockDuration = String(format: "%d:%02d", record.actualDurationInSeconds / 60, record.actualDurationInSeconds % 60)
-            let plannedDuration = String(format: "%d:%02d", record.plannedDurationInMinutes, 0)
-            
-            print("     \(record.orderIndex + 1). \(record.blockName)")
-            print("        Type: \(record.blockType.displayName)")
-            print("        Planned: \(plannedDuration) | Actual: \(blockDuration)")
-            print("        Status: \(blockStatus)")
-            
-            // Only show timing information for blocks that actually ran (not skipped and have meaningful timing)
-            if !record.wasSkipped && record.endTime != nil {
-                let startTimeFormatted = String(format: "%d:%02d", Int(record.startTime.timeIntervalSince(session.sessionStartTime)) / 60, Int(record.startTime.timeIntervalSince(session.sessionStartTime)) % 60)
-                let endTimeFormatted = String(format: "%d:%02d", Int(record.endTime!.timeIntervalSince(session.sessionStartTime)) / 60, Int(record.endTime!.timeIntervalSince(session.sessionStartTime)) % 60)
-                print("        Start: +\(startTimeFormatted) | End: +\(endTimeFormatted)")
-                
-                // Verify timing consistency - log if there's a mismatch
-                let calculatedDuration = Int(record.endTime!.timeIntervalSince(record.startTime))
-                if abs(calculatedDuration - record.actualDurationInSeconds) > 1 {
-                    print("        ⚠️  Timing inconsistency: Raw duration \(calculatedDuration)s vs Actual \(record.actualDurationInSeconds)s")
-                }
-            }
-        }
-        
-        logger.info("Session completed successfully: \(session.sessionDurationFormatted)", category: "Session")
-    }
-    
-    /// Complete and save a meditation session using deferred event-based approach
+
+    /// Complete and save a meditation session using the event-based approach
     func completeSession(using sessionRecord: SessionRecord, routine: SavedRoutine, wasDiscarded: Bool = false) async throws {
         logger.info("Completing session using events \(sessionRecord.id) (discarded: \(wasDiscarded))", category: "Session")
         
@@ -424,11 +261,10 @@ class RoutineDataManager: ObservableObject {
         session.completedBlocksCount = blockRecords.filter { record in
             guard !record.wasSkipped && record.endTime != nil else { return false }
             let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10)
-			if isDebugMode {
-				return record.actualDurationInSeconds >= 5
-			} else {
-				return record.actualDurationInSeconds >= minimumDurationForCompletion
-			}
+            #if DEBUG
+            if isDebugMode { return record.actualDurationInSeconds >= 5 }
+            #endif
+            return record.actualDurationInSeconds >= minimumDurationForCompletion
         }.count
         
         // Calculate overshoot time
@@ -444,55 +280,9 @@ class RoutineDataManager: ObservableObject {
         }
         
         try safeContext.save()
-        
-        // Console logging for session completion
+
         let status = wasDiscarded ? "DISCARDED" : "COMPLETED"
-        let durationFormatted = session.sessionDurationFormatted
-        let completionRate = session.completionRatePercentage
-        let overshootInfo = session.hasOvershoot ? " (Overshoot: \(session.overshootTimeFormatted))" : ""
-        
-        print("🏁 DEFERRED SESSION \(status)")
-        print("   Routine: \(session.routineName)")
-        print("   Duration: \(durationFormatted)")
-        print("   Completion: \(session.completedBlocksCount)/\(session.totalBlocksCount) blocks (\(completionRate)%)")
-        print("   End Time: \(finishTime)\(overshootInfo)")
-        print("   Events Processed: \(sessionRecord.events.count)")
-        
-        // Log block summary with reconstructed timing
-        print("   Reconstructed Block Summary:")
-        for record in session.blockRecords.sorted(by: { $0.orderIndex < $1.orderIndex }) {
-            let blockStatus: String
-            if record.wasSkipped {
-                blockStatus = "SKIPPED"
-            } else if record.endTime == nil {
-                blockStatus = "NOT_STARTED"
-            } else {
-                let minimumDurationForCompletion = min(10, record.plannedDurationInMinutes * 60 / 10)
-                if record.actualDurationInSeconds >= minimumDurationForCompletion {
-                    blockStatus = "COMPLETED"
-                } else if record.actualDurationInSeconds > 0 {
-                    blockStatus = "STARTED_ONLY"
-                } else {
-                    blockStatus = "INTERRUPTED"
-                }
-            }
-            
-            let blockDuration = String(format: "%d:%02d", record.actualDurationInSeconds / 60, record.actualDurationInSeconds % 60)
-            let plannedDuration = String(format: "%d:%02d", record.plannedDurationInMinutes, 0)
-            
-            print("     \(record.orderIndex + 1). \(record.blockName)")
-            print("        Type: \(record.blockType.displayName)")
-            print("        Planned: \(plannedDuration) | Actual: \(blockDuration)")
-            print("        Status: \(blockStatus)")
-            
-            if !record.wasSkipped && record.endTime != nil {
-                let startTimeFormatted = String(format: "%d:%02d", Int(record.startTime.timeIntervalSince(startTime)) / 60, Int(record.startTime.timeIntervalSince(startTime)) % 60)
-                let endTimeFormatted = String(format: "%d:%02d", Int(record.endTime!.timeIntervalSince(startTime)) / 60, Int(record.endTime!.timeIntervalSince(startTime)) % 60)
-                print("        Start: +\(startTimeFormatted) | End: +\(endTimeFormatted)")
-            }
-        }
-        
-        logger.info("Deferred session completed successfully: \(session.sessionDurationFormatted)", category: "Session")
+        logger.info("Session \(status): \(session.routineName) | \(session.sessionDurationFormatted) | \(session.completedBlocksCount)/\(session.totalBlocksCount) blocks | events: \(sessionRecord.events.count)", category: "Session")
     }
     
     /// Reconstruct detailed block logs from session events
@@ -503,33 +293,17 @@ class RoutineDataManager: ObservableObject {
         finishTime: Date
     ) -> [SessionBlockRecord] {
         var blockRecords: [SessionBlockRecord] = []
-        
-        // Virtual clock starts at session start time
         var virtualClock = sessionStartTime
-        var isPaused = false
-        var currentPauseStart: Date?
-        
-        // Get pause intervals for easier processing
         let pauseIntervals = getPauseIntervalsFromEvents(events)
-        
-        print("🔧 RECONSTRUCTING BLOCK LOGS")
-        print("   Session Start: \(sessionStartTime)")
-        print("   Session Finish: \(finishTime)")
-        print("   Pause Intervals: \(pauseIntervals.count)")
-        
-        for pauseInterval in pauseIntervals {
-            let pauseDuration = (pauseInterval.resume ?? finishTime).timeIntervalSince(pauseInterval.pause)
-            print("     Pause: \(pauseInterval.pause) to \(pauseInterval.resume?.description ?? "end") (\(String(format: "%.1f", pauseDuration))s)")
-        }
-        
+
+        logger.debug("Reconstructing block logs: start=\(sessionStartTime) finish=\(finishTime) pauses=\(pauseIntervals.count)", category: "Session")
+
         for (index, block) in routineBlocks.enumerated() {
-            var blockDurationSeconds = TimeInterval(block.durationInMinutes * 60)
-			
-			if isDebugMode {
-				blockDurationSeconds = TimeInterval(5)
-			} else {
-				blockDurationSeconds = TimeInterval(block.durationInMinutes * 60)
-			}
+            #if DEBUG
+            let blockDurationSeconds = isDebugMode ? TimeInterval(5) : TimeInterval(block.durationInMinutes * 60)
+            #else
+            let blockDurationSeconds = TimeInterval(block.durationInMinutes * 60)
+            #endif
             
             // Calculate when this block should start (virtual clock time)
             let blockStartTime = virtualClock
@@ -566,21 +340,11 @@ class RoutineDataManager: ObservableObject {
             )
             
             blockRecords.append(blockRecord)
-            
-            print("   Block \(index + 1): \(block.name)")
-            print("     Planned: \(block.durationInMinutes) min")
-            print("     Virtual Start: \(blockStartTime)")
-            print("     Virtual End: \(blockScheduledEndTime)")
-            print("     Actual End: \(blockActualEndTime)")
-            print("     Actual Duration: \(String(format: "%.1f", blockActualDuration))s")
-            print("     Was Skipped: \(wasSkipped)")
-            
-            // Advance virtual clock by the full scheduled duration (even if session ended early)
+            logger.debug("Block \(index + 1) '\(block.name)': \(wasSkipped ? "SKIPPED" : String(format: "%.1fs", blockActualDuration))", category: "Session")
+
             virtualClock = blockScheduledEndTime
-            
-            // If session ended during this block, no need to process remaining blocks
+
             if sessionFinishedDuringBlock {
-                // Mark remaining blocks as skipped
                 for remainingIndex in (index + 1)..<routineBlocks.count {
                     let remainingBlock = routineBlocks[remainingIndex]
                     let skippedRecord = SessionBlockRecord(
@@ -591,13 +355,9 @@ class RoutineDataManager: ObservableObject {
                         actualDurationInSeconds: 0,
                         wasSkipped: true,
                         orderIndex: remainingIndex,
-                        startTime: virtualClock // Use virtual clock for skipped blocks
+                        startTime: virtualClock
                     )
                     blockRecords.append(skippedRecord)
-                    
-                    print("   Block \(remainingIndex + 1): \(remainingBlock.name) - SKIPPED")
-                    
-                    // Still advance virtual clock for consistency
                     virtualClock = virtualClock.addingTimeInterval(TimeInterval(remainingBlock.durationInMinutes * 60))
                 }
                 break
@@ -654,8 +414,6 @@ class RoutineDataManager: ObservableObject {
             if overlapStart < overlapEnd {
                 let pausedTimeInBlock = overlapEnd.timeIntervalSince(overlapStart)
                 totalDuration -= pausedTimeInBlock
-                
-                print("     Pause Overlap: \(String(format: "%.1f", pausedTimeInBlock))s")
             }
         }
         

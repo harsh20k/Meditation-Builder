@@ -1,43 +1,44 @@
 import Foundation
 import AVFoundation
+import Observation
 
-	/// AuditoriumManager
-	///
-	/// Manages bell scheduling and playback for a meditation routine, supporting opening, block, and closing bells.
-	/// Uses AVAudioEngine and AVAudioPlayerNode for precise timing. Designed for integration with the main app.
-final class AuditoriumEngine: ObservableObject {
-		/// The audio engine responsible for audio signal processing and playback.
-	private let audioEngine = AVAudioEngine()
-		/// The player node used to schedule and play bell audio files.
-	private let playerNode  = AVAudioPlayerNode()
-		/// Dictionary mapping bell names to their preloaded AVAudioFile instances.
-	private var audioFiles: [String: AVAudioFile] = [:]
-    /// Struct representing a scheduled bell event with its name and offset (in seconds)
+/// Manages bell scheduling and playback for a meditation routine.
+/// Supports opening, block, and closing bells with pause/resume.
+/// Uses AVAudioEngine and AVAudioPlayerNode for precise timing.
+@Observable
+final class AuditoriumEngine {
+    private let audioEngine = AVAudioEngine()
+    private let playerNode  = AVAudioPlayerNode()
+    private var audioFiles: [String: AVAudioFile] = [:]
+
     private struct BellEvent {
         let name: String
         let offset: TimeInterval
     }
-    /// All bell events scheduled for the current routine
     private var allEvents: [BellEvent] = []
-    /// Remaining bell events to be scheduled after a pause
     private var remainingEvents: [BellEvent] = []
-    /// The sample time in the audio engine when the routine started or resumed
     private var anchorSampleTime: AVAudioFramePosition?
-		/// Indicates whether the audio engine is currently running.
-	private var isEngineRunning = false
-	
-		/// Initializes the AuditoriumManager, configures the audio session, preloads bell audio files, and sets up the audio engine.
-	init() {
-		configureAudioSession()
-		preloadAudioFiles([
-			"opening_bell",
-			"soft_bell",
-			"digital_chime",
-			"closing_bell",
-			"tibetan_bowl"
-		])
-		setupEngine()
-	}
+    private var isEngineRunning = false
+    private var interruptionObserver: NSObjectProtocol?
+    private var routeChangeObserver: NSObjectProtocol?
+
+    init() {
+        configureAudioSession()
+        preloadAudioFiles([
+            "opening_bell",
+            "soft_bell",
+            "digital_chime",
+            "closing_bell",
+            "tibetan_bowl"
+        ])
+        setupEngine()
+        registerAudioSessionObservers()
+    }
+
+    deinit {
+        if let obs = interruptionObserver { NotificationCenter.default.removeObserver(obs) }
+        if let obs = routeChangeObserver  { NotificationCenter.default.removeObserver(obs) }
+    }
 	
 		// MARK: - Public API
 	
@@ -84,72 +85,68 @@ final class AuditoriumEngine: ObservableObject {
 	 - Returns: true if pause was successful, false if already paused or engine state invalid.
 	 - Error Cases: Returns false and prints an error if the engine is not running or anchor time is missing.
 	 */
-	@discardableResult
-	func pauseRoutine() -> Bool {
-		guard isEngineRunning else {
-			print("[AuditoriumManager] pauseRoutine: Engine is not running.")
-			return false
-		}
-		guard let nodeTime = playerNode.lastRenderTime,
-			  let playerTime = playerNode.playerTime(forNodeTime: nodeTime),
-			  let anchor = anchorSampleTime,
-			  let firstFile = audioFiles.values.first else {
-			print("[AuditoriumManager] pauseRoutine: Unable to get timing info or audio files.")
-			return false
-		}
-		let sampleRate = firstFile.processingFormat.sampleRate
-		let elapsedSamples = playerTime.sampleTime - anchor
-		let elapsedSeconds = TimeInterval(elapsedSamples) / sampleRate
-		// Compute remaining events with adjusted offsets
-		remainingEvents = allEvents
-			.filter { $0.offset > elapsedSeconds }
-			.map { BellEvent(name: $0.name, offset: $0.offset - elapsedSeconds) }
-		// Stop playback
-		playerNode.stop()
-		audioEngine.pause()
-		isEngineRunning = false
-		print("[AuditoriumManager] Routine paused. Remaining events: \(remainingEvents.count)")
-		return true
-	}
+    @discardableResult
+    func pauseRoutine() -> Bool {
+        guard isEngineRunning else {
+            logger.warning("pauseRoutine: Engine is not running.", category: "Audio")
+            return false
+        }
+        guard let nodeTime = playerNode.lastRenderTime,
+              let playerTime = playerNode.playerTime(forNodeTime: nodeTime),
+              let anchor = anchorSampleTime,
+              let firstFile = audioFiles.values.first else {
+            logger.warning("pauseRoutine: Unable to get timing info or audio files.", category: "Audio")
+            return false
+        }
+        let sampleRate = firstFile.processingFormat.sampleRate
+        let elapsedSamples = playerTime.sampleTime - anchor
+        let elapsedSeconds = TimeInterval(elapsedSamples) / sampleRate
+        remainingEvents = allEvents
+            .filter { $0.offset > elapsedSeconds }
+            .map { BellEvent(name: $0.name, offset: $0.offset - elapsedSeconds) }
+        playerNode.stop()
+        audioEngine.pause()
+        isEngineRunning = false
+        logger.info("Routine paused. Remaining events: \(remainingEvents.count)", category: "Audio")
+        return true
+    }
 	
 	/**
 	 Resumes a paused routine by re-anchoring and scheduling remaining bell events.
 	 - Returns: true if resume was successful, false if already running or no events to resume.
 	 - Error Cases: Returns false and prints an error if the engine fails to start or there are no events.
 	 */
-	@discardableResult
-	func resumeRoutine() -> Bool {
-		guard !isEngineRunning else {
-			print("[AuditoriumManager] resumeRoutine: Engine is already running.")
-			return false
-		}
-		guard !remainingEvents.isEmpty else {
-			print("[AuditoriumManager] resumeRoutine: No remaining events to schedule.")
-			return false
-		}
-		do {
-			try audioEngine.start()
-			playerNode.play()
-			isEngineRunning = true
-		} catch {
-			print("🎛 [AuditoriumManager] Failed to restart audio engine: \(error)")
-			isEngineRunning = false
-			return false
-		}
-		// Capture new anchor time
-		guard let nodeTime = playerNode.lastRenderTime,
-			  let playerTime = playerNode.playerTime(forNodeTime: nodeTime) else {
-			print("[AuditoriumManager] resumeRoutine: Unable to get timing info after restart.")
-			return false
-		}
-		anchorSampleTime = playerTime.sampleTime
-		// Schedule all remaining events
-		for event in remainingEvents {
-			schedule(sound: event.name, at: event.offset)
-		}
-		print("[AuditoriumManager] Routine resumed. Scheduled \(remainingEvents.count) events.")
-		return true
-	}
+    @discardableResult
+    func resumeRoutine() -> Bool {
+        guard !isEngineRunning else {
+            logger.warning("resumeRoutine: Engine is already running.", category: "Audio")
+            return false
+        }
+        guard !remainingEvents.isEmpty else {
+            logger.warning("resumeRoutine: No remaining events to schedule.", category: "Audio")
+            return false
+        }
+        do {
+            try audioEngine.start()
+            playerNode.play()
+            isEngineRunning = true
+        } catch {
+            logger.error("Failed to restart audio engine: \(error)", category: "Audio")
+            isEngineRunning = false
+            return false
+        }
+        guard let nodeTime = playerNode.lastRenderTime,
+              let playerTime = playerNode.playerTime(forNodeTime: nodeTime) else {
+            logger.warning("resumeRoutine: Unable to get timing info after restart.", category: "Audio")
+            return false
+        }
+        anchorSampleTime = playerTime.sampleTime
+        for event in remainingEvents {
+            schedule(sound: event.name, at: event.offset)
+        }
+        logger.info("Routine resumed. Scheduled \(remainingEvents.count) events.", category: "Audio")
+        return true
+    }
 	
 	/**
 	 Schedules a routine by extracting bell information from a SavedRoutine model.
@@ -212,50 +209,101 @@ final class AuditoriumEngine: ObservableObject {
 	
 		// MARK: - Private
 	
-		/// Configures the AVAudioSession for playback and mixing with other audio sources.
-	private func configureAudioSession() {
-		let session = AVAudioSession.sharedInstance()
-		do {
-			try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-			try session.setActive(true)
-		} catch {
-			print("🔈 Failed to configure audio session:", error)
-		}
-	}
+    /// Configures AVAudioSession for background-safe playback.
+    private func configureAudioSession() {
+        let session = AVAudioSession.sharedInstance()
+        do {
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
+            try session.setActive(true)
+        } catch {
+            logger.error("Failed to configure audio session: \(error)", category: "Audio")
+        }
+    }
+
+    /// Registers observers for audio session interruptions and route changes.
+    private func registerAudioSessionObservers() {
+        interruptionObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleInterruption(notification)
+        }
+
+        routeChangeObserver = NotificationCenter.default.addObserver(
+            forName: AVAudioSession.routeChangeNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            self?.handleRouteChange(notification)
+        }
+    }
+
+    private func handleInterruption(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let typeValue = info[AVAudioSessionInterruptionTypeKey] as? UInt,
+              let type = AVAudioSession.InterruptionType(rawValue: typeValue) else { return }
+
+        switch type {
+        case .began:
+            logger.info("Audio interruption began — pausing bells.", category: "Audio")
+            _ = pauseRoutine()
+        case .ended:
+            let optionsValue = info[AVAudioSessionInterruptionOptionKey] as? UInt ?? 0
+            let options = AVAudioSession.InterruptionOptions(rawValue: optionsValue)
+            if options.contains(.shouldResume) {
+                logger.info("Audio interruption ended — resuming bells.", category: "Audio")
+                _ = resumeRoutine()
+            }
+        @unknown default:
+            break
+        }
+    }
+
+    private func handleRouteChange(_ notification: Notification) {
+        guard let info = notification.userInfo,
+              let reasonValue = info[AVAudioSessionRouteChangeReasonKey] as? UInt,
+              let reason = AVAudioSession.RouteChangeReason(rawValue: reasonValue) else { return }
+
+        if reason == .oldDeviceUnavailable {
+            logger.info("Audio route changed (headphones disconnected) — pausing.", category: "Audio")
+            _ = pauseRoutine()
+        }
+    }
 	
-		/// Attaches and connects the AVAudioPlayerNode to the AVAudioEngine, then starts the engine and player node.
-	private func setupEngine() {
-		audioEngine.attach(playerNode)
-		if let firstFile = audioFiles.values.first {
-			audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: firstFile.processingFormat)
-		} else {
-			audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: nil)
-		}
-		do {
-			try audioEngine.start()
-			playerNode.play()
-			isEngineRunning = true
-		} catch {
-			print("🎛 Failed to start audio engine:", error)
-		}
-	}
+    /// Attaches and connects the AVAudioPlayerNode, then starts the engine.
+    private func setupEngine() {
+        audioEngine.attach(playerNode)
+        if let firstFile = audioFiles.values.first {
+            audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: firstFile.processingFormat)
+        } else {
+            audioEngine.connect(playerNode, to: audioEngine.mainMixerNode, format: nil)
+        }
+        do {
+            try audioEngine.start()
+            playerNode.play()
+            isEngineRunning = true
+        } catch {
+            logger.error("Failed to start audio engine: \(error)", category: "Audio")
+        }
+    }
 	
 	/**
 	 Preloads a list of audio files from the app bundle into AVAudioFile instances for rapid scheduling.
 	 - Parameter names: Filenames (without extension) of the MP3 resources.
 	 */
-	private func preloadAudioFiles(_ names: [String]) {
-		for name in names {
-			guard
-				let url = Bundle.main.url(forResource: name, withExtension: "mp3"),
-				let file = try? AVAudioFile(forReading: url)
-			else {
-				print("⚠️ Could not load audio file:", name)
-				continue
-			}
-			audioFiles[name] = file
-		}
-	}
+    private func preloadAudioFiles(_ names: [String]) {
+        for name in names {
+            guard
+                let url = Bundle.main.url(forResource: name, withExtension: "mp3"),
+                let file = try? AVAudioFile(forReading: url)
+            else {
+                logger.warning("Could not load audio file: \(name)", category: "Audio")
+                continue
+            }
+            audioFiles[name] = file
+        }
+    }
 	
 	/**
 	 Schedules a preloaded audio file to play at a specified offset relative to the player's current sample time.
@@ -263,15 +311,15 @@ final class AuditoriumEngine: ObservableObject {
 	 - name: The key identifying the preloaded AVAudioFile.
 	 - offsetSeconds: Number of seconds after the session start to play the sound.
 	 */
-	private func schedule(sound name: String, at offsetSeconds: TimeInterval) {
-		guard let file = audioFiles[name],
-			  let nodeTime = playerNode.lastRenderTime,
-			  let playerTime = playerNode.playerTime(forNodeTime: nodeTime) else { return }
-		let sampleRate = file.processingFormat.sampleRate
-		let sampleOffset = AVAudioFramePosition(offsetSeconds * sampleRate)
-		let futureSampleTime = playerTime.sampleTime + sampleOffset
-		let atTime = AVAudioTime(sampleTime: futureSampleTime, atRate: sampleRate)
-		playerNode.scheduleFile(file, at: atTime, completionHandler: nil)
-		print("   ✓ Scheduled '\(name)' at sampleTime \(futureSampleTime)")
-	}
-} 
+    private func schedule(sound name: String, at offsetSeconds: TimeInterval) {
+        guard let file = audioFiles[name],
+              let nodeTime = playerNode.lastRenderTime,
+              let playerTime = playerNode.playerTime(forNodeTime: nodeTime) else { return }
+        let sampleRate = file.processingFormat.sampleRate
+        let sampleOffset = AVAudioFramePosition(offsetSeconds * sampleRate)
+        let futureSampleTime = playerTime.sampleTime + sampleOffset
+        let atTime = AVAudioTime(sampleTime: futureSampleTime, atRate: sampleRate)
+        playerNode.scheduleFile(file, at: atTime, completionHandler: nil)
+        logger.debug("Scheduled '\(name)' at offset \(offsetSeconds)s", category: "Audio")
+    }
+}

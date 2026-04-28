@@ -9,7 +9,7 @@ import SwiftUI
 import os.log
 
 struct LoggingSettingsView: View {
-    @StateObject private var logger = AppLogger.shared
+    @State private var logger = AppLogger.shared
     @State private var showingLogViewer = false
     @State private var showingClearLogsAlert = false
     @State private var showingDeleteSystemRoutinesAlert = false
@@ -17,7 +17,7 @@ struct LoggingSettingsView: View {
     @State private var deleteSystemRoutinesResult: String?
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AppTheme.backgroundColor.ignoresSafeArea()
                 
@@ -288,7 +288,7 @@ struct LogViewerView: View {
     @State private var recentLogs: [String] = []
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AppTheme.backgroundColor.ignoresSafeArea()
                 
@@ -336,7 +336,7 @@ struct LogViewerView: View {
     }
     
     private func loadRecentLogs() {
-        recentLogs = logger.getRecentLogs(limit: 100)
+        recentLogs = AppLogger.shared.getRecentLogs(limit: 100)
     }
 }
 

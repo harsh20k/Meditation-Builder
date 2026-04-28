@@ -18,74 +18,87 @@ struct MainTabView: View {
     @State private var selectedTab: TabSelection = .library
     @Environment(\.modelContext) private var modelContext
     @State private var navigationPath = NavigationPath()
-    
+
+    // State driving sheets/covers from navigation callbacks
+    @State private var routineToEdit: SavedRoutine?
+    @State private var routineToDelete: SavedRoutine?
+    @State private var routineToPlay: SavedRoutine?
+    @State private var showDeleteAlert = false
+
     var body: some View {
-        ZStack(alignment: .bottom) {
-            // Main content area with NavigationStack
-            NavigationStack(path: $navigationPath) {
-                // Content based on selected tab
-                Group {
-                    switch selectedTab {
-                    case .library:
-                        RoutineLibraryView(navigationPath: $navigationPath)
-                    case .music:
-//                        PlaceholderView(
-//                            icon: "music.note",
-//                            title: String(localized: "tab.music"),
-//                            description: String(localized: "tab.music.description")
-//                        )
-//                        AudioTestView()
-                        MeditationAnimationPlayground()
-                    case .timer:
-                        RoutinePlayerView(modelContext: modelContext)
-                    case .history:
-                        SessionHistoryView()
-                    case .settings:
-                        LoggingSettingsView()
-                    }
-                }
-                .navigationDestination(for: SavedRoutine.self) { routine in
-                    RitualPageView(
-                        routine: routine,
-                        onEdit: { routine in
-                            // Navigate back and show edit sheet
-                            navigationPath.removeLast()
-                            // Note: We'll need to handle edit state differently
-                        },
-                        onDelete: { routine in
-                            // Navigate back and show delete alert
-                            navigationPath.removeLast()
-                            // Note: We'll need to handle delete state differently
-                        },
-                        onPlay: { routine in
-                            // Navigate back and start playing
-                            navigationPath.removeLast()
-                            // Note: We'll need to handle play state differently
-                        }
-                    )
-                }
-                .navigationDestination(for: RoutineBuilderDestination.self) { destination in
-                    switch destination {
-                    case .create:
-                        RoutineBuilderView()
-                    case .edit(let routine):
-                        RoutineBuilderView(editingRoutine: routine)
-                    }
+        NavigationStack(path: $navigationPath) {
+            Group {
+                switch selectedTab {
+                case .library:
+                    RoutineLibraryView(navigationPath: $navigationPath)
+                case .music:
+                    AmbientSoundMixerView()
+                case .timer:
+                    RoutinePlayerView(modelContext: modelContext)
+                case .history:
+                    SessionHistoryView()
+                case .settings:
+                    SettingsView()
                 }
             }
-            .ignoresSafeArea(.keyboard) // Prevent tab bar from moving with keyboard
-            
-            // Global Custom Tab Bar - always visible
-            VStack {
-                Spacer()
-                CustomTabBar(
-                    selectedTab: $selectedTab,
-                    onTabTap: { tappedTab in
-                        handleTabTap(tappedTab)
+            .animation(.easeInOut(duration: 0.18), value: selectedTab)
+            .navigationDestination(for: SavedRoutine.self) { routine in
+                RitualPageView(
+                    routine: routine,
+                    onEdit: { r in
+                        navigationPath.removeLast()
+                        routineToEdit = r
+                    },
+                    onDelete: { r in
+                        navigationPath.removeLast()
+                        routineToDelete = r
+                        showDeleteAlert = true
+                    },
+                    onPlay: { r in
+                        navigationPath.removeLast()
+                        routineToPlay = r
                     }
                 )
             }
+            .navigationDestination(for: RoutineBuilderDestination.self) { destination in
+                switch destination {
+                case .create:
+                    RoutineBuilderView()
+                case .edit(let routine):
+                    RoutineBuilderView(editingRoutine: routine)
+                }
+            }
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            CustomTabBar(
+                selectedTab: $selectedTab,
+                onTabTap: { tappedTab in
+                    handleTabTap(tappedTab)
+                }
+            )
+        }
+        .sheet(item: $routineToEdit) { routine in
+            RoutineBuilderView(editingRoutine: routine)
+        }
+        .fullScreenCover(item: $routineToPlay) { routine in
+            RoutinePlayerView(routine: routine, modelContext: modelContext)
+        }
+        .confirmationDialog(
+            "Delete Routine",
+            isPresented: $showDeleteAlert,
+            presenting: routineToDelete
+        ) { routine in
+            Button("Delete \"\(routine.routineName)\"", role: .destructive) {
+                try? RoutineDataManager.shared.deleteRoutine(routine)
+                routineToDelete = nil
+            }
+            Button("Cancel", role: .cancel) {
+                routineToDelete = nil
+            }
+        } message: { routine in
+            Text("This will delete \"\(routine.routineName)\". Session history will be preserved.")
+        }
+        .ignoresSafeArea(.keyboard)
         .onAppear {
             logger.info("MainTabView appeared", category: "Navigation")
         }
@@ -132,7 +145,7 @@ struct PlaceholderView: View {
                         .font(.system(size: 28, weight: .bold))
                     Text(title)
                         .font(AppTheme.Typography.titleFont)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.offWhiteText)
                     Spacer()
                 }
                 .padding(.horizontal)
@@ -154,8 +167,8 @@ struct PlaceholderView: View {
                     
                     VStack(spacing: AppTheme.Spacing.medium) {
                         Text(LocalizedStringKey("coming.soon"))
-                            .font(.system(size: 24, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
+                            .font(AppTheme.Typography.headlineFontLarge)
+                            .foregroundColor(AppTheme.offWhiteText)
                         
                         Text(description)
                             .font(AppTheme.Typography.bodyFont)

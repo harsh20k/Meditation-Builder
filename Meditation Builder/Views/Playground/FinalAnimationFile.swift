@@ -1,3 +1,4 @@
+#if DEBUG
 import SwiftUI
 import UIKit
 
@@ -96,3 +97,4 @@ struct MeditationAnimationPlayground: View {
 	MeditationAnimationPlayground()
 		.preferredColorScheme(.dark)
 }
+#endif
