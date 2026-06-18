@@ -45,6 +45,7 @@ final class AmbientTrack: Identifiable {
 @MainActor
 @Observable
 final class AmbientSoundEngine {
+    static let shared = AmbientSoundEngine()
 
     // Public observable state
     private(set) var tracks: [AmbientTrack] = AmbientSound.catalog.map { AmbientTrack(sound: $0) }
@@ -58,9 +59,10 @@ final class AmbientSoundEngine {
     private var players: [String: AVAudioPlayerNode] = [:]
     private var files: [String: AVAudioFile] = [:]
     private var isRunning = false
+    private nonisolated(unsafe) var isShuttingDown = false
 
-    private var interruptionObserver: NSObjectProtocol?
-    private var routeChangeObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var interruptionObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var routeChangeObserver: NSObjectProtocol?
 
     init() {
         configureAudioSession()
@@ -70,8 +72,13 @@ final class AmbientSoundEngine {
     }
 
     deinit {
+        isShuttingDown = true
         if let obs = interruptionObserver { NotificationCenter.default.removeObserver(obs) }
-        if let obs = routeChangeObserver  { NotificationCenter.default.removeObserver(obs) }
+        if let obs = routeChangeObserver { NotificationCenter.default.removeObserver(obs) }
+        MainActor.assumeIsolated {
+            for player in players.values { player.stop() }
+            engine.stop()
+        }
     }
 
     // MARK: - Public API
@@ -108,7 +115,9 @@ final class AmbientSoundEngine {
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try session.setActive(true)
         } catch {
-            logger.error("AmbientSoundEngine: audio session config failed: \(error)", category: "Audio")
+            DispatchQueue.main.async {
+                logger.error("AmbientSoundEngine: audio session config failed: \(error)", category: "Audio")
+            }
         }
     }
 
@@ -119,7 +128,9 @@ final class AmbientSoundEngine {
         for sound in AmbientSound.catalog {
             guard let url = Bundle.main.url(forResource: sound.fileName, withExtension: "mp3"),
                   let file = try? AVAudioFile(forReading: url) else {
-                logger.warning("AmbientSoundEngine: missing audio file '\(sound.fileName)'", category: "Audio")
+                DispatchQueue.main.async {
+                    logger.warning("AmbientSoundEngine: missing audio file '\(sound.fileName)'", category: "Audio")
+                }
                 continue
             }
             let player = AVAudioPlayerNode()
@@ -133,7 +144,9 @@ final class AmbientSoundEngine {
             try engine.start()
             isRunning = true
         } catch {
-            logger.error("AmbientSoundEngine: engine start failed: \(error)", category: "Audio")
+            DispatchQueue.main.async {
+                logger.error("AmbientSoundEngine: engine start failed: \(error)", category: "Audio")
+            }
         }
     }
 
@@ -145,18 +158,22 @@ final class AmbientSoundEngine {
         player.volume = track.volume * masterVolume
         scheduleLooping(player: player, file: file)
         player.play()
-        logger.info("Ambient track started: \(id)", category: "Audio")
+        DispatchQueue.main.async {
+            logger.info("Ambient track started: \(id)", category: "Audio")
+        }
     }
 
     private func stopTrack(_ id: String) {
         players[id]?.stop()
-        logger.info("Ambient track stopped: \(id)", category: "Audio")
+        DispatchQueue.main.async {
+            logger.info("Ambient track stopped: \(id)", category: "Audio")
+        }
     }
 
     private func scheduleLooping(player: AVAudioPlayerNode, file: AVAudioFile) {
         player.scheduleFile(file, at: nil) { [weak self, weak player] in
-            guard let self, let player else { return }
-            Task { @MainActor in
+            Task { @MainActor [weak self, weak player] in
+                guard let self, let player, !self.isShuttingDown else { return }
                 if let trackID = self.players.first(where: { $0.value === player })?.key,
                    let track = self.tracks.first(where: { $0.id == trackID }),
                    track.isEnabled {

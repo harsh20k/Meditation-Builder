@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import UniformTypeIdentifiers
 
 /**
  * RoutineModels.swift
@@ -397,6 +398,10 @@ struct RoutineBlock: Identifiable, Equatable, Codable, Transferable, Sendable {
         self.media = media
         self.isFavorite = isFavorite
     }
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: UTType.data)
+    }
 }
 
 // MARK: - Routine
@@ -473,14 +478,6 @@ struct Routine: Equatable, Codable {
         lhs.closingBell == rhs.closingBell &&
         lhs.media == rhs.media &&
         lhs.isSystemRoutine == rhs.isSystemRoutine
-    }
-}
-
-// MARK: - RoutineBlock Transferable (native drag-and-drop)
-
-extension RoutineBlock {
-    static var transferRepresentation: some TransferRepresentation {
-        CodableRepresentation(contentType: .data)
     }
 }
 
@@ -941,3 +938,4 @@ struct IdentifiableInt: Identifiable {
     /// The identifier (same as the value)
     var id: Int { value }
 } 
+

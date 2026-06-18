@@ -5,6 +5,7 @@ import Observation
 /// Manages bell scheduling and playback for a meditation routine.
 /// Supports opening, block, and closing bells with pause/resume.
 /// Uses AVAudioEngine and AVAudioPlayerNode for precise timing.
+@MainActor
 @Observable
 final class AuditoriumEngine {
     private let audioEngine = AVAudioEngine()
@@ -19,8 +20,8 @@ final class AuditoriumEngine {
     private var remainingEvents: [BellEvent] = []
     private var anchorSampleTime: AVAudioFramePosition?
     private var isEngineRunning = false
-    private var interruptionObserver: NSObjectProtocol?
-    private var routeChangeObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var interruptionObserver: NSObjectProtocol?
+    private nonisolated(unsafe) var routeChangeObserver: NSObjectProtocol?
 
     init() {
         configureAudioSession()

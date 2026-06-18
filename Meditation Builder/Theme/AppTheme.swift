@@ -70,6 +70,10 @@ struct AppTheme {
         static let titleRoom: CGFloat = 56 // 7x grid unit
         static let cardGrid: CGFloat = 8   // 1x grid unit
         static let cardInternal: CGFloat = 8 // 1x grid unit
+        /// Space above the floating tab bar for overlays (FAB, etc.)
+        static let tabBarClearance: CGFloat = 92
+        /// FAB sits above the native liquid glass tab bar
+        static let fabTabBarClearance: CGFloat = 104
     }
     
     // MARK: - Corner Radius
@@ -604,7 +608,7 @@ extension AppTheme {
         icon: String,
         backgroundColor: Color = tabBar,
         foregroundColor: Color = lightGrey,
-        size: CGFloat = 56,
+        size: CGFloat = 44,
         action: @escaping () -> Void
     ) -> FloatingActionButton {
         FloatingActionButton(
@@ -624,40 +628,38 @@ struct FloatingActionButton: View {
     let foregroundColor: Color
     let size: CGFloat
     let action: () -> Void
-    
-    @State private var isPressed: Bool = false
-    
+
     var body: some View {
-        Button(action: {
-            // Haptic feedback
-			let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
-            impactFeedback.impactOccurred()
-            
-            // Execute action
-            action()
-        }) {
-            ZStack {
-                Circle()
-                    .fill(isPressed ? AppTheme.accentColor : backgroundColor)
-                    .frame(width: size, height: size)
-                    .scaleEffect(isPressed ? 0.9 : 1.0)
-                    .shadow(
-                        color: .black.opacity(0.2),
-                        radius: isPressed ? 4 : 8,
-                        x: 0,
-                        y: isPressed ? 2 : 4
-                    )
+        if #available(iOS 26.0, *) {
+            Button(action: performAction) {
                 Image(systemName: icon)
-                    .font(.system(size: size * 0.5, weight: .bold))
-                    .foregroundColor(isPressed ? AppTheme.offWhiteText : foregroundColor)
-                    .scaleEffect(isPressed ? 0.95 : 1.0)
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: size, height: size)
             }
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.circle)
+            .controlSize(.small)
+            .tint(AppTheme.accentColor)
+        } else {
+            Button(action: performAction) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: size, height: size)
+                    .background {
+                        Circle()
+                            .fill(AppTheme.accentColor)
+                            .shadow(color: AppTheme.accentColor.opacity(0.45), radius: 6, y: 2)
+                    }
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(PlainButtonStyle())
-        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
-            withAnimation(.easeInOut(duration: 0.1)) {
-                isPressed = pressing
-            }
-        }, perform: {})
+    }
+
+    private func performAction() {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+        impactFeedback.impactOccurred()
+        action()
     }
 } 

@@ -131,6 +131,14 @@ Bell assets live in the top-level `Audio/` folder. The `AuditoriumEngine` preloa
 
 ---
 
+## Documentation
+
+| Doc | Description |
+|-----|-------------|
+| [docs/CUSTOMER_PROBLEM_ANALYSIS.md](docs/CUSTOMER_PROBLEM_ANALYSIS.md) | Customer definition, root cause analysis, and industry retention/engagement benchmarks |
+
+---
+
 ## Logging
 
 `AppLogger.shared` (accessible as `logger`) writes to:

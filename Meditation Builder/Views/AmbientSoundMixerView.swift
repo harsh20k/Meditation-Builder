@@ -6,9 +6,8 @@
 import SwiftUI
 
 struct AmbientSoundMixerView: View {
-    @State private var engine = AmbientSoundEngine()
-
     var body: some View {
+        @Bindable var engine = AmbientSoundEngine.shared
         ZStack {
             AppTheme.backgroundColor.ignoresSafeArea()
 

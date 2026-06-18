@@ -227,9 +227,7 @@ struct SessionDetailView: View {
             }
             .navigationTitle(LocalizedStringKey("session.history.details"))
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(AppTheme.backgroundColor, for: .navigationBar)
-            .toolbarBackground(.visible, for: .navigationBar)
+            .liquidGlassNavigationBar()
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(LocalizedStringKey("button.done")) { dismiss() }

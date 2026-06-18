@@ -93,7 +93,7 @@ struct RoutineLibraryView: View {
 	}
 	
 	var body: some View {
-		ZStack(alignment: .bottomTrailing) {
+		ZStack {
 			AppTheme.backgroundColor.ignoresSafeArea()
 
 			ScrollView {
@@ -151,22 +151,9 @@ struct RoutineLibraryView: View {
 						.padding(.bottom, AppTheme.Spacing.extraLarge)
 					}
 				}
+				.padding(.bottom, 72)
 			}
 			.scrollIndicators(.hidden)
-
-			// Floating Create Button
-			AppTheme.floatingActionButton(
-				icon: "plus",
-				backgroundColor: AppTheme.accentColor,
-				foregroundColor: AppTheme.backgroundColor,
-				size: 56,
-				action: {
-					navigationPath.append(RoutineBuilderDestination.create)
-				}
-			)
-			.accessibilityLabel("Create new ritual")
-			.padding(.trailing, AppTheme.Spacing.extraLarge)
-			.padding(.bottom, AppTheme.Spacing.extraLarge)
 		}
 		.sheet(item: $editingRoutine) { routine in
 			RoutineBuilderView(editingRoutine: routine)
