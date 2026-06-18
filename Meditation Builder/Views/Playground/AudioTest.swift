@@ -7,6 +7,7 @@
  without using notifications. Useful for verifying audio scheduling and timing logic.
  */
 
+#if DEBUG
 import SwiftUI
 import AVFoundation
 
@@ -173,3 +174,4 @@ struct AudioTestView_Previews: PreviewProvider {
 		AudioTestView()
 	}
 }
+#endif

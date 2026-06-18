@@ -24,7 +24,7 @@ struct AppTheme {
 //	static let accentColor = Color(red: 221/255, green: 97/255, blue: 27/255) // #dd611b (orange)
 	static let accentColor = Color(red: 77/255, green: 181/255, blue: 172/255) // #4DB6AC (Teal)
 	static let accentCompColor = Color(red: 246/255, green: 239/255, blue: 166/255) // #f6efa6 (yellowgold)
-    static let lightGrey = Color(red: 119/255, green: 119/255, blue: 129/255) // #777781
+    static let lightGrey = Color(red: 160/255, green: 160/255, blue: 168/255) // #A0A0A8 — WCAG AA compliant on dark bg
     
     // MARK: - Typography
 //    struct Typography {
@@ -37,23 +37,26 @@ struct AppTheme {
 //    }
 	
 	struct Typography {
-			// Big, bold serif for main titles
-		static let titleFont          = Font.system(size: 25, weight: .light,   design: .serif)
-		
-			// Medium-weight serif for large headlines
-		static let headlineFontLarge  = Font.system(size: 18, weight: .medium, design: .serif)
-		
-			// Regular serif for section headers
-		static let headlineFont       = Font.system(size: 15, weight: .light, design: .serif)
-		
-			// Clean, readable sans-serif for body text
-		static let bodyFont           = Font.system(size: 16, weight: .regular, design: .serif)
-		
-			// Slightly smaller, semibold sans-serif for tappable buttons
-		static let buttonFont         = Font.system(size: 16, weight: .semibold, design: .serif)
-		
-			// Light, compact sans-serif for captions & metadata
-		static let captionFont        = Font.system(size: 14, weight: .light,   design: .serif)
+		// Semantic fonts with Dynamic Type scaling + serif character
+		// Using .custom with size preserves the design; Dynamic Type is respected via the semantic base
+
+		// Title: equivalent to iOS .title2 but with serif design
+		static let titleFont          = Font.system(.title2, design: .serif).weight(.light)
+
+		// Large headline: equivalent to .headline but slightly larger
+		static let headlineFontLarge  = Font.system(.headline, design: .serif).weight(.medium)
+
+		// Section header
+		static let headlineFont       = Font.system(.subheadline, design: .serif).weight(.light)
+
+		// Body copy
+		static let bodyFont           = Font.system(.body, design: .serif)
+
+		// Tappable buttons
+		static let buttonFont         = Font.system(.body, design: .serif).weight(.semibold)
+
+		// Captions and metadata
+		static let captionFont        = Font.system(.caption, design: .serif).weight(.light)
 	}
     
     // MARK: - Spacing
@@ -67,6 +70,10 @@ struct AppTheme {
         static let titleRoom: CGFloat = 56 // 7x grid unit
         static let cardGrid: CGFloat = 8   // 1x grid unit
         static let cardInternal: CGFloat = 8 // 1x grid unit
+        /// Space above the floating tab bar for overlays (FAB, etc.)
+        static let tabBarClearance: CGFloat = 92
+        /// FAB sits above the native liquid glass tab bar
+        static let fabTabBarClearance: CGFloat = 104
     }
     
     // MARK: - Corner Radius
@@ -317,13 +324,13 @@ struct ToggleStyleButton: View {
                     .font(.system(size: 20, weight: .medium))
                     .foregroundColor(isActive ? AppTheme.accentColor : AppTheme.lightGrey)
                     .scaleEffect(isActive ? 1.1 : 1.0)
-                    .animation(.spring(response: 0.3, dampingFraction: 0.6), value: isActive)
-                
+                    .conditionalAnimation(.spring(response: 0.3, dampingFraction: 0.6), value: isActive)
+
                 // Title with animation
                 Text(isActive ? activeTitle : title)
                     .font(AppTheme.Typography.captionFont)
                     .foregroundColor(isActive ? AppTheme.accentColor : AppTheme.lightGrey)
-                    .animation(.easeInOut(duration: 0.2), value: isActive)
+                    .conditionalAnimation(.easeInOut(duration: 0.2), value: isActive)
             }
         }
         .background(
@@ -434,6 +441,31 @@ struct CardStyleButton: View {
                     .multilineTextAlignment(.center)
                     .lineLimit(1)
             }
+        }
+    }
+}
+
+// MARK: - Reduce Motion Helper
+extension View {
+    /// Wraps `withAnimation` calls so they respect Reduce Motion.
+    /// Pass `.none` as the reduced alternative or omit it to get no animation when Reduce Motion is on.
+    @ViewBuilder
+    func conditionalAnimation<V: Equatable>(_ animation: Animation, reducedAnimation: Animation? = nil, value: V) -> some View {
+        self.modifier(ReduceMotionAnimationModifier(animation: animation, reducedAnimation: reducedAnimation, value: value))
+    }
+}
+
+private struct ReduceMotionAnimationModifier<V: Equatable>: ViewModifier {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    let animation: Animation
+    let reducedAnimation: Animation?
+    let value: V
+
+    func body(content: Content) -> some View {
+        if reduceMotion {
+            content.animation(reducedAnimation, value: value)
+        } else {
+            content.animation(animation, value: value)
         }
     }
 }
@@ -576,7 +608,7 @@ extension AppTheme {
         icon: String,
         backgroundColor: Color = tabBar,
         foregroundColor: Color = lightGrey,
-        size: CGFloat = 56,
+        size: CGFloat = 44,
         action: @escaping () -> Void
     ) -> FloatingActionButton {
         FloatingActionButton(
@@ -596,40 +628,38 @@ struct FloatingActionButton: View {
     let foregroundColor: Color
     let size: CGFloat
     let action: () -> Void
-    
-    @State private var isPressed: Bool = false
-    
+
     var body: some View {
-        Button(action: {
-            // Haptic feedback
-			let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
-            impactFeedback.impactOccurred()
-            
-            // Execute action
-            action()
-        }) {
-            ZStack {
-                Circle()
-                    .fill(isPressed ? AppTheme.accentColor : backgroundColor)
-                    .frame(width: size, height: size)
-                    .scaleEffect(isPressed ? 0.9 : 1.0)
-                    .shadow(
-                        color: .black.opacity(0.2),
-                        radius: isPressed ? 4 : 8,
-                        x: 0,
-                        y: isPressed ? 2 : 4
-                    )
+        if #available(iOS 26.0, *) {
+            Button(action: performAction) {
                 Image(systemName: icon)
-                    .font(.system(size: size * 0.5, weight: .bold))
-                    .foregroundColor(isPressed ? AppTheme.offWhiteText : foregroundColor)
-                    .scaleEffect(isPressed ? 0.95 : 1.0)
+                    .font(.system(size: 17, weight: .semibold))
+                    .frame(width: size, height: size)
             }
+            .buttonStyle(.glassProminent)
+            .buttonBorderShape(.circle)
+            .controlSize(.small)
+            .tint(AppTheme.accentColor)
+        } else {
+            Button(action: performAction) {
+                Image(systemName: icon)
+                    .font(.system(size: 17, weight: .semibold))
+                    .foregroundStyle(.white)
+                    .frame(width: size, height: size)
+                    .background {
+                        Circle()
+                            .fill(AppTheme.accentColor)
+                            .shadow(color: AppTheme.accentColor.opacity(0.45), radius: 6, y: 2)
+                    }
+                    .contentShape(Circle())
+            }
+            .buttonStyle(.plain)
         }
-        .buttonStyle(PlainButtonStyle())
-        .onLongPressGesture(minimumDuration: 0, maximumDistance: .infinity, pressing: { pressing in
-            withAnimation(.easeInOut(duration: 0.1)) {
-                isPressed = pressing
-            }
-        }, perform: {})
+    }
+
+    private func performAction() {
+        let impactFeedback = UIImpactFeedbackGenerator(style: .soft)
+        impactFeedback.impactOccurred()
+        action()
     }
 } 

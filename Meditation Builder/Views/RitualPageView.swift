@@ -7,16 +7,18 @@
 
 import SwiftUI
 import SwiftData
+import Observation
 import os.log
 
 // MARK: - Ritual Page View Model
 @MainActor
-class RitualPageViewModel: ObservableObject {
-    @Published var routine: SavedRoutine
-    @Published var isLoading = false
-    @Published var showingEditSheet = false
-    @Published var showingDeleteAlert = false
-    @Published var showingPlaySheet = false
+@Observable
+class RitualPageViewModel {
+    var routine: SavedRoutine
+    var isLoading = false
+    var showingEditSheet = false
+    var showingDeleteAlert = false
+    var showingPlaySheet = false
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.meditationbuilder", category: "RitualPage")
     
@@ -105,17 +107,16 @@ class RitualPageViewModel: ObservableObject {
 
 // MARK: - Ritual Page View
 struct RitualPageView: View {
-    	@StateObject private var viewModel: RitualPageViewModel
-	@Environment(\.modelContext) private var modelContext
+    @State private var viewModel: RitualPageViewModel
+    @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
 
-    
     let onEdit: (SavedRoutine) -> Void
     let onDelete: (SavedRoutine) -> Void
     let onPlay: (SavedRoutine) -> Void
     
     init(routine: SavedRoutine, onEdit: @escaping (SavedRoutine) -> Void, onDelete: @escaping (SavedRoutine) -> Void, onPlay: @escaping (SavedRoutine) -> Void) {
-        self._viewModel = StateObject(wrappedValue: RitualPageViewModel(routine: routine))
+        self._viewModel = State(initialValue: RitualPageViewModel(routine: routine))
         self.onEdit = onEdit
         self.onDelete = onDelete
         self.onPlay = onPlay
@@ -299,6 +300,7 @@ struct RitualPageView: View {
                     title: String(localized: "button.play"),
                     action: viewModel.playRoutine
                 )
+                .accessibilityLabel("Play \(viewModel.routine.routineName)")
                 
                 // Pin/Unpin Button (always visible)
                 AppTheme.toggleButton(
@@ -309,6 +311,8 @@ struct RitualPageView: View {
                     isActive: viewModel.routine.isFavorite,
                     action: viewModel.toggleFavorite
                 )
+                .accessibilityLabel(viewModel.routine.isFavorite ? "Unpin ritual" : "Pin ritual")
+                .accessibilityHint(viewModel.routine.isFavorite ? "Removes from pinned" : "Adds to pinned")
                 
                 if !viewModel.routine.isSystemRoutine {
                     AppTheme.cardButton(
@@ -316,12 +320,15 @@ struct RitualPageView: View {
                         title: String(localized: "button.edit"),
                         action: viewModel.editRoutine
                     )
+                    .accessibilityLabel("Edit \(viewModel.routine.routineName)")
                     
                     AppTheme.cardButton(
                         icon: "trash",
                         title: String(localized: "button.delete"),
                         action: viewModel.deleteRoutine
                     )
+                    .accessibilityLabel("Delete \(viewModel.routine.routineName)")
+                    .accessibilityHint("Requires confirmation")
                 } else {
                     // Placeholder cards to maintain grid layout
                     Color.clear
@@ -363,6 +370,7 @@ struct StatRitualPageCard: View {
         .padding(AppTheme.Spacing.medium)
         .background(AppTheme.cardColor)
         .cornerRadius(AppTheme.CornerRadius.medium)
+        .accessibilityElement(children: .combine)
     }
 }
 
@@ -411,13 +419,15 @@ struct BlockRowView: View {
         .padding(AppTheme.Spacing.medium)
         .background(AppTheme.cardColor)
         .cornerRadius(AppTheme.CornerRadius.medium)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Block \(index): \(block.name), \(block.type.displayName), \(block.durationInMinutes) minutes")
     }
 }
 
 
 
 #Preview {
-    NavigationView {
+    NavigationStack {
         RitualPageView(
             routine: SavedRoutine(
                 routine: Routine(

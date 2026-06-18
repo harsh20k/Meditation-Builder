@@ -8,7 +8,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
-import Dragula
+import UniformTypeIdentifiers
 
 /**
  * RoutineModels.swift
@@ -61,7 +61,7 @@ import Dragula
  * - `media`: Associated media resources (cascade deleted)
  */
 @Model
-final class MeditationBlock: Identifiable, DragulaItem {
+final class MeditationBlock: Identifiable {
     /// Unique identifier for the meditation block
     var id: UUID
     
@@ -350,7 +350,7 @@ struct MediaInfo: Identifiable, Codable, Equatable {
  * SwiftData overhead. It's converted to/from MeditationBlock when
  * saving or loading routines.
  */
-struct RoutineBlock: Identifiable, Equatable, Codable, DragulaItem {
+struct RoutineBlock: Identifiable, Equatable, Codable, Transferable, Sendable {
     /// Unique identifier for the block
     var id: UUID
     
@@ -397,6 +397,10 @@ struct RoutineBlock: Identifiable, Equatable, Codable, DragulaItem {
         self.blockIcon = blockIcon ?? type.icon
         self.media = media
         self.isFavorite = isFavorite
+    }
+
+    static var transferRepresentation: some TransferRepresentation {
+        CodableRepresentation(contentType: UTType.data)
     }
 }
 
@@ -934,3 +938,4 @@ struct IdentifiableInt: Identifiable {
     /// The identifier (same as the value)
     var id: Int { value }
 } 
+

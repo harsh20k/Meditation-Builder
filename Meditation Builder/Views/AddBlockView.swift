@@ -25,7 +25,7 @@ struct AddBlockView: View {
     }
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AppTheme.backgroundColor.ignoresSafeArea()
                 VStack(spacing: 0) {
@@ -34,7 +34,7 @@ struct AddBlockView: View {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(AppTheme.accentColor)
                         TextField(LocalizedStringKey("search.blocks.placeholder"), text: $searchText)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.offWhiteText)
                     }
                     .padding(12)
                     .background(AppTheme.cardColor)
@@ -46,7 +46,7 @@ struct AddBlockView: View {
                     HStack(spacing: 0) {
                         Button(action: { selectedTab = 0 }) {
                             Text(LocalizedStringKey("blocks.tab.default"))
-                                .font(.headline)
+                                .font(AppTheme.Typography.headlineFontLarge)
                                 .foregroundColor(selectedTab == 0 ? AppTheme.accentColor : .white.opacity(0.7))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
@@ -55,7 +55,7 @@ struct AddBlockView: View {
                         }
                         Button(action: { selectedTab = 1 }) {
                             Text(LocalizedStringKey("blocks.tab.custom"))
-                                .font(.headline)
+                                .font(AppTheme.Typography.headlineFontLarge)
                                 .foregroundColor(selectedTab == 1 ? AppTheme.accentColor : .white.opacity(0.7))
                                 .frame(maxWidth: .infinity)
                                 .padding(.vertical, 10)
@@ -91,13 +91,13 @@ struct AddBlockView: View {
                                                     .fill(AppTheme.accentColor)
                                                     .frame(width: 40, height: 40)
                                                 Image(systemName: blockType.icon)
-                                                    .foregroundColor(.white)
+                                                    .foregroundColor(AppTheme.offWhiteText)
                                                     .font(.system(size: 22, weight: .bold))
                                             }
                                             VStack(alignment: .leading, spacing: 2) {
                                                 Text(blockType.titleKey)
                                                     .font(AppTheme.Typography.headlineFont)
-                                                    .foregroundColor(.white)
+                                                    .foregroundColor(AppTheme.offWhiteText)
                                                     .lineLimit(2)
                                                     .truncationMode(.tail)
                                                     .fixedSize(horizontal: false, vertical: true)
@@ -126,7 +126,7 @@ struct AddBlockView: View {
                                                         .fill(AppTheme.accentColor)
                                                         .frame(width: 36, height: 36)
                                                     Image(systemName: "plus")
-                                                        .foregroundColor(.white)
+                                                        .foregroundColor(AppTheme.offWhiteText)
                                                         .font(.system(size: 20, weight: .bold))
                                                 }
                                             }
@@ -158,13 +158,13 @@ struct AddBlockView: View {
                                         .fill(AppTheme.accentColor)
                                         .frame(width: 40, height: 40)
                                     Image(systemName: "sparkles")
-                                        .foregroundColor(.white)
+                                        .foregroundColor(AppTheme.offWhiteText)
                                         .font(.system(size: 22, weight: .bold))
                                 }
                                 TextField(LocalizedStringKey("block.name.placeholder"), text: $customName)
                                     .textFieldStyle(RoundedBorderTextFieldStyle())
-                                    .font(.headline)
-                                    .foregroundColor(.white)
+                                    .font(AppTheme.Typography.headlineFontLarge)
+                                    .foregroundColor(AppTheme.offWhiteText)
                             }
                             Stepper(value: $customDuration, in: 1...60) {
                                 Text(String.localizedStringWithFormat(
@@ -187,8 +187,8 @@ struct AddBlockView: View {
                                 dismiss()
                             }) {
                                 Text(LocalizedStringKey("block.create.custom"))
-                                    .font(.headline)
-                                    .foregroundColor(.white)
+                                    .font(AppTheme.Typography.headlineFontLarge)
+                                    .foregroundColor(AppTheme.offWhiteText)
                                     .frame(maxWidth: .infinity)
                                     .padding()
                                     .background(

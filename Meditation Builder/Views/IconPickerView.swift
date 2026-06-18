@@ -78,7 +78,7 @@ struct IconPickerView: View {
     @State private var selectedCategory = 0
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AppTheme.backgroundColor.ignoresSafeArea()
                 

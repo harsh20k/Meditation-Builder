@@ -42,18 +42,19 @@ struct PlayerHeaderView: View {
                 // Close button - positioned at top right
                 Button(action: onClose) {
                     Image(systemName: "xmark")
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.offWhiteText)
                         .font(.system(size: 20, weight: .medium))
                         .frame(width: 44, height: 44)
                         .background(Color.black.opacity(0.3))
                         .clipShape(Circle())
                 }
+                .accessibilityLabel("Close session")
                 .position(x: geometry.size.width - 44, y: geometry.safeAreaInsets.top + 60)
                 
                 // Title - positioned at top center
                 Text(title)
                     .font(.system(size: 17, weight: .semibold, design: .default))
-                    .foregroundColor(.white)
+                    .foregroundColor(AppTheme.offWhiteText)
                     .lineLimit(2)
                     .multilineTextAlignment(.center)
                     .frame(width: geometry.size.width - 40)
@@ -74,9 +75,10 @@ struct TimerDisplayView: View {
             if sessionStarted {
                 TimelineView(.periodic(from: viewModel.routineStartDate, by: 1.0)) { context in
                     Text(viewModel.formatTime(viewModel.elapsedTime))
-						.font(.system(size: 72, weight: .light, design: .default))
-                        .foregroundColor(.white)
+					.font(.system(size: 72, weight: .light, design: .default))
+                        .foregroundColor(AppTheme.offWhiteText)
                         .monospacedDigit()
+                        .accessibilityLabel("Elapsed time: \(viewModel.formatTime(viewModel.elapsedTime))")
                         .onChange(of: context.date) { _, newDate in
                             viewModel.updateCurrentTime(newDate)
                         }
@@ -94,23 +96,23 @@ struct TimerDisplayView: View {
 				if viewModel.isRoutineComplete {
 					Text(LocalizedStringKey("routine.complete"))
 						.font(.system(size: 17, weight: .regular, design: .default))
-						.foregroundColor(.white.opacity(0.8))
+						.foregroundColor(AppTheme.offWhiteText.opacity(0.8))
 						.lineLimit(2)
 						.multilineTextAlignment(.center)
 				} else if let current = viewModel.currentBlock {
 					HStack(spacing: 0) {
 						Text(current.name)
 							.font(.system(size: 17, weight: .regular, design: .default))
-							.foregroundColor(.white)
+							.foregroundColor(AppTheme.offWhiteText)
 						
 						if let next = viewModel.nextBlock {
 							Text(" → ")
 								.font(.system(size: 17, weight: .regular, design: .default))
-								.foregroundColor(.white.opacity(0.6))
+								.foregroundColor(AppTheme.offWhiteText.opacity(0.6))
 							
 							Text(next.name)
 								.font(.system(size: 17, weight: .regular, design: .default))
-								.foregroundColor(.white.opacity(0.6))
+								.foregroundColor(AppTheme.offWhiteText.opacity(0.6))
 						}
 					}
 					.lineLimit(2)
@@ -143,11 +145,16 @@ struct PlayerControlsView: View {
                         viewModel.togglePause()
                     }
                 }) {
-                    Text(onStartSession != nil ? "▶" : (viewModel.isPaused ? "▶" : "❙❙"))
-                        .font(.system(size: 72, weight: .regular, design: .default))
-                        .foregroundColor(.white)
+                    let isPlay = onStartSession != nil || viewModel.isPaused
+                    Image(systemName: isPlay ? "play.fill" : "pause.fill")
+                        .font(.system(size: 64, weight: .light))
+                        .foregroundColor(AppTheme.offWhiteText)
+                        .frame(width: 88, height: 88)
+                        .contentTransition(.symbolEffect(.replace))
                 }
                 .buttonStyle(PlainButtonStyle())
+                .accessibilityLabel(onStartSession != nil ? "Start session" : (viewModel.isPaused ? "Resume session" : "Pause session"))
+                .accessibilityAddTraits(.isButton)
                 .position(x: geometry.size.width / 2, y: geometry.size.height - geometry.safeAreaInsets.bottom - 180)
                 
                 // Pause state controls - shown with opacity animation
@@ -194,6 +201,81 @@ struct PlayerControlsView: View {
                 }
             }
         }
+    }
+}
+
+// MARK: - Breathing Light Background
+
+struct BreathingLightView: View {
+    let isPaused: Bool
+    let routineIcon: String
+    @State private var breatheScale: CGFloat = 1.0
+    @State private var breatheOpacity: Double = 0.04
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        ZStack {
+            // Mesh gradient — soft organic breathing background
+            MeshGradient(
+                    width: 3,
+                    height: 3,
+                    points: meshPoints,
+                    colors: meshColors
+                )
+                .ignoresSafeArea()
+                .opacity(isPaused ? 0.3 : 0.55)
+                .animation(.easeInOut(duration: 0.8), value: isPaused)
+
+                // Faint routine icon watermark
+                Image(systemName: routineIcon)
+                    .font(.system(size: 200, weight: .ultraLight))
+                    .foregroundColor(Color(red: 0.302, green: 0.714, blue: 0.675).opacity(0.04))
+                    .scaleEffect(breatheScale)
+
+                // Breathing glow ring
+                if !reduceMotion {
+                    Circle()
+                        .stroke(Color(red: 0.302, green: 0.714, blue: 0.675).opacity(breatheOpacity), lineWidth: 1)
+                        .frame(width: 220, height: 220)
+                        .scaleEffect(breatheScale * 1.3)
+                    Circle()
+                        .stroke(Color(red: 0.302, green: 0.714, blue: 0.675).opacity(breatheOpacity * 0.5), lineWidth: 1)
+                        .frame(width: 220, height: 220)
+                        .scaleEffect(breatheScale * 1.7)
+                }
+        }
+        .onAppear {
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 5.0).repeatForever(autoreverses: true)) {
+                breatheScale = 1.1
+                breatheOpacity = 0.12
+            }
+        }
+        .onChange(of: isPaused) { _, paused in
+            guard !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: paused ? 2.0 : 5.0).repeatForever(autoreverses: true)) {
+                breatheScale = paused ? 1.03 : 1.1
+                breatheOpacity = paused ? 0.05 : 0.12
+            }
+        }
+    }
+
+    private var meshPoints: [SIMD2<Float>] {
+        [
+            [0.0, 0.0], [0.5, 0.0], [1.0, 0.0],
+            [0.0, 0.5], [0.5, 0.5], [1.0, 0.5],
+            [0.0, 1.0], [0.5, 1.0], [1.0, 1.0]
+        ]
+    }
+
+    private var meshColors: [Color] {
+        let teal = Color(red: 0.15, green: 0.25, blue: 0.25)
+        let deep = Color(red: 0.06, green: 0.08, blue: 0.08)
+        return [
+            deep, deep, deep,
+            deep, teal, deep,
+            deep, deep, deep
+        ]
     }
 }
 
@@ -263,6 +345,12 @@ struct ActiveSessionState: View {
     var body: some View {
         GeometryReader { geometry in
             ZStack {
+                // Breathing ambient background
+                BreathingLightView(
+                    isPaused: viewModel.isPaused,
+                    routineIcon: viewModel.routineData.icon
+                )
+
                 // Player Header
                 PlayerHeaderView(
                     title: viewModel.routineData.name,
@@ -331,6 +419,9 @@ struct RoutinePlayerView: View {
                 }
             }
         }
+        .sensoryFeedback(.impact(flexibility: .soft), trigger: viewModel.isPaused)
+        .sensoryFeedback(.success, trigger: viewModel.isRoutineComplete)
+        .sensoryFeedback(.impact(flexibility: .rigid), trigger: viewModel.currentBlockIndex)
         .onDisappear {
             if sessionStarted {
                 viewModel.cleanup()

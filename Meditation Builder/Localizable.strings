@@ -9,8 +9,10 @@
 // MARK: - Tab Bar
 "tab.library" = "Library";
 "tab.music" = "Music";
+"tab.sounds" = "Sounds";
 "tab.timer" = "Timer";
 "tab.tools" = "Tools";
+"tab.history" = "History";
 "tab.settings" = "Settings";
 "History" = "History";
 
@@ -115,6 +117,12 @@
 "content.type.video" = "Video";
 "content.type.ambient" = "Ambient";
 
+// MARK: - Filter Chips
+"filter.all" = "All";
+"filter.completed" = "Completed";
+"filter.discarded" = "Discarded";
+"filter.fully.completed" = "Fully Completed";
+
 // MARK: - Session History
 "session.history.total.format" = "Total Sessions: %d";
 "session.history.filtered.format" = "Filtered Sessions: %d";
@@ -190,6 +198,16 @@
 
 // MARK: - Routine Builder
 "routine.name.placeholder" = "Routine Name";
+
+// MARK: - Settings
+"settings.title" = "Settings";
+"settings.appearance.title" = "Appearance";
+"settings.color.scheme" = "Color Scheme";
+"settings.notifications.title" = "Notifications";
+"settings.data.title" = "Data";
+"settings.about.title" = "About";
+"settings.developer.title" = "Developer";
+"sounds.master.volume" = "Master Volume";
 
 // MARK: - Ritual Page
 "ritual.statistics.title" = "Statistics";

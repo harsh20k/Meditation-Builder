@@ -7,7 +7,6 @@
 
 import SwiftUI
 import SwiftData
-import Dragula
 import os.log
 
 struct RoutineBuilderView: View {
@@ -23,7 +22,6 @@ struct RoutineBuilderView: View {
     @State private var showIconPicker = false
     @State private var isEditMode: Bool
     @State private var openSwipeCardID: UUID? = nil
-    @State private var dragulaKey = UUID()
     
     @Environment(\.modelContext) private var modelContext
     @Environment(\.dismiss) private var dismiss
@@ -99,7 +97,7 @@ struct RoutineBuilderView: View {
                     
                     TextField(LocalizedStringKey("routine.name.placeholder"), text: $routineName)
                         .font(AppTheme.Typography.titleFont)
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.offWhiteText)
                         .textFieldStyle(PlainTextFieldStyle())
                         .multilineTextAlignment(.leading)
                     
@@ -161,28 +159,33 @@ struct RoutineBuilderView: View {
                             }
                             
                             LazyVStack(alignment: .leading, spacing: AppTheme.Spacing.large) {
-                                DragulaView(items: $routine.blocks) { block in
+                                ForEach(Array(routine.blocks.enumerated()), id: \.element.id) { index, block in
                                     SwipeableBlockCard(
                                         block: block,
                                         isLast: block.id == routine.blocks.last?.id,
                                         onEdit: { editBlock = block },
                                         onDelete: { deleteBlock(block) },
-                                        index: routine.blocks.firstIndex(where: { $0.id == block.id }) ?? 0,
+                                        index: index,
                                         blocksCount: routine.blocks.count,
                                         openSwipeCardID: $openSwipeCardID
                                     )
                                     .frame(height: 56)
-                                } dropView: { block in
-                                    DropIndicatorView(block: block)
-                                } dropCompleted: {
-                                    // Drag and drop completed
+                                    .draggable(block)
+                                    .dropDestination(for: RoutineBlock.self) { droppedBlocks, _ in
+                                        guard let dropped = droppedBlocks.first,
+                                              let fromIndex = routine.blocks.firstIndex(where: { $0.id == dropped.id }),
+                                              let toIndex = routine.blocks.firstIndex(where: { $0.id == block.id }),
+                                              fromIndex != toIndex else { return false }
+                                        withAnimation(.easeInOut(duration: 0.3)) {
+                                            routine.blocks.move(fromOffsets: IndexSet(integer: fromIndex), toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex)
+                                        }
+                                        return true
+                                    }
                                 }
-								.environment(\.dragPreviewCornerRadius, AppTheme.CornerRadius.blockCard)
                             }
-                            .id(dragulaKey)
                             .padding(.top, AppTheme.Spacing.titleRoom)
-                            .padding(.bottom, 120) // Account for floating button and tab bar
-							.padding(.horizontal, 24)
+                            .padding(.bottom, 120)
+                            .padding(.horizontal, 24)
                         }
                     }
                 }
@@ -204,7 +207,7 @@ struct RoutineBuilderView: View {
                     Button(action: { showingSaveAlert = true }) {
                         Text(LocalizedStringKey(isEditMode ? "button.update" : "button.save"))
                             .font(AppTheme.Typography.buttonFont)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.offWhiteText)
                             .frame(maxWidth: .infinity)
                             .frame(height: 48)
                             .background(
@@ -225,7 +228,7 @@ struct RoutineBuilderView: View {
                         .fill(AppTheme.accentColor)
                         .frame(width: 56, height: 56)
                     Image(systemName: "plus")
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.offWhiteText)
                         .font(.system(size: 28, weight: .bold))
                 }
             }
@@ -244,8 +247,6 @@ struct RoutineBuilderView: View {
                     }
                     routine.blocks = updatedBlocks
                 }
-                // Force DragulaView recreation by updating the key
-                dragulaKey = UUID()
                 editBlock = nil
             }
         }
@@ -345,7 +346,7 @@ struct SwipeableBlockCard: View {
                     }
                 }) {
                     Image(systemName: "trash.fill")
-                        .foregroundColor(.white)
+                        .foregroundColor(AppTheme.offWhiteText)
                         .font(.system(size: 18, weight: .medium))
                         .frame(width: 60, height: 60)
                         .background(Color.red)

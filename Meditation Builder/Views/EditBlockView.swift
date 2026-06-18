@@ -16,7 +16,7 @@ struct EditBlockView: View {
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        NavigationView {
+        NavigationStack {
             ZStack {
                 AppTheme.backgroundColor.ignoresSafeArea()
                 VStack(spacing: AppTheme.Spacing.section) {
@@ -28,7 +28,7 @@ struct EditBlockView: View {
                                         .fill(AppTheme.accentColor)
                                         .frame(width: 40, height: 40)
                                     Image(systemName: block.blockIcon)
-                                        .foregroundColor(.white)
+                                        .foregroundColor(AppTheme.offWhiteText)
                                         .font(.system(size: 22, weight: .bold))
                                 }
                             }
@@ -36,7 +36,7 @@ struct EditBlockView: View {
                             
                             TextField(LocalizedStringKey("block.name.placeholder"), text: $block.name)
                                 .font(AppTheme.Typography.headlineFont)
-                                .foregroundColor(.white)
+                                .foregroundColor(AppTheme.offWhiteText)
                                 .padding(12)
                                 .background(AppTheme.cardColor)
                                 .cornerRadius(AppTheme.CornerRadius.small)
@@ -93,7 +93,7 @@ struct EditBlockView: View {
                     }) {
                         Text(LocalizedStringKey("button.save"))
                             .font(AppTheme.Typography.buttonFont)
-                            .foregroundColor(.white)
+                            .foregroundColor(AppTheme.offWhiteText)
                             .frame(maxWidth: .infinity)
                             .frame(height: 48)
                             .background(

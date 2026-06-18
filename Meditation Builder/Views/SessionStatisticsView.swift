@@ -2,8 +2,6 @@
 //  SessionStatisticsView.swift
 //  Meditation Builder
 //
-//  Created by harsh  on 09/07/25.
-//
 
 import SwiftUI
 import SwiftData
@@ -11,120 +9,124 @@ import SwiftData
 struct SessionStatisticsView: View {
     @Environment(\.modelContext) private var modelContext
     @Environment(\.routineDataManager) private var dataManager
-	@Query private var sessions: [MeditationSession]
+    @Environment(\.dismiss) private var dismiss
+    @Query private var sessions: [MeditationSession]
     @State private var statistics: SessionStatistics?
     @State private var isLoading = true
-    
+
     var body: some View {
-        NavigationView {
-            ScrollView {
-                VStack(spacing: 20) {
+        NavigationStack {
+            ZStack {
+                AppTheme.backgroundColor.ignoresSafeArea()
+
+                Group {
                     if isLoading {
-                        ProgressView("Loading statistics...")
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        VStack(spacing: AppTheme.Spacing.large) {
+                            ProgressView()
+                                .tint(AppTheme.accentColor)
+                            Text("Loading statistics…")
+                                .font(AppTheme.Typography.bodyFont)
+                                .foregroundColor(AppTheme.lightGrey)
+                        }
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
                     } else if let stats = statistics {
-                        // Overview cards
-                        LazyVGrid(columns: [
-                            GridItem(.flexible()),
-                            GridItem(.flexible())
-                        ], spacing: 16) {
-                            StatCard(
-                                title: "Total Sessions",
-                                value: "\(stats.totalSessions)",
-                                icon: "clock.arrow.circlepath",
-                                color: .blue
-                            )
-                            
-                            StatCard(
-                                title: "Completion Rate",
-                                value: "\(stats.completionRatePercentage)%",
-                                icon: "checkmark.circle.fill",
-                                color: .green
-                            )
-                            
-                            StatCard(
-                                title: "Total Time",
-                                value: stats.totalDurationFormatted,
-                                icon: "timer",
-                                color: .orange
-                            )
-                            
-                            StatCard(
-                                title: "Avg Duration",
-                                value: stats.averageDurationFormatted,
-                                icon: "clock",
-                                color: .purple
-                            )
-                        }
-                        .padding(.horizontal)
-                        
-                        // Recent activity
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text(LocalizedStringKey("statistics.recent.activity"))
-                                .font(.headline)
-                                .padding(.horizontal)
-                            
-                            if let recentSessions = getRecentSessions() {
-                                ForEach(recentSessions.prefix(5), id: \.id) { session in
-                                    RecentSessionRow(session: session)
-                                }
-                            } else {
-                                Text(LocalizedStringKey("statistics.no.recent.sessions"))
-                                    .foregroundColor(.secondary)
-                                    .padding()
+                        ScrollView(showsIndicators: false) {
+                            VStack(spacing: AppTheme.Spacing.large) {
+                                overviewGrid(stats: stats)
+                                recentActivitySection
+                                insightsSection(stats: stats)
                             }
+                            .padding(.horizontal, AppTheme.Spacing.medium)
+                            .padding(.vertical, AppTheme.Spacing.medium)
+                            .padding(.bottom, AppTheme.Spacing.section)
                         }
-                        .padding(.vertical)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .padding(.horizontal)
-                        
-                        // Insights
-                        VStack(alignment: .leading, spacing: 16) {
-                            Text(LocalizedStringKey("statistics.insights"))
-                                .font(.headline)
-                                .padding(.horizontal)
-                            
-                            VStack(spacing: 12) {
-                                InsightRow(
-                                    icon: "target",
-                                    title: "Most Used Routine",
-                                    value: getMostUsedRoutine()
-                                )
-                                
-                                InsightRow(
-                                    icon: "calendar",
-                                    title: "Best Day",
-                                    value: getBestDay()
-                                )
-                                
-                                if stats.totalOvershootTimeInSeconds > 0 {
-                                    InsightRow(
-                                        icon: "clock.badge.exclamationmark",
-                                        title: "Total Overshoot",
-                                        value: stats.totalOvershootTimeFormatted
-                                    )
-                                }
-                            }
-                        }
-                        .padding(.vertical)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(12)
-                        .padding(.horizontal)
                     } else {
                         StatisticsEmptyStateView()
                     }
                 }
-                .padding(.vertical)
             }
             .navigationTitle(LocalizedStringKey("statistics.title"))
-            .navigationBarTitleDisplayMode(.large)
-            .onAppear {
-                loadStatistics()
+            .navigationBarTitleDisplayMode(.inline)
+            .liquidGlassNavigationBar()
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(LocalizedStringKey("button.done")) { dismiss() }
+                        .foregroundColor(AppTheme.accentColor)
+                        .font(AppTheme.Typography.buttonFont)
+                }
             }
         }
+        .onAppear { loadStatistics() }
     }
-    
+
+    // MARK: - Overview Grid
+
+    private func overviewGrid(stats: SessionStatistics) -> some View {
+        LazyVGrid(columns: [
+            GridItem(.flexible(), spacing: AppTheme.Spacing.medium),
+            GridItem(.flexible(), spacing: AppTheme.Spacing.medium)
+        ], spacing: AppTheme.Spacing.medium) {
+            ThemedStatCard(title: "Total Sessions", value: "\(stats.totalSessions)", icon: "clock.arrow.circlepath")
+            ThemedStatCard(title: "Completion Rate", value: "\(stats.completionRatePercentage)%", icon: "checkmark.circle.fill")
+            ThemedStatCard(title: "Total Time", value: stats.totalDurationFormatted, icon: "timer")
+            ThemedStatCard(title: "Avg Duration", value: stats.averageDurationFormatted, icon: "clock")
+        }
+    }
+
+    // MARK: - Recent Activity Section
+
+    private var recentActivitySection: some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+            Text(LocalizedStringKey("statistics.recent.activity"))
+                .font(AppTheme.Typography.headlineFont)
+                .foregroundColor(AppTheme.lightGrey)
+
+            let recent = sessions.filter { !$0.wasDiscarded }
+                .sorted { $0.sessionStartTime > $1.sessionStartTime }
+                .prefix(5)
+
+            if recent.isEmpty {
+                Text(LocalizedStringKey("statistics.no.recent.sessions"))
+                    .font(AppTheme.Typography.bodyFont)
+                    .foregroundColor(AppTheme.lightGrey)
+                    .padding(.vertical, AppTheme.Spacing.small)
+            } else {
+                ForEach(Array(recent), id: \.id) { session in
+                    if session.id != recent.first?.id {
+                        Divider().background(AppTheme.lightGrey.opacity(0.15))
+                    }
+                    RecentSessionRow(session: session)
+                }
+            }
+        }
+        .padding(AppTheme.Spacing.large)
+        .background(AppTheme.cardColor)
+        .cornerRadius(AppTheme.CornerRadius.large)
+    }
+
+    // MARK: - Insights Section
+
+    private func insightsSection(stats: SessionStatistics) -> some View {
+        VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+            Text(LocalizedStringKey("statistics.insights"))
+                .font(AppTheme.Typography.headlineFont)
+                .foregroundColor(AppTheme.lightGrey)
+
+            InsightRow(icon: "target", title: "Most Used", value: getMostUsedRoutine())
+            Divider().background(AppTheme.lightGrey.opacity(0.15))
+            InsightRow(icon: "calendar", title: "Best Day", value: getBestDay())
+            if stats.totalOvershootTimeInSeconds > 0 {
+                Divider().background(AppTheme.lightGrey.opacity(0.15))
+                InsightRow(icon: "clock.badge.exclamationmark", title: "Total Overshoot", value: stats.totalOvershootTimeFormatted)
+            }
+        }
+        .padding(AppTheme.Spacing.large)
+        .background(AppTheme.cardColor)
+        .cornerRadius(AppTheme.CornerRadius.large)
+    }
+
+    // MARK: - Helpers
+
     private func loadStatistics() {
         Task {
             do {
@@ -134,116 +136,111 @@ struct SessionStatisticsView: View {
                     self.isLoading = false
                 }
             } catch {
-                await MainActor.run {
-                    self.isLoading = false
-                }
+                await MainActor.run { self.isLoading = false }
             }
         }
     }
-    
-    private func getRecentSessions() -> [MeditationSession]? {
-        let completedSessions = sessions.filter { !$0.wasDiscarded }
-        return completedSessions.sorted { $0.sessionStartTime > $1.sessionStartTime }
-    }
-    
+
     private func getMostUsedRoutine() -> String {
-        let completedSessions = sessions.filter { !$0.wasDiscarded }
-        let routineCounts = Dictionary(grouping: completedSessions, by: { $0.routineName })
+        let counts = Dictionary(grouping: sessions.filter { !$0.wasDiscarded }, by: { $0.routineName })
             .mapValues { $0.count }
-        
-        if let mostUsed = routineCounts.max(by: { $0.value < $1.value }) {
-            return mostUsed.key
-        }
-        return "None"
+        return counts.max(by: { $0.value < $1.value })?.key ?? "None"
     }
-    
+
     private func getBestDay() -> String {
-        let completedSessions = sessions.filter { !$0.wasDiscarded }
-        let dayCounts = Dictionary(grouping: completedSessions) { session in
-            Calendar.current.component(.weekday, from: session.sessionStartTime)
+        let dayCounts = Dictionary(grouping: sessions.filter { !$0.wasDiscarded }) {
+            Calendar.current.component(.weekday, from: $0.sessionStartTime)
         }.mapValues { $0.count }
-        
-        if let bestDay = dayCounts.max(by: { $0.value < $1.value }) {
-            let formatter = DateFormatter()
-            formatter.weekdaySymbols[bestDay.key - 1]
-            return formatter.weekdaySymbols[bestDay.key - 1]
-        }
-        return "None"
+        guard let best = dayCounts.max(by: { $0.value < $1.value }) else { return "None" }
+        return DateFormatter().weekdaySymbols[best.key - 1]
     }
 }
 
-// MARK: - Stat Card
+// MARK: - Themed Stat Card
+
+struct ThemedStatCard: View {
+    let title: String
+    let value: String
+    let icon: String
+
+    var body: some View {
+        VStack(spacing: AppTheme.Spacing.small) {
+            Image(systemName: icon)
+                .font(.system(size: 22, weight: .light))
+                .foregroundColor(AppTheme.accentColor)
+                .accessibilityHidden(true)
+            Text(value)
+                .font(AppTheme.Typography.headlineFontLarge)
+                .foregroundColor(AppTheme.offWhiteText)
+            Text(title)
+                .font(AppTheme.Typography.captionFont)
+                .foregroundColor(AppTheme.lightGrey)
+                .multilineTextAlignment(.center)
+        }
+        .padding(AppTheme.Spacing.large)
+        .frame(maxWidth: .infinity)
+        .background(AppTheme.cardColor)
+        .cornerRadius(AppTheme.CornerRadius.large)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("\(title): \(value)")
+    }
+}
+
+// MARK: - Stat Card (legacy alias kept for compatibility)
+
 struct StatCard: View {
     let title: String
     let value: String
     let icon: String
     let color: Color
-    
+
     var body: some View {
-        VStack(spacing: 12) {
-            Image(systemName: icon)
-                .font(.title2)
-                .foregroundColor(color)
-            
-            Text(value)
-                .font(.title2)
-                .fontWeight(.bold)
-                .foregroundColor(.primary)
-            
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
-        }
-        .padding()
-        .background(Color(.systemBackground))
-        .cornerRadius(12)
-        .shadow(color: .black.opacity(0.1), radius: 2, x: 0, y: 1)
+        ThemedStatCard(title: title, value: value, icon: icon)
     }
 }
 
 // MARK: - Recent Session Row
+
 struct RecentSessionRow: View {
     let session: MeditationSession
-    
+
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: session.routineIcon)
-                .font(.title3)
-                .foregroundColor(.accentColor)
-                .frame(width: 32, height: 32)
-                .background(Color.accentColor.opacity(0.1))
-                .clipShape(Circle())
-            
+        HStack(spacing: AppTheme.Spacing.medium) {
+            ZStack {
+                Circle()
+                    .fill(AppTheme.accentColor.opacity(0.15))
+                    .frame(width: 36, height: 36)
+                Image(systemName: session.routineIcon)
+                    .font(.system(size: 16, weight: .light))
+                    .foregroundColor(AppTheme.accentColor)
+            }
+            .accessibilityHidden(true)
+
             VStack(alignment: .leading, spacing: 2) {
                 Text(session.routineName)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
+                    .font(AppTheme.Typography.bodyFont)
+                    .foregroundColor(AppTheme.offWhiteText)
                 Text(formatDate(session.sessionStartTime))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .font(AppTheme.Typography.captionFont)
+                    .foregroundColor(AppTheme.lightGrey)
             }
-            
+
             Spacer()
-            
+
             VStack(alignment: .trailing, spacing: 2) {
                 Text(session.sessionDurationFormatted)
-                    .font(.subheadline)
-                    .fontWeight(.medium)
-                
+                    .font(AppTheme.Typography.bodyFont)
+                    .foregroundColor(AppTheme.offWhiteText)
                 Text(String.localizedStringWithFormat(
-                    NSLocalizedString("component.completion.percentage", comment: "Completion percentage"),
+                    NSLocalizedString("component.completion.percentage", comment: ""),
                     session.completionRatePercentage
                 ))
-                    .font(.caption)
-                    .foregroundColor(session.wasFullyCompleted ? .green : .orange)
+                .font(AppTheme.Typography.captionFont)
+                .foregroundColor(session.wasFullyCompleted ? AppTheme.accentColor : .orange)
             }
         }
-        .padding(.horizontal)
-        .padding(.vertical, 8)
     }
-    
+
     private func formatDate(_ date: Date) -> String {
         let formatter = DateFormatter()
         formatter.dateStyle = .short
@@ -253,54 +250,60 @@ struct RecentSessionRow: View {
 }
 
 // MARK: - Insight Row
+
 struct InsightRow: View {
     let icon: String
     let title: String
     let value: String
-    
+
     var body: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: AppTheme.Spacing.medium) {
             Image(systemName: icon)
-                .font(.title3)
-                .foregroundColor(.accentColor)
+                .font(.system(size: 16, weight: .light))
+                .foregroundColor(AppTheme.accentColor)
                 .frame(width: 24, height: 24)
-            
+                .accessibilityHidden(true)
             Text(title)
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-            
+                .font(AppTheme.Typography.bodyFont)
+                .foregroundColor(AppTheme.lightGrey)
             Spacer()
-            
             Text(value)
-                .font(.subheadline)
-                .fontWeight(.medium)
+                .font(AppTheme.Typography.bodyFont)
+                .foregroundColor(AppTheme.offWhiteText)
         }
-        .padding(.horizontal)
     }
 }
 
-// MARK: - Statistics Empty State View
+// MARK: - Statistics Empty State
+
 struct StatisticsEmptyStateView: View {
     var body: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "chart.bar.fill")
-                .font(.system(size: 60))
-                .foregroundColor(.secondary)
-            
-            Text(LocalizedStringKey("statistics.empty.title"))
-                .font(.title2)
-                .fontWeight(.semibold)
-            
-            Text(LocalizedStringKey("statistics.empty.message"))
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+        VStack(spacing: AppTheme.Spacing.extraLarge) {
+            Spacer()
+            ZStack {
+                Circle()
+                    .fill(AppTheme.cardColor)
+                    .frame(width: 80, height: 80)
+                Image(systemName: "chart.bar.fill")
+                    .font(.system(size: 36, weight: .light))
+                    .foregroundColor(AppTheme.accentColor)
+            }
+            VStack(spacing: AppTheme.Spacing.small) {
+                Text(LocalizedStringKey("statistics.empty.title"))
+                    .font(AppTheme.Typography.headlineFontLarge)
+                    .foregroundColor(AppTheme.offWhiteText)
+                Text(LocalizedStringKey("statistics.empty.message"))
+                    .font(AppTheme.Typography.bodyFont)
+                    .foregroundColor(AppTheme.lightGrey)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, AppTheme.Spacing.extraLarge)
+            }
+            Spacer()
         }
-        .padding()
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
 #Preview {
     SessionStatisticsView()
-} 
+}
