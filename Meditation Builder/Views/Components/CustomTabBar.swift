@@ -7,34 +7,38 @@ import SwiftUI
 
 enum TabSelection: Int, CaseIterable {
 	case library = 0
-	case timer = 1
-	case history = 2
-	case settings = 3
+	case community = 1
+	case timer = 2
+	case history = 3
+	case settings = 4
 
 	var icon: String {
 		switch self {
-		case .library:  return "books.vertical.fill"
-		case .timer:    return "timer"
-		case .history:  return "clock.arrow.circlepath"
-		case .settings: return "gearshape"
+		case .library:   return "books.vertical.fill"
+		case .community: return "person.3.fill"
+		case .timer:     return "timer"
+		case .history:   return "clock.arrow.circlepath"
+		case .settings:  return "gearshape"
 		}
 	}
 
 	var title: String {
 		switch self {
-		case .library:  return String(localized: "tab.library")
-		case .timer:    return String(localized: "tab.timer")
-		case .history:  return String(localized: "tab.history")
-		case .settings: return String(localized: "tab.settings")
+		case .library:   return String(localized: "tab.library")
+		case .community: return String(localized: "tab.community")
+		case .timer:     return String(localized: "tab.timer")
+		case .history:   return String(localized: "tab.history")
+		case .settings:  return String(localized: "tab.settings")
 		}
 	}
 
 	var titleKey: LocalizedStringKey {
 		switch self {
-		case .library:  return LocalizedStringKey("tab.library")
-		case .timer:    return LocalizedStringKey("tab.timer")
-		case .history:  return LocalizedStringKey("tab.history")
-		case .settings: return LocalizedStringKey("tab.settings")
+		case .library:   return LocalizedStringKey("tab.library")
+		case .community: return LocalizedStringKey("tab.community")
+		case .timer:     return LocalizedStringKey("tab.timer")
+		case .history:   return LocalizedStringKey("tab.history")
+		case .settings:  return LocalizedStringKey("tab.settings")
 		}
 	}
 }

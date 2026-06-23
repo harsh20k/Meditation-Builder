@@ -16,6 +16,7 @@ enum RoutineBuilderDestination: Hashable {
 
 struct MainTabView: View {
     @State private var selectedTab: TabSelection = .library
+    @Environment(AuthManager.self) private var authManager
     @Environment(\.modelContext) private var modelContext
     @State private var libraryPath = NavigationPath()
     @State private var legacyNavigationPath = NavigationPath()
@@ -74,6 +75,12 @@ struct MainTabView: View {
                 Label(LocalizedStringKey("tab.library"), systemImage: "books.vertical.fill")
             }
 
+            Tab(value: TabSelection.community) {
+                CommunityHomeView()
+            } label: {
+                Label(LocalizedStringKey("tab.community"), systemImage: "person.3.fill")
+            }
+
             Tab(value: TabSelection.timer) {
                 RoutinePlayerView(modelContext: modelContext)
             } label: {
@@ -108,6 +115,8 @@ struct MainTabView: View {
                 switch selectedTab {
                 case .library:
                     RoutineLibraryView(navigationPath: $legacyNavigationPath)
+                case .community:
+                    CommunityHomeView()
                 case .timer:
                     RoutinePlayerView(modelContext: modelContext)
                 case .history:
@@ -275,4 +284,5 @@ struct PlaceholderView: View {
 // MARK: - Preview
 #Preview {
     MainTabView()
+        .environment(AuthManager())
 }

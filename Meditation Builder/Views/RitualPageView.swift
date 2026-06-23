@@ -19,6 +19,7 @@ class RitualPageViewModel {
     var showingEditSheet = false
     var showingDeleteAlert = false
     var showingPlaySheet = false
+    var showingPublishSheet = false
     
     private let logger = Logger(subsystem: Bundle.main.bundleIdentifier ?? "com.meditationbuilder", category: "RitualPage")
     
@@ -79,6 +80,11 @@ class RitualPageViewModel {
     func playRoutine() {
         logger.info("Play routine requested: \(self.routine.routineName)")
         showingPlaySheet = true
+    }
+
+    func publishToCommunity() {
+        logger.info("Publish to community requested: \(self.routine.routineName)")
+        showingPublishSheet = true
     }
     
     func toggleFavorite() {
@@ -151,6 +157,9 @@ struct RitualPageView: View {
         }
         .fullScreenCover(isPresented: $viewModel.showingPlaySheet) {
             RoutinePlayerView(routine: viewModel.routine, modelContext: modelContext)
+        }
+        .sheet(isPresented: $viewModel.showingPublishSheet) {
+            PublishRoutineView(preselectedRoutine: viewModel.routine)
         }
         .alert(LocalizedStringKey("alert.delete.routine.title"), isPresented: $viewModel.showingDeleteAlert) {
             Button(LocalizedStringKey("button.cancel"), role: .cancel) { }
@@ -316,6 +325,13 @@ struct RitualPageView: View {
                 
                 if !viewModel.routine.isSystemRoutine {
                     AppTheme.cardButton(
+                        icon: "square.and.arrow.up",
+                        title: String(localized: "community.publish.button"),
+                        action: viewModel.publishToCommunity
+                    )
+                    .accessibilityLabel("Publish \(viewModel.routine.routineName) to Community")
+
+                    AppTheme.cardButton(
                         icon: "pencil",
                         title: String(localized: "button.edit"),
                         action: viewModel.editRoutine
@@ -330,12 +346,8 @@ struct RitualPageView: View {
                     .accessibilityLabel("Delete \(viewModel.routine.routineName)")
                     .accessibilityHint("Requires confirmation")
                 } else {
-                    // Placeholder cards to maintain grid layout
                     Color.clear
-                        .frame(height: 72) // 9x grid unit
-                    
-                    Color.clear
-                        .frame(height: 72) // 9x grid unit
+                        .frame(height: 72)
                 }
             }
             .padding(.horizontal, AppTheme.Spacing.medium)

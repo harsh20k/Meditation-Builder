@@ -1,0 +1,362 @@
+{
+  "info": {
+    "_postman_id": "mb-community-api",
+    "name": "Meditation Builder Community API",
+    "description": "Community Library REST API — all 10 endpoints with Cognito auth pre-request script.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{access_token}}", "type": "string" }]
+  },
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "const needsAuth = pm.request.auth && pm.request.auth.type === 'bearer';",
+          "if (!needsAuth) { return; }",
+          "const expires = Number(pm.collectionVariables.get('token_expires_at') || 0);",
+          "const now = Math.floor(Date.now() / 1000);",
+          "if (pm.collectionVariables.get('access_token') && expires > now + 60) { return; }",
+          "const domain = pm.environment.get('cognito_domain');",
+          "const clientId = pm.environment.get('cognito_client_id');",
+          "const username = pm.environment.get('test_username');",
+          "const password = pm.environment.get('test_password');",
+          "if (!domain || !clientId || !username || !password) {",
+          "  console.warn('Missing Cognito env vars — skipping token refresh');",
+          "  return;",
+          "}",
+          "pm.sendRequest({",
+          "  url: `${domain}/oauth2/token`,",
+          "  method: 'POST',",
+          "  header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
+          "  body: {",
+          "    mode: 'urlencoded',",
+          "    urlencoded: [",
+          "      { key: 'grant_type', value: 'password' },",
+          "      { key: 'client_id', value: clientId },",
+          "      { key: 'username', value: username },",
+          "      { key: 'password', value: password }",
+          "    ]",
+          "  }",
+          "}, (err, res) => {",
+          "  if (err || !res.ok) { throw new Error('Cognito token request failed: ' + (err || res.text())); }",
+          "  const json = res.json();",
+          "  pm.collectionVariables.set('access_token', json.access_token);",
+          "  pm.collectionVariables.set('token_expires_at', String(now + (json.expires_in || 3600)));",
+          "});"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    { "key": "access_token", "value": "" },
+    { "key": "token_expires_at", "value": "0" },
+    { "key": "routine_id", "value": "{{seed_routine_id}}" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Refresh Cognito Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                { "key": "grant_type", "value": "password" },
+                { "key": "client_id", "value": "{{cognito_client_id}}" },
+                { "key": "username", "value": "{{test_username}}" },
+                { "key": "password", "value": "{{test_password}}" }
+              ]
+            },
+            "url": "{{cognito_domain}}/oauth2/token"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Token issued', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('access_token present', () => pm.expect(json.access_token).to.be.a('string'));",
+                  "pm.collectionVariables.set('access_token', json.access_token);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Routines",
+      "item": [
+        {
+          "name": "GET /routines (browse)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/routines?pageSize=20&sort=newest",
+              "host": ["{{base_url}}"],
+              "path": ["routines"],
+              "query": [
+                { "key": "pageSize", "value": "20" },
+                { "key": "sort", "value": "newest" },
+                { "key": "tag", "value": "focus", "disabled": true },
+                { "key": "nextToken", "value": "", "disabled": true }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has routines array', () => pm.expect(json.routines).to.be.an('array'));",
+                  "if (json.routines.length) { pm.collectionVariables.set('routine_id', json.routines[0].routineId); }"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /routines (publish)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Postman Test Routine\",\n  \"blocks\": [\n    {\"blockId\": \"b1\", \"type\": \"timer\", \"durationSeconds\": 300, \"label\": \"Breathing\"},\n    {\"blockId\": \"b2\", \"type\": \"bell\", \"soundKey\": \"singing_bowl_c\", \"label\": \"Bell\"}\n  ],\n  \"durationSeconds\": 300,\n  \"userDescription\": \"Created via Postman\"\n}"
+            },
+            "url": "{{base_url}}/routines"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 201', () => pm.response.to.have.status(201));",
+                  "const json = pm.response.json();",
+                  "pm.test('routineId returned', () => pm.expect(json.routineId).to.be.a('string'));",
+                  "pm.collectionVariables.set('routine_id', json.routineId);"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /routines/{id}",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/routines/{{routine_id}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('routine_id')) {",
+                  "  pm.execution.skipRequest('Set routine_id or run browse/publish first');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('Has blocks', () => pm.expect(json.blocks).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /routines/{id}",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/routines/{{routine_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Social",
+      "item": [
+        {
+          "name": "POST /routines/{id}/like",
+          "request": { "method": "POST", "url": "{{base_url}}/routines/{{routine_id}}/like" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('likeCount present', () => pm.expect(pm.response.json().likeCount).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "DELETE /routines/{id}/like",
+          "request": { "method": "DELETE", "url": "{{base_url}}/routines/{{routine_id}}/like" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('likeCount present', () => pm.expect(pm.response.json().likeCount).to.be.a('number'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "POST /routines/{id}/import",
+          "request": { "method": "POST", "url": "{{base_url}}/routines/{{routine_id}}/import" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const json = pm.response.json();",
+                  "pm.test('routine payload present', () => pm.expect(json.routine).to.be.an('object'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Discovery",
+      "item": [
+        {
+          "name": "GET /recommendations",
+          "request": { "method": "GET", "url": "{{base_url}}/recommendations?limit=10" },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "pm.test('recommendations array', () => pm.expect(pm.response.json().recommendations).to.be.an('array'));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /search (text match)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/search?q=morning&sort=_text_match&page=1&pageSize=20",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                { "key": "q", "value": "morning" },
+                { "key": "sort", "value": "_text_match" },
+                { "key": "page", "value": "1" },
+                { "key": "pageSize", "value": "20" }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 200 or 503', () => pm.expect(pm.response.code).to.be.oneOf([200, 503]));",
+                  "if (pm.response.code === 200) {",
+                  "  pm.test('results array', () => pm.expect(pm.response.json().results).to.be.an('array'));",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        },
+        {
+          "name": "GET /search (popular sort + tag filter)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/search?q=focus&tag=focus&sort=likeCount:desc",
+              "host": ["{{base_url}}"],
+              "path": ["search"],
+              "query": [
+                { "key": "q", "value": "focus" },
+                { "key": "tag", "value": "focus" },
+                { "key": "sort", "value": "likeCount:desc" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Activity",
+      "item": [
+        {
+          "name": "POST /activity",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sessionDurationSeconds\": 1200,\n  \"routinesPlayed\": [\"{{routine_id}}\"],\n  \"tagsEngaged\": [\"focus\", \"morning\"],\n  \"blockTypes\": [\"timer\", \"bell\"]\n}"
+            },
+            "url": "{{base_url}}/activity"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Status 202', () => pm.response.to.have.status(202));",
+                  "pm.test('accepted true', () => pm.expect(pm.response.json().accepted).to.eql(true));"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

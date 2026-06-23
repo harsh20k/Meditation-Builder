@@ -14,6 +14,8 @@ import os.log
 @main
 struct Meditation_BuilderApp: App {
     @State private var appLogger = AppLogger.shared
+    @State private var authManager = AuthManager()
+    @AppStorage("colorScheme") private var colorSchemeRaw: String = "system"
     private let modelContainer: ModelContainer
     
     init() {
@@ -28,21 +30,37 @@ struct Meditation_BuilderApp: App {
         RoutineDataManager.shared.configure(with: context)
     }
     
+    private var preferredColorScheme: ColorScheme? {
+        switch colorSchemeRaw {
+        case "light": return .light
+        case "dark": return .dark
+        default: return nil
+        }
+    }
+
     var body: some Scene {
         WindowGroup {
-            ContentView()
-                .statusBar(hidden: true)
-                .onAppear {
-                    logger.info("App launched", category: "AppLifecycle")
-                    
-                    // Initialize sample data if needed
-                    Task {
-                        await initializeSampleDataIfNeeded()
-                    }
+            Group {
+                if authManager.canAccessMainApp {
+                    MainTabView()
+                } else {
+                    AuthView()
                 }
-                .onDisappear {
-                    logger.info("App will disappear", category: "AppLifecycle")
+            }
+            .environment(authManager)
+            .preferredColorScheme(preferredColorScheme)
+            .statusBar(hidden: true)
+            .onAppear {
+                logger.info("App launched", category: "AppLifecycle")
+                CommunityAPIClient.shared.configure(authManager: authManager)
+
+                Task {
+                    await initializeSampleDataIfNeeded()
                 }
+            }
+            .onDisappear {
+                logger.info("App will disappear", category: "AppLifecycle")
+            }
         }
         .modelContainer(modelContainer)
         .environment(\.routineDataManager, RoutineDataManager.shared)

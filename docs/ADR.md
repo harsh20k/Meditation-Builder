@@ -132,5 +132,13 @@ Append-only log of architectural trade-offs. See `.cursor/rules/adr.mdc` for for
 **Date:** 2026-06-22
 **Decision:** Removed `AmbientSoundEngine` global mixer and Sounds tab; added `BlockMusicManager` + `musicFileName`/`musicDisplayName` per block, played via `AVAudioPlayer` looping during each block's timer.
 **Reason:** Per-block music gives users precise control over what audio plays during each meditation phase, which is a higher-value feature than a global ambient mixer unconnected to the session timer.
-**Trade-off:** Users can no longer run a global ambient sound mix independently of a session; per-block music must be imported from device storage.
 **Status:** Accepted
+
+---
+
+## ADR-016 — Python 3.12 over Node.js 22 for Lambda handlers
+**Date:** 2026-06-23
+**Decision:** Use Python 3.12 as the Lambda runtime for all API and utility handlers.
+**Reason:** Aligns handler implementation with pytest/moto testing stack, Bedrock boto3 SDK usage, and shared data-processing utilities; Python is the primary language for the Lambda agent workstream.
+**Trade-off:** Supersedes the Node.js 22 runtime mention in ADR-003 only; Lambda-over-Fargate decision unchanged. Cold-start profile differs slightly from Node.js (~250–500ms vs ~200–400ms).
+**Status:** Accepted (supersedes ADR-003 runtime only)

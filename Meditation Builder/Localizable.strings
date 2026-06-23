@@ -8,6 +8,7 @@
 
 // MARK: - Tab Bar
 "tab.library" = "Library";
+"tab.community" = "Community";
 "tab.music" = "Music";
 "tab.sounds" = "Sounds";
 "tab.timer" = "Timer";
@@ -216,4 +217,71 @@
 "ritual.statistics.modified" = "Modified";
 "ritual.statistics.lastPlayed" = "Last Played";
 "ritual.blocks.title" = "Blocks";
-"pinned.rituals.title" = "Pinned Rituals"; 
+"pinned.rituals.title" = "Pinned Rituals";
+
+// MARK: - Authentication
+"auth.title" = "Meditation Builder";
+"auth.subtitle" = "Sign in to publish rituals, like, and import from the community.";
+"auth.browse.guest" = "Browse Community as Guest";
+"auth.sign.in" = "Sign In";
+"auth.required.title" = "Sign In Required";
+"auth.required.message" = "Sign in to %@.";
+
+// MARK: - Community
+"community.coming.soon" = "Community Library";
+"community.placeholder.description" = "Browse, search, and share meditation rituals. Full experience coming in the next update.";
+"community.action.import" = "Import a Routine";
+"community.action.like" = "Like a Routine";
+"community.action.publish" = "Publish a Routine";
+"community.title" = "Community";
+"community.segment.discover" = "Discover";
+"community.segment.forYou" = "For You";
+"community.signIn.button" = "Sign In with Apple";
+"community.signIn.title" = "Sign In";
+"community.signIn.forYou" = "Sign in to see personalized recommendations based on your practice.";
+"community.signIn.actions" = "Sign in to import routines and like your favorites.";
+"community.signIn.publish" = "Sign in to publish your ritual to the Community Library.";
+"community.signIn.profile" = "Sign in to manage your published routines.";
+"community.error.title" = "Something went wrong";
+"community.recommendations.empty.title" = "No recommendations yet";
+"community.recommendations.empty.message" = "Complete a few sessions and check back for personalized picks.";
+"community.browse.empty.title" = "No routines yet";
+"community.browse.empty.message" = "Be the first to publish a ritual to the community.";
+"community.search.title" = "Search";
+"community.search.placeholder" = "Search routines…";
+"community.search.hint.title" = "Find your next practice";
+"community.search.hint.message" = "Search by name, tag, or description.";
+"community.search.empty.title" = "No results";
+"community.search.empty.message" = "Try a different search term or adjust filters.";
+"community.filter.title" = "Filters";
+"community.filter.tag" = "Tag";
+"community.filter.tag.placeholder" = "e.g. focus, sleep";
+"community.filter.duration" = "Duration";
+"community.filter.duration.enable" = "Filter by duration";
+"community.filter.sort" = "Sort by";
+"community.filter.apply" = "Apply";
+"community.sort.newest" = "Newest";
+"community.sort.popular" = "Most liked";
+"community.import.button" = "Import";
+"community.import.success.title" = "Imported";
+"community.import.success.message" = "Routine added to your local library.";
+"community.blocks.unavailable" = "Block details unavailable in preview.";
+"community.publish.title" = "Publish to Community";
+"community.publish.button" = "Publish";
+"community.publish.select.title" = "Choose a ritual to publish";
+"community.publish.select.empty" = "Create a ritual in your library first.";
+"community.publish.description.placeholder" = "Optional description for others…";
+"community.publish.publishing" = "Publishing…";
+"community.publish.tagging" = "Generating tags…";
+"community.publish.tags.pending" = "AI tags are being generated…";
+"community.publish.tags.title" = "Suggested tags";
+"community.publish.submit" = "Publish";
+"community.publish.continue" = "Continue";
+"community.publish.done.title" = "Published!";
+"community.publish.done.message" = "Your ritual is now discoverable in the Community Library.";
+"community.profile.title" = "My Published Routines";
+"community.profile.empty.title" = "Nothing published yet";
+"community.profile.empty.message" = "Publish a ritual from your library to share it with others.";
+"community.unpublish.button" = "Unpublish";
+"community.unpublish.confirm.title" = "Unpublish Routine?";
+"community.unpublish.confirm.message" = "\"%@\" will be removed from the Community Library.";

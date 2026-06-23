@@ -1,0 +1,18 @@
+# Terraform build artifacts
+.build/
+../lambdas/dist/
+../lambdas/.venv/
+
+# Terraform provider binaries and state
+.terraform/providers/
+.terraform/plugins/
+bootstrap/.terraform/providers/
+bootstrap/.terraform/plugins/
+*.tfstate
+*.tfstate.backup
+terraform.tfvars
+
+# Lambda compiled bytecode and dist zips
+../lambdas/handlers/__pycache__/
+../lambdas/shared/__pycache__/
+../lambdas/tests/unit/__pycache__/

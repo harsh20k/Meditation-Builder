@@ -1,0 +1,2 @@
+# Handler implementations live here (Python 3.12).
+# Terraform deploys from these files once implemented by the Lambda handler agent.

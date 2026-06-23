@@ -1,0 +1,4 @@
+-r ../shared/requirements.txt
+pytest>=8.0.0
+moto[dynamodb,sqs,sns,cloudfront]>=5.0.0
+fakeredis>=2.21.0
