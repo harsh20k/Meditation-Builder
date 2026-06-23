@@ -115,9 +115,10 @@ Publish a local routine to the Community Library.
 | `name` | string | Yes | 1–100 chars |
 | `blocks` | array | Yes | 1–50 blocks |
 | `blocks[].blockId` | string | Yes | |
-| `blocks[].type` | string | Yes | `timer` \| `bell` \| `ambient` |
-| `blocks[].durationSeconds` | integer | No | ≥1 for timer/ambient |
-| `blocks[].soundKey` | string | No | Required for bell/ambient |
+| `blocks[].type` | string | Yes | `timer` \| `bell` \| `music` |
+| `blocks[].durationSeconds` | integer | No | ≥1 for timer/music |
+| `blocks[].soundKey` | string | No | Required for bell blocks |
+| `blocks[].musicAssetKey` | string | No | S3 key of custom music file; required for `music` blocks |
 | `blocks[].label` | string | No | 0–80 chars |
 | `durationSeconds` | integer | Yes | ≥1 |
 | `audioAssetKeys` | string[] | No | S3 keys; max 10 |
@@ -505,7 +506,7 @@ Sync a completed meditation session's activity for recommendations.
 | `sessionDurationSeconds` | integer | Yes | ≥1 |
 | `routinesPlayed` | string[] | Yes | 1–20 routineIds |
 | `tagsEngaged` | string[] | No | ≤20 tags |
-| `blockTypes` | string[] | No | Values: `timer`, `bell`, `ambient` |
+| `blockTypes` | string[] | No | Values: `timer`, `bell`, `music` |
 
 **Success Response — 202 Accepted:**
 

@@ -127,3 +127,10 @@ Append-only log of architectural trade-offs. See `.cursor/rules/adr.mdc` for for
 **Reason:** Calling on session complete (not app open) avoids blocking the app launch UX. Fire-and-forget means a transient network failure or Lambda error does not degrade the user's meditation experience; the next session sync will cover the gap.
 **Trade-off:** A failed activity sync means that session's data is lost (not retried). The recommendation engine operates on best-effort recent activity; missing one session is acceptable given 60-day activity retention and frequent session cadence.
 **Status:** Accepted
+
+## ADR-015 — Replace session-wide ambient sound with per-block custom music
+**Date:** 2026-06-22
+**Decision:** Removed `AmbientSoundEngine` global mixer and Sounds tab; added `BlockMusicManager` + `musicFileName`/`musicDisplayName` per block, played via `AVAudioPlayer` looping during each block's timer.
+**Reason:** Per-block music gives users precise control over what audio plays during each meditation phase, which is a higher-value feature than a global ambient mixer unconnected to the session timer.
+**Trade-off:** Users can no longer run a global ambient sound mix independently of a session; per-block music must be imported from device storage.
+**Status:** Accepted

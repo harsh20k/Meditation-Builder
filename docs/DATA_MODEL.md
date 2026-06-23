@@ -148,7 +148,7 @@ One item written per tag per routine at publish time (up to 5 items per routine)
 | `sessionDurationSeconds` | N    | `1200`                       |                                      |
 | `routinesPlayed`         | SS   | `["7f3a...","9b2c..."]`      | Routine IDs                          |
 | `tagsEngaged`            | SS   | `["focus","morning"]`        | Union of tags from played routines   |
-| `blockTypes`             | SS   | `["bell","timer","ambient"]` |                                      |
+| `blockTypes`             | SS   | `["bell","timer","music"]`   |                                      |
 | `createdAt`              | S    | `2026-06-20T14:55:00Z`       |                                      |
 | `ttl`                    | N    | `1753027200`                 | 60-day expiry (Unix epoch)           |
 
@@ -292,7 +292,7 @@ DynamoDB Stream (NEW_AND_OLD_IMAGES)
 | `routinesPlayed`         | SwiftData session records      | Tag affinity, duration preference         |
 | `tagsEngaged`            | Derived from played routines   | Direct input to recommendation embedding  |
 | `sessionDurationSeconds` | SwiftData                      | Duration preference band                  |
-| `blockTypes`             | SwiftData (bell/timer/ambient) | Content-type preference                   |
+| `blockTypes`             | SwiftData (bell/timer/music)  | Content-type preference                   |
 | `importHistory`          | ImportRecord items in DynamoDB | Already recorded server-side; not re-sent |
 
 
@@ -309,7 +309,7 @@ DynamoDB Stream (NEW_AND_OLD_IMAGES)
   "sessionDurationSeconds": 1200,
   "routinesPlayed": ["7f3a...", "9b2c..."],
   "tagsEngaged": ["focus", "morning"],
-  "blockTypes": ["bell", "timer"]
+  "blockTypes": ["bell", "timer", "music"]
 }
 ```
 
@@ -326,7 +326,7 @@ EntityType = "UserActivity"
 sessionDurationSeconds = 1200
 routinesPlayed = {"7f3a...", "9b2c..."}    -- StringSet
 tagsEngaged    = {"focus", "morning"}       -- StringSet
-blockTypes     = {"bell", "timer"}          -- StringSet
+blockTypes     = {"bell", "timer", "music"}  -- StringSet
 createdAt = "2026-06-20T14:55:00Z"
 ttl = 1753027200   -- createdAt + 60 days, Unix epoch
 ```
