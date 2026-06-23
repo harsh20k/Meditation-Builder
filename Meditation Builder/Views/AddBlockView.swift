@@ -6,6 +6,7 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 import os.log
 
 struct AddBlockView: View {
@@ -13,6 +14,10 @@ struct AddBlockView: View {
     @State private var searchText = ""
     @State private var customName = ""
     @State private var customDuration = 5
+    @State private var customMusicFileName: String? = nil
+    @State private var customMusicDisplayName: String? = nil
+    @State private var showMusicPicker = false
+    @State private var musicImportError: String? = nil
     var onAdd: (RoutineBlock) -> Void
     @Environment(\.dismiss) var dismiss
     
@@ -174,13 +179,62 @@ struct AddBlockView: View {
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.lightGrey)
                             }
+
+                            // Music picker
+                            if let displayName = customMusicDisplayName {
+                                HStack(spacing: AppTheme.Spacing.medium) {
+                                    Image(systemName: "music.note")
+                                        .foregroundColor(AppTheme.accentColor)
+                                    Text(displayName)
+                                        .font(AppTheme.Typography.bodyFont)
+                                        .foregroundColor(AppTheme.offWhiteText)
+                                        .lineLimit(1)
+                                        .truncationMode(.middle)
+                                    Spacer()
+                                    Button(action: {
+                                        if let fileName = customMusicFileName {
+                                            BlockMusicManager.shared.deleteMusic(fileName: fileName)
+                                        }
+                                        customMusicFileName = nil
+                                        customMusicDisplayName = nil
+                                    }) {
+                                        Image(systemName: "xmark.circle.fill")
+                                            .foregroundColor(AppTheme.lightGrey)
+                                            .font(.system(size: 18))
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                }
+                            } else {
+                                Button(action: { showMusicPicker = true }) {
+                                    HStack(spacing: AppTheme.Spacing.medium) {
+                                        Image(systemName: "music.note")
+                                            .foregroundColor(AppTheme.accentColor)
+                                        Text("Add Music (optional)")
+                                            .font(AppTheme.Typography.bodyFont)
+                                            .foregroundColor(AppTheme.lightGrey)
+                                        Spacer()
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(AppTheme.lightGrey)
+                                    }
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+
+                            if let error = musicImportError {
+                                Text(error)
+                                    .font(AppTheme.Typography.bodyFont)
+                                    .foregroundColor(.red)
+                            }
+
                             Button(action: {
                                 let newBlock = RoutineBlock(
                                     id: UUID(),
                                     name: customName.isEmpty ? String(localized: "block.type.custom") : customName,
                                     durationInMinutes: customDuration,
                                     type: .custom,
-                                    blockStartBell: .softBell
+                                    blockStartBell: .softBell,
+                                    musicFileName: customMusicFileName,
+                                    musicDisplayName: customMusicDisplayName
                                 )
                                 logger.info("Adding custom block: \(newBlock.name) (\(customDuration) min)", category: "AddBlock")
                                 onAdd(newBlock)
@@ -211,6 +265,27 @@ struct AddBlockView: View {
                         dismiss()
                     }
                     .foregroundColor(AppTheme.accentColor)
+                }
+            }
+            .fileImporter(
+                isPresented: $showMusicPicker,
+                allowedContentTypes: [.mp3, .mpeg4Audio, .aiff, .wav, .audio],
+                allowsMultipleSelection: false
+            ) { result in
+                musicImportError = nil
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    do {
+                        let (storedFileName, displayName) = try BlockMusicManager.shared.importMusic(from: url)
+                        customMusicFileName = storedFileName
+                        customMusicDisplayName = displayName
+                    } catch {
+                        musicImportError = "Could not import file: \(error.localizedDescription)"
+                        logger.error("Music import failed: \(error.localizedDescription)", category: "AddBlock")
+                    }
+                case .failure(let error):
+                    musicImportError = "Could not open file: \(error.localizedDescription)"
                 }
             }
         }

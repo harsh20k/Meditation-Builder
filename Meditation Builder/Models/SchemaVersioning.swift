@@ -6,6 +6,8 @@
 import SwiftData
 
 // MARK: - Schema V1 (baseline)
+// Adding optional fields to @Model classes (musicFileName, musicDisplayName on MeditationBlock)
+// is handled automatically by SwiftData — no explicit versioned migration needed.
 
 enum SchemaV1: VersionedSchema {
     static var versionIdentifier = Schema.Version(1, 0, 0)

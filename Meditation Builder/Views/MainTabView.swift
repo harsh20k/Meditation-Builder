@@ -74,12 +74,6 @@ struct MainTabView: View {
                 Label(LocalizedStringKey("tab.library"), systemImage: "books.vertical.fill")
             }
 
-            Tab(value: TabSelection.music) {
-                AmbientSoundMixerView()
-            } label: {
-                Label(LocalizedStringKey("tab.sounds"), systemImage: "waveform")
-            }
-
             Tab(value: TabSelection.timer) {
                 RoutinePlayerView(modelContext: modelContext)
             } label: {
@@ -114,8 +108,6 @@ struct MainTabView: View {
                 switch selectedTab {
                 case .library:
                     RoutineLibraryView(navigationPath: $legacyNavigationPath)
-                case .music:
-                    AmbientSoundMixerView()
                 case .timer:
                     RoutinePlayerView(modelContext: modelContext)
                 case .history:

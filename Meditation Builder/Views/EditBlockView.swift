@@ -6,12 +6,15 @@
 //
 
 import SwiftUI
+import UniformTypeIdentifiers
 import os.log
 
 struct EditBlockView: View {
     @State var block: RoutineBlock
     @State private var showIconPicker = false
     @State private var showBellPicker = false
+    @State private var showMusicPicker = false
+    @State private var musicImportError: String? = nil
     var onSave: (RoutineBlock) -> Void
     @Environment(\.dismiss) var dismiss
     
@@ -21,6 +24,7 @@ struct EditBlockView: View {
                 AppTheme.backgroundColor.ignoresSafeArea()
                 VStack(spacing: AppTheme.Spacing.section) {
                     VStack(spacing: AppTheme.Spacing.extraLarge) {
+                        // Icon + Name
                         HStack(spacing: AppTheme.Spacing.medium) {
                             Button(action: { showIconPicker = true }) {
                                 ZStack {
@@ -43,6 +47,7 @@ struct EditBlockView: View {
                         }
                         .padding(.horizontal, AppTheme.Spacing.small)
                         
+                        // Duration
                         Stepper(value: $block.durationInMinutes, in: 1...60) {
                             Text(String.localizedStringWithFormat(
                                 String(localized: "duration.with.value.format"),
@@ -60,9 +65,9 @@ struct EditBlockView: View {
                                     .font(.system(size: 16, weight: .medium))
                                     .foregroundColor(AppTheme.accentColor)
                                 Text(String.localizedStringWithFormat(
-                    NSLocalizedString("edit.block.start.bell.format", comment: "Start bell display"),
-                    block.blockStartBell.displayName
-                ))
+                                    NSLocalizedString("edit.block.start.bell.format", comment: "Start bell display"),
+                                    block.blockStartBell.displayName
+                                ))
                                     .font(AppTheme.Typography.bodyFont)
                                     .foregroundColor(AppTheme.lightGrey)
                                 Spacer()
@@ -73,6 +78,64 @@ struct EditBlockView: View {
                             .padding(.horizontal, AppTheme.Spacing.small)
                         }
                         .buttonStyle(PlainButtonStyle())
+
+                        // Music Selection
+                        Divider()
+                            .background(Color.white.opacity(0.1))
+                            .padding(.horizontal, AppTheme.Spacing.small)
+
+                        if let displayName = block.musicDisplayName {
+                            // Music file set — show name + clear button
+                            HStack(spacing: AppTheme.Spacing.medium) {
+                                Image(systemName: "music.note")
+                                    .font(.system(size: 16, weight: .medium))
+                                    .foregroundColor(AppTheme.accentColor)
+                                Text(displayName)
+                                    .font(AppTheme.Typography.bodyFont)
+                                    .foregroundColor(AppTheme.offWhiteText)
+                                    .lineLimit(1)
+                                    .truncationMode(.middle)
+                                Spacer()
+                                Button(action: {
+                                    if let fileName = block.musicFileName {
+                                        BlockMusicManager.shared.deleteMusic(fileName: fileName)
+                                    }
+                                    block.musicFileName = nil
+                                    block.musicDisplayName = nil
+                                }) {
+                                    Image(systemName: "xmark.circle.fill")
+                                        .foregroundColor(AppTheme.lightGrey)
+                                        .font(.system(size: 18))
+                                }
+                                .buttonStyle(PlainButtonStyle())
+                            }
+                            .padding(.horizontal, AppTheme.Spacing.small)
+                        } else {
+                            // No music — show picker button
+                            Button(action: { showMusicPicker = true }) {
+                                HStack(spacing: AppTheme.Spacing.medium) {
+                                    Image(systemName: "music.note")
+                                        .font(.system(size: 16, weight: .medium))
+                                        .foregroundColor(AppTheme.accentColor)
+                                    Text("Add Music")
+                                        .font(AppTheme.Typography.bodyFont)
+                                        .foregroundColor(AppTheme.lightGrey)
+                                    Spacer()
+                                    Image(systemName: "chevron.right")
+                                        .font(.system(size: 14, weight: .medium))
+                                        .foregroundColor(AppTheme.lightGrey)
+                                }
+                                .padding(.horizontal, AppTheme.Spacing.small)
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                        }
+
+                        if let error = musicImportError {
+                            Text(error)
+                                .font(AppTheme.Typography.bodyFont)
+                                .foregroundColor(.red)
+                                .padding(.horizontal, AppTheme.Spacing.small)
+                        }
                     }
                     .padding(.vertical, AppTheme.Spacing.extraLarge)
                     .padding(.horizontal, AppTheme.Spacing.medium)
@@ -123,6 +186,27 @@ struct EditBlockView: View {
                     block.blockStartBell = selectedBell
                 }
             }
+            .fileImporter(
+                isPresented: $showMusicPicker,
+                allowedContentTypes: [.mp3, .mpeg4Audio, .aiff, .wav, .audio],
+                allowsMultipleSelection: false
+            ) { result in
+                musicImportError = nil
+                switch result {
+                case .success(let urls):
+                    guard let url = urls.first else { return }
+                    do {
+                        let (storedFileName, displayName) = try BlockMusicManager.shared.importMusic(from: url)
+                        block.musicFileName = storedFileName
+                        block.musicDisplayName = displayName
+                    } catch {
+                        musicImportError = "Could not import file: \(error.localizedDescription)"
+                        logger.error("Music import failed: \(error.localizedDescription)", category: "EditBlock")
+                    }
+                case .failure(let error):
+                    musicImportError = "Could not open file: \(error.localizedDescription)"
+                }
+            }
         }
     }
 }
@@ -167,4 +251,4 @@ struct EditBlockView: View {
     ) { updatedBlock in
         print("Block updated: \(updatedBlock.name) - \(updatedBlock.durationInMinutes) minutes")
     }
-} 
+}

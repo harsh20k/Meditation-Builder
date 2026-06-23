@@ -43,45 +43,28 @@ enum BlockContentType: String, Codable, CaseIterable {
     case audio = "audio"
     /// Video content for visual meditation guidance
     case video = "video"
-    /// Ambient background sounds (nature, white noise, etc.)
-    case ambient = "ambient"
     
-    /**
-     * User-friendly display name for the content type.
-     * Uses localized strings for internationalization.
-     */
     var displayName: String {
         switch self {
         case .bell: return String(localized: "content.type.bell")
         case .audio: return String(localized: "content.type.audio")
         case .video: return String(localized: "content.type.video")
-        case .ambient: return String(localized: "content.type.ambient")
         }
     }
     
-    /**
-     * Localized string key for use in SwiftUI views.
-     * Provides type-safe localization support.
-     */
     var titleKey: LocalizedStringKey {
         switch self {
         case .bell: return LocalizedStringKey("content.type.bell")
         case .audio: return LocalizedStringKey("content.type.audio")
         case .video: return LocalizedStringKey("content.type.video")
-        case .ambient: return LocalizedStringKey("content.type.ambient")
         }
     }
     
-    /**
-     * SF Symbol icon name associated with this content type.
-     * Used for visual representation in the UI.
-     */
     var icon: String {
         switch self {
         case .bell: return "bell.fill"
         case .audio: return "waveform"
         case .video: return "video.fill"
-        case .ambient: return "speaker.wave.3.fill"
         }
     }
 }

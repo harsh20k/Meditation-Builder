@@ -67,6 +67,11 @@ struct RoutineBuilderView: View {
     func deleteBlock(_ block: RoutineBlock) {
         logger.info("Deleting block: \(block.name)", category: "RoutineBuilder")
         
+        // Remove associated music file from disk
+        if let fileName = block.musicFileName {
+            BlockMusicManager.shared.deleteMusic(fileName: fileName)
+        }
+
         // Reset open swipe state
         openSwipeCardID = nil
         

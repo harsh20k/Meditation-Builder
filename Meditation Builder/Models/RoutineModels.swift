@@ -85,6 +85,12 @@ final class MeditationBlock: Identifiable {
     
     /// Whether this block is marked as favorite
     var isFavorite: Bool = false
+
+    /// Stored filename (UUID + ext) of the custom music file in BlockMusic directory. Nil means no music.
+    var musicFileName: String? = nil
+
+    /// Original display name of the imported music file (shown in UI).
+    var musicDisplayName: String? = nil
     
     /// Associated media resources (cascade deleted when block is deleted)
     @Relationship(deleteRule: .cascade) var media: [MediaResource]
@@ -93,21 +99,7 @@ final class MeditationBlock: Identifiable {
     @Relationship(deleteRule: .nullify, inverse: \Theme.blocks)
     var theme: Theme?
     
-    /**
-     * Initializes a new meditation block.
-     *
-     * - Parameters:
-     *   - id: Unique identifier (auto-generated if not provided)
-     *   - name: Human-readable name for the block
-     *   - durationInMinutes: Planned duration in minutes
-     *   - type: The type of meditation technique
-     *   - blockStartBell: Bell sound for block start (defaults to .default)
-     *   - blockIcon: SF Symbol icon name (defaults to type.icon if nil)
-     *   - orderIndex: Position within routine (defaults to 0)
-     *   - isFavorite: Whether this block is marked as favorite (defaults to false)
-     *   - media: Associated media resources (defaults to empty array)
-     */
-    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, orderIndex: Int = 0, isFavorite: Bool = false, media: [MediaResource] = []) {
+    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, orderIndex: Int = 0, isFavorite: Bool = false, media: [MediaResource] = [], musicFileName: String? = nil, musicDisplayName: String? = nil) {
         self.id = id
         self.name = name
         self.durationInMinutes = durationInMinutes
@@ -117,6 +109,8 @@ final class MeditationBlock: Identifiable {
         self.orderIndex = orderIndex
         self.isFavorite = isFavorite
         self.media = media
+        self.musicFileName = musicFileName
+        self.musicDisplayName = musicDisplayName
     }
     
     // MARK: - Block Type
@@ -374,21 +368,14 @@ struct RoutineBlock: Identifiable, Equatable, Codable, Transferable, Sendable {
     
     /// Whether this block is marked as favorite
     var isFavorite: Bool = false
-    
-    /**
-     * Initializes a new routine block value.
-     *
-     * - Parameters:
-     *   - id: Unique identifier (auto-generated if not provided)
-     *   - name: Human-readable name for the block
-     *   - durationInMinutes: Planned duration in minutes
-     *   - type: The type of meditation technique
-     *   - blockStartBell: Bell sound for block start (defaults to .default)
-     *   - blockIcon: SF Symbol icon name (defaults to type.icon if nil)
-     *   - media: Associated media resources (defaults to empty array)
-     *   - isFavorite: Whether this block is marked as favorite (defaults to false)
-     */
-    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: MeditationBlock.BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, media: [MediaInfo] = [], isFavorite: Bool = false) {
+
+    /// Stored filename of the custom music file (UUID + ext). Nil means no music.
+    var musicFileName: String? = nil
+
+    /// Original display name of the imported music file (shown in UI).
+    var musicDisplayName: String? = nil
+
+    init(id: UUID = UUID(), name: String, durationInMinutes: Int, type: MeditationBlock.BlockType, blockStartBell: BellSound = .default, blockIcon: String? = nil, media: [MediaInfo] = [], isFavorite: Bool = false, musicFileName: String? = nil, musicDisplayName: String? = nil) {
         self.id = id
         self.name = name
         self.durationInMinutes = durationInMinutes
@@ -397,6 +384,8 @@ struct RoutineBlock: Identifiable, Equatable, Codable, Transferable, Sendable {
         self.blockIcon = blockIcon ?? type.icon
         self.media = media
         self.isFavorite = isFavorite
+        self.musicFileName = musicFileName
+        self.musicDisplayName = musicDisplayName
     }
 
     static var transferRepresentation: some TransferRepresentation {
@@ -594,7 +583,9 @@ final class SavedRoutine: Identifiable {
                             url: media.url
                         )
                     },
-                    isFavorite: block.isFavorite
+                    isFavorite: block.isFavorite,
+                    musicFileName: block.musicFileName,
+                    musicDisplayName: block.musicDisplayName
                 )
             },
             openingBell: openingBell,
@@ -664,8 +655,10 @@ final class SavedRoutine: Identifiable {
                 existingBlock.type = routineBlock.type
                 existingBlock.blockStartBell = routineBlock.blockStartBell
                 existingBlock.blockIcon = routineBlock.blockIcon
-                existingBlock.orderIndex = index  // Set the order based on position
+                existingBlock.orderIndex = index
                 existingBlock.isFavorite = routineBlock.isFavorite
+                existingBlock.musicFileName = routineBlock.musicFileName
+                existingBlock.musicDisplayName = routineBlock.musicDisplayName
                 
                 // Update media for this block
                 updateBlockMedia(existingBlock, from: routineBlock.media)
@@ -692,7 +685,9 @@ final class SavedRoutine: Identifiable {
                             url: mediaInfo.url,
                             orderIndex: mediaIndex
                         )
-                    }
+                    },
+                    musicFileName: routineBlock.musicFileName,
+                    musicDisplayName: routineBlock.musicDisplayName
                 )
                 newBlocks.append(newBlock)
             }
@@ -895,19 +890,6 @@ extension MediaInfo {
         ]
     }
     
-    /**
-     * Sample ambient sounds for demonstration.
-     *
-     * - Returns: Array of sample ambient sound media infos
-     */
-    static func sampleAmbientSounds() -> [MediaInfo] {
-        [
-            MediaInfo(type: .ambient, name: "Rain Loop", fileName: "rain_loop.mp3"),
-            MediaInfo(type: .ambient, name: "Ocean Waves", fileName: "ocean_waves.mp3"),
-            MediaInfo(type: .ambient, name: "Forest Birds", fileName: "forest_birds.mp3"),
-            MediaInfo(type: .ambient, name: "White Noise", fileName: "white_noise.mp3")
-        ]
-    }
     
     /**
      * Sample guided audio for demonstration.

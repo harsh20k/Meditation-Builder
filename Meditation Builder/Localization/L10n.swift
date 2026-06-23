@@ -103,5 +103,4 @@ enum L10n {
     static let contentTypeBell = "content_type_bell"
     static let contentTypeAudio = "content_type_audio"
     static let contentTypeVideo = "content_type_video"
-    static let contentTypeAmbient = "content_type_ambient"
 } 

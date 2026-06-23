@@ -8,6 +8,7 @@
 import Foundation
 import SwiftUI
 import SwiftData
+import AVFoundation
 
 /**
  * SessionModels.swift
@@ -827,6 +828,9 @@ class RoutinePlayerViewModel {
      * Handles all bell audio events in sync with routine playback.
      */
     private let bellManager = AuditoriumEngine()
+
+    /// Plays the custom music track for the current block (loops indefinitely).
+    private var musicPlayer: AVAudioPlayer?
     
     // MARK: - 2. Debug/Configuration
     /**
@@ -1038,6 +1042,24 @@ class RoutinePlayerViewModel {
         currentTime = Date()
         blockPausedTime = 0
         logger.info("Starting block: \(block.name)", category: "Timer")
+        startBlockMusic(for: block)
+    }
+
+    private func startBlockMusic(for block: RoutineBlock) {
+        musicPlayer?.stop()
+        musicPlayer = nil
+        guard let fileName = block.musicFileName,
+              let url = BlockMusicManager.shared.musicURL(for: fileName) else { return }
+        do {
+            let player = try AVAudioPlayer(contentsOf: url)
+            player.numberOfLoops = -1
+            player.prepareToPlay()
+            player.play()
+            musicPlayer = player
+            logger.info("Playing music '\(block.musicDisplayName ?? fileName)' for block '\(block.name)'", category: "Timer")
+        } catch {
+            logger.error("Failed to play music for block '\(block.name)': \(error.localizedDescription)", category: "Timer")
+        }
     }
     func togglePause() {
         guard routine != nil else { return }
@@ -1047,6 +1069,7 @@ class RoutinePlayerViewModel {
             actualMeditationTimeAtPause = Int(pausedDate!.timeIntervalSince(routineStartDate) - totalPausedTime)
             sessionRecord?.addEvent(.pause(pausedDate!))
             logger.info("Timer paused", category: "Timer")
+            musicPlayer?.pause()
             // Pause bell playback
             _ = bellManager.pauseRoutine()
         } else {
@@ -1063,6 +1086,7 @@ class RoutinePlayerViewModel {
                 pausedDate = nil
                 sessionRecord?.addEvent(.resume(resumeTime))
                 logger.info("Timer resumed", category: "Timer")
+                musicPlayer?.play()
                 // Resume bell playback
                 _ = bellManager.resumeRoutine()
             } else {
@@ -1112,6 +1136,8 @@ class RoutinePlayerViewModel {
     }
     /// Cleans up resources and timers (called on view disappear)
     func cleanup() {
+        musicPlayer?.stop()
+        musicPlayer = nil
         bellManager.stop()
     }
     
