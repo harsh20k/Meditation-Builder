@@ -28,11 +28,27 @@ def _to_response(item: dict[str, Any], *, sub: str | None) -> dict[str, Any]:
     tags = item.get("tags") or []
     if isinstance(tags, set):
         tags = sorted(tags)
+    elif isinstance(tags, str):
+        # Stale cache entry: set was serialized as str literal e.g. "{'focus', 'morning'}"
+        import ast
+        try:
+            parsed = ast.literal_eval(tags)
+            tags = sorted(parsed) if isinstance(parsed, (set, list)) else []
+        except Exception:
+            tags = []
     audio = item.get("audioAssetKeys") or []
     if isinstance(audio, set):
         audio = sorted(audio)
+    elif isinstance(audio, str):
+        import ast
+        try:
+            parsed = ast.literal_eval(audio)
+            audio = sorted(parsed) if isinstance(parsed, (set, list)) else []
+        except Exception:
+            audio = []
+    routine_id = item["routineId"]
     payload = {
-        "routineId": item["routineId"],
+        "routineId": routine_id,
         "name": item.get("name", ""),
         "description": item.get("description", ""),
         "tags": tags,
@@ -40,7 +56,9 @@ def _to_response(item: dict[str, Any], *, sub: str | None) -> dict[str, Any]:
         "blocks": _parse_blocks(item.get("blocks")),
         "authorName": item.get("authorName", ""),
         "authorSub": item.get("authorSub", ""),
-        "likeCount": int(item.get("likeCount", 0)),
+        "likeCount": redis_client.effective_like_count(
+            routine_id, int(item.get("likeCount", 0))
+        ),
         "importCount": int(item.get("importCount", 0)),
         "audioAssetKeys": audio,
         "publishedAt": item.get("publishedAt"),
@@ -58,7 +76,11 @@ def _to_response(item: dict[str, Any], *, sub: str | None) -> dict[str, Any]:
 
 def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     request_id = response.get_request_id(event)
-    sub = auth.get_sub(event)
+    sub, invalid_token = auth.optional_sub(event)
+    if invalid_token:
+        return response.error(
+            401, "UNAUTHORIZED", "Invalid token.", request_id=request_id
+        )
     try:
         routine_id = (event.get("pathParameters") or {}).get("id", "")
         if not UUID_RE.match(routine_id):
@@ -82,7 +104,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
             200,
             body,
             request_id=request_id,
-            headers={"Cache-Control": "max-age=300, s-maxage=300"},
+            headers={"Cache-Control": "private, no-store"},
         )
     except Exception:
         logger.exception("get_routine failed requestId=%s", request_id)

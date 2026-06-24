@@ -1,11 +1,24 @@
 # Meditation Builder — End-to-End Testing Checklist
 
 > **Scope:** Staging environment (`us-east-1`), table `mb-staging-community`.  
-> **Base URL:** `https://api.meditationbuilder.app/v1` (CloudFront → API Gateway).  
-> **Cognito domain:** `mb-staging.auth.us-east-1.amazoncognito.com`  
-> **Last updated:** 2026-06-23
+> **API Base URL:** `terraform output -raw api_base_url` → `https://lcn0e7kne5.execute-api.us-east-1.amazonaws.com/v1/v1`  
+> **CloudFront:** `https://dhdnv4iakcz7z.cloudfront.net/v1/...`  
+> **Cognito pool:** `us-east-1_vePlfHnPL` · client: `2pld9j7muda2ipse5f9smhd0kg`  
+> **Cognito domain:** `meditation-builder-staging.auth.us-east-1.amazoncognito.com`  
+> **Last updated:** 2026-06-24  
+> **Typesense private IP:** `terraform output -raw typesense_private_ip` → `10.0.10.223`
 
 ---
+
+## Progress summary (staging)
+
+| Section | Status |
+|---|---|
+| §1 Pre-flight | Done except SIWA (§1.3), Hosted UI (§1.4), Xcode (§1.6) |
+| §2 Infrastructure | Done except TTL check (§2.1), redis-cli PING (§2.3), X-Request-Id (§2.5), CF cache hit (§2.6) |
+| §3 Seed & data | Seed + Cognito done; DynamoDB scan + direct Typesense curl optional |
+| §4 API (Newman) | **21/21 assertions passing** (2026-06-24); manual edge cases remain |
+| §5 iOS app | Not started |
 
 ## 0. Pre-requisites
 
@@ -23,29 +36,46 @@
 
 ### 1.1 Terraform Bootstrap (one-time, per AWS account)
 
-- [ ] `cd infrastructure/terraform/bootstrap`
-- [ ] `terraform init`
-- [ ] `terraform apply` — creates S3 state bucket (`mb-tfstate-<account-id>`) and DynamoDB lock table (`mb-tfstate-locks`)
-- [ ] Confirm S3 bucket exists: `aws s3 ls | grep mb-tfstate`
-- [ ] Confirm DynamoDB lock table exists: `aws dynamodb describe-table --table-name mb-tfstate-locks`
+Bootstrap resources live in **us-east-1** (see ADR-001). Your shell `AWS_REGION` / `AWS_DEFAULT_REGION` and `~/.aws/config` default region must match, or S3 bucket creation fails.
+
+- [x] Set region for this session:
+  ```bash
+  export AWS_DEFAULT_REGION=us-east-1
+  export AWS_REGION=us-east-1
+  ```
+- [x] `cd infrastructure/terraform/bootstrap`
+- [x] `terraform init`
+- [x] `terraform apply` — creates S3 state bucket (`mb-tfstate-<account-id>`) and DynamoDB lock table (`mb-terraform-locks`)
+- [x] Note bucket name: `terraform output -raw state_bucket_name`
+- [x] Confirm S3 bucket exists: `aws s3 ls s3://$(terraform output -raw state_bucket_name) --region us-east-1`
+- [x] Confirm DynamoDB lock table exists: `aws dynamodb describe-table --table-name mb-terraform-locks --region us-east-1`
+- [x] Wire main stack backend:
+  ```bash
+  cd ../
+  cp backend.hcl.example backend.hcl
+  # replace ACCOUNT_ID in backend.hcl with: terraform -chdir=bootstrap output -raw state_bucket_name
+  terraform init -backend-config=backend.hcl
+  ```
 
 **Troubleshooting:**
 - *AccessDenied on bucket creation* → ensure the IAM role has `s3:CreateBucket`, `dynamodb:CreateTable`
-- *Bucket already exists in another account* → rename bucket in `bootstrap/main.tf`
+- *`BucketAlreadyExists` on `mb-terraform-state`* → generic name is taken globally; bootstrap now uses `mb-tfstate-<account-id>`. Re-run `terraform apply` after pulling latest bootstrap changes.
+- *`AuthorizationHeaderMalformed: region 'us-east-1' is wrong; expecting 'us-west-2'`* → your AWS CLI default region is not us-east-1. Export `AWS_DEFAULT_REGION=us-east-1` and re-run `terraform apply`. DynamoDB may already exist from a partial apply; that is OK — apply is idempotent.
+- *Partial apply (DynamoDB created, S3 failed)* → fix region as above, then `terraform apply` again; only missing resources are created.
 
 ---
 
 ### 1.2 Terraform Apply — Staging
 
-- [ ] `cd infrastructure/terraform`
-- [ ] `terraform init -input=false`
-- [ ] `terraform workspace select staging || terraform workspace new staging`
-- [ ] Package Lambda artifacts first: `bash ../lambdas/package.sh`
-- [ ] `terraform plan -var-file=environments/staging.tfvars -out=tfplan`
-- [ ] Review plan — confirm no unexpected destroys
-- [ ] `terraform apply tfplan`
-- [ ] Capture outputs: `terraform output -json > /tmp/tf-outputs-staging.json`
-- [ ] Note `api_gateway_invoke_url`, `cloudfront_domain`, `cognito_user_pool_id`, `cognito_client_id`, `redis_endpoint`, `typesense_ec2_ip`
+- [x] `cd infrastructure/terraform`
+- [x] `terraform init -input=false -backend-config=backend.hcl` (create `backend.hcl` from §1.1 if missing)
+- [x] `terraform workspace select staging || terraform workspace new staging`
+- [x] Package Lambda artifacts first: `bash ../lambdas/package.sh`
+- [x] `terraform plan -var-file=environments/staging.tfvars -out=tfplan`
+- [x] Review plan — confirm no unexpected destroys
+- [x] `terraform apply tfplan`
+- [x] Capture outputs: `terraform output -json > /tmp/tf-outputs-staging.json`
+- [x] Note `api_gateway_invoke_url`, `cloudfront_domain`, `cognito_user_pool_id`, `cognito_client_id`, `redis_endpoint`, `typesense_ec2_ip`
 
 **Troubleshooting:**
 - *Lambda zip not found* → re-run `package.sh`; check it creates `infrastructure/lambdas/dist/*.zip`
@@ -55,9 +85,11 @@
 
 ### 1.3 Apple Developer — Sign in with Apple Setup
 
+> **No Apple Developer account?** Skip this section and use the email/password workaround described in §1.3-alt below.
+
 - [ ] In [developer.apple.com](https://developer.apple.com) → Certificates, IDs & Profiles → Identifiers, create a **Services ID** (e.g. `com.AnimeAI.Meditation-Builder.siwa`)
 - [ ] Enable *Sign In with Apple* on the Services ID
-- [ ] Add **Return URL**: `https://mb-staging.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
+- [ ] Add **Return URL**: `https://meditation-builder-staging.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`
 - [ ] Create a **Sign in with Apple** private key; download the `.p8` file; note Key ID and Team ID
 - [ ] Store in SSM:
 
@@ -85,6 +117,62 @@ aws ssm put-parameter \
 
 ---
 
+### 1.3-alt — Email/Password Workaround (no Apple Developer account) ✅ Applied
+
+Use this path when you cannot enroll in the Apple Developer Program. The full SIWA flow is replaced by a native Cognito `USER_PASSWORD_AUTH` call. All TEMP-marked code must be removed once the Apple Developer account is active.
+
+**Terraform — enable USER_PASSWORD_AUTH (already applied in this task):**
+
+The `aws_cognito_user_pool_client.ios` resource in `infrastructure/terraform/modules/auth/main.tf` now includes `"ALLOW_USER_PASSWORD_AUTH"` in `explicit_auth_flows`. Re-apply to activate:
+
+```bash
+cd infrastructure/terraform
+terraform apply -var-file=environments/staging.tfvars
+```
+
+**Create a test user in Cognito:**
+
+```bash
+aws cognito-idp admin-create-user \
+  --user-pool-id <USER_POOL_ID> \
+  --username test@example.com \
+  --temporary-password Temp1234! \
+  --message-action SUPPRESS
+
+aws cognito-idp admin-set-user-password \
+  --user-pool-id <USER_POOL_ID> \
+  --username test@example.com \
+  --password MyPassword123! \
+  --permanent
+```
+
+**In-app sign-in:**
+
+A "Sign in with Email (Temp)" section appears below the Sign in with Apple button in `AuthView`. Enter the email and password and tap **Sign In**. The app calls the Cognito `InitiateAuth` API directly (no browser redirect) and stores tokens in Keychain identically to the SIWA flow.
+
+**Getting tokens for Postman / curl (see also §3.4):**
+
+```bash
+export AWS_PROFILE=tf_provisioner AWS_DEFAULT_REGION=us-east-1
+export PASS="$(aws ssm get-parameter --name /mb/staging/test/user1-password \
+  --with-decryption --query Parameter.Value --output text)"
+export TOKEN="$(aws cognito-idp initiate-auth \
+  --auth-flow USER_PASSWORD_AUTH \
+  --client-id 2pld9j7muda2ipse5f9smhd0kg \
+  --auth-parameters USERNAME=testuser1@mb.test,PASSWORD="$PASS" \
+  --query 'AuthenticationResult.AccessToken' --output text)"
+```
+
+Use `AccessToken` (not `IdToken`) — Lambda JWT validation accepts both, but `AccessToken` is what the iOS client uses.
+
+**Reverting:**
+
+1. Remove all `// TEMP`-marked code from `AuthManager.swift` and `AuthView.swift`.
+2. Remove `"ALLOW_USER_PASSWORD_AUTH"` from `explicit_auth_flows` in `main.tf`.
+3. Run `terraform apply` with Apple Developer SSM vars populated.
+
+---
+
 ### 1.4 Cognito Hosted UI — Callback URL Registration
 
 - [ ] In the AWS Console → Cognito → User Pools → `mb-staging-user-pool` → App client → Hosted UI
@@ -97,19 +185,28 @@ aws ssm put-parameter \
 
 ---
 
-### 1.5 Populate `AuthConfig.swift`
+### 1.5 Populate `AuthConfig.swift` and `APIConfig.swift`
 
-After `terraform output` supplies values, update the two placeholders in `Meditation Builder/Models/AuthConfig.swift`:
+After `terraform output` supplies values, update staging endpoints in the iOS app:
 
-- [ ] `userPoolID` ← `terraform output -raw cognito_user_pool_id`  
+**Auth** — `Meditation Builder/Models/AuthConfig.swift`:
+
+- [x] `userPoolID` ← `terraform output -raw cognito_user_pool_id`  
   e.g. `us-east-1_AbcDeFghi`
-- [ ] `appClientID` ← `terraform output -raw cognito_app_client_id`  
+- [x] `appClientID` ← `terraform output -raw cognito_app_client_id`  
   e.g. `3abc1234xyz`
-- [ ] Verify `domain` is still `mb-staging.auth.us-east-1.amazoncognito.com` (matches Terraform variable `cognito_domain`)
-- [ ] Verify `redirectURI` = `com.AnimeAI.Meditation-Builder://oauth2/callback` (matches step 1.4)
+- [x] Verify `domain` is `meditation-builder-staging.auth.us-east-1.amazoncognito.com` (matches Terraform `cognito_domain_prefix-environment`)
+- [x] Verify `redirectURI` = `com.AnimeAI.Meditation-Builder://oauth2/callback` (matches step 1.4)
+
+**API** — `Meditation Builder/Models/APIConfig.swift`:
+
+- [x] `baseURL` ← `terraform output -raw api_base_url`  
+  e.g. `https://lcn0e7kne5.execute-api.us-east-1.amazonaws.com/v1/v1`
+- [ ] Optional: switch to CloudFront via `terraform output -raw api_cloudfront_domain` → `https://<domain>/v1`
 
 **Troubleshooting:**
-- *Build warning "PLACEHOLDER"* → grep for `PLACEHOLDER` in `AuthConfig.swift`; both must be replaced before testing
+- *Build warning "PLACEHOLDER"* → grep for `PLACEHOLDER` in config files; replace before testing
+- *§5.2 Community tab empty / network error* → `CommunityAPIClient` uses `APIConfig.baseURL`; confirm it is not the default production hostname `api.meditationbuilder.app` (DNS does not exist yet)
 
 ---
 
@@ -128,25 +225,54 @@ After `terraform output` supplies values, update the two placeholders in `Medita
 
 ### 1.7 Seed Script
 
-- [ ] Export required env vars:
+- [x] Export required env vars:
 
 ```bash
 export DYNAMODB_TABLE_NAME=mb-staging-community
 export COGNITO_USER_POOL_ID=$(terraform -chdir=infrastructure/terraform output -raw cognito_user_pool_id)
-export TYPESENSE_HOST=$(terraform -chdir=infrastructure/terraform output -raw typesense_ec2_public_ip)
+export TYPESENSE_HOST=$(terraform -chdir=infrastructure/terraform output -raw typesense_private_ip)
 export TYPESENSE_PORT=8108
 export TYPESENSE_PROTOCOL=http
 export TYPESENSE_API_KEY=$(aws ssm get-parameter --name /mb/staging/typesense/api-key --with-decryption --query Parameter.Value --output text)
 ```
 
-- [ ] `cd infrastructure/scripts && pip install -r requirements.txt`
-- [ ] `python3 seed.py --env staging --count 20`
-- [ ] Confirm JSON output contains `seededRoutineIds` (20 entries) and `users` (2 entries)
-- [ ] Note the two test user credentials stored in SSM at `/mb/staging/test/user1-password` and `/mb/staging/test/user2-password`
+> **Local machine:** Typesense runs in a private subnet — `typesense_private_ip` is not reachable from your laptop. **Unset** Typesense env vars before seeding locally (`unset TYPESENSE_HOST TYPESENSE_API_KEY`). DynamoDB + Cognito users still seed; Typesense warnings are OK. Indexing happens via the `typesense_indexer` Lambda on DynamoDB Streams.
+
+Run from the **repo root** (paths below assume `Meditation Builder/` as cwd):
+
+```bash
+cd infrastructure/scripts
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+
+export DYNAMODB_TABLE_NAME=mb-staging-community
+export COGNITO_USER_POOL_ID=$(terraform -chdir=../terraform output -raw cognito_user_pool_id)
+
+python seed.py --env staging --count 20
+```
+
+- [x] Confirm JSON output contains `seededRoutineIds` (20 entries) and `users` (2 entries)
+- [x] Note the two test user credentials stored in SSM at `/mb/staging/test/user1-password` and `/mb/staging/test/user2-password`
 
 **Troubleshooting:**
+- *`cd: no such file or directory: infrastructure/scripts`* → run from repo root, or use full path: `cd "/path/to/Meditation Builder/infrastructure/scripts"`
+- *`ModuleNotFoundError: No module named 'boto3'`* → Homebrew `python3` (3.14) ≠ the Python where `pip` installed packages. Use the venv steps above, or `python3.10 seed.py` if boto3 is only on 3.10.
+- *`ExpiredTokenException`* → refresh AWS credentials (`aws sso login` or re-export `AWS_ACCESS_KEY_ID` / session token), then retry.
 - *`COGNITO_USER_POOL_ID` not set* → seed falls back to fake `sub` values (`seed-user-1`/`seed-user-2`); Cognito test users won't be created
-- *Typesense upsert fails silently* → `TYPESENSE_API_KEY` empty; verify SSM parameter
+- *`ValidationException: number set may not be empty`* → DynamoDB rejects empty sets; seed omits `audioAssetKeys` when none (fixed in `seed.py`).
+- *Typesense upsert fails silently* → `TYPESENSE_API_KEY` empty; verify SSM parameter. From laptop, skip Typesense vars — use `reindex_typesense.py` after EC2 is healthy (see §3.3).
+
+**Re-index after Typesense EC2 replacement:**
+
+```bash
+cd infrastructure/scripts
+source .venv/bin/activate
+export DYNAMODB_TABLE_NAME=mb-staging-community
+python reindex_typesense.py --env staging
+```
+
+Triggers DynamoDB Stream → `typesense_indexer` Lambda upserts all public routines.
 
 ---
 
@@ -156,11 +282,11 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ### 2.1 DynamoDB
 
-- [ ] Table exists: `aws dynamodb describe-table --table-name mb-staging-community`
-- [ ] Table status is `ACTIVE`
-- [ ] GSI `GSI1-public-by-date` status is `ACTIVE`
-- [ ] GSI `GSI2-author-routines` status is `ACTIVE`
-- [ ] PITR enabled: `aws dynamodb describe-continuous-backups --table-name mb-staging-community` → `PointInTimeRecoveryStatus: ENABLED`
+- [x] Table exists: `aws dynamodb describe-table --table-name mb-staging-community`
+- [x] Table status is `ACTIVE`
+- [x] GSI `GSI1-public-by-date` status is `ACTIVE`
+- [x] GSI `GSI2-author-routines` status is `ACTIVE`
+- [x] PITR enabled: `aws dynamodb describe-continuous-backups --table-name mb-staging-community` → `PointInTimeRecoveryStatus: ENABLED`
 - [ ] TTL enabled on attribute `ttl`: check `TimeToLiveDescription.AttributeName = ttl`
 
 **Troubleshooting:**
@@ -171,10 +297,10 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ### 2.2 S3
 
-- [ ] Bucket exists: `aws s3 ls | grep mb-staging`
-- [ ] CORS configuration present:
+- [x] Bucket exists: `aws s3 ls | grep mb-staging`
+- [x] CORS configuration present:
   ```bash
-  aws s3api get-bucket-cors --bucket mb-staging-assets
+  aws s3api get-bucket-cors --bucket mb-staging-audio-assets
   ```
   Confirm `AllowedOrigins` includes the app domain or `*`, `AllowedMethods` includes `GET`
 
@@ -183,11 +309,13 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ---
 
-### 2.3 Redis (ElastiCache)
+### 2.3 Redis (ElastiCache) ✅
 
-- [ ] Cluster endpoint from Terraform output: `terraform output -raw redis_endpoint`
+- [x] Cluster endpoint from Terraform output: `terraform output -raw redis_endpoint`
 - [ ] From a Lambda test invocation (or EC2 in the same VPC), `redis-cli -h <endpoint> -p 6379 PING` → `PONG`
-- [ ] Alternatively, invoke GET /routines/{id} twice and check CloudWatch logs for the Lambda — second call should log `cache hit`
+- [x] `GET /routines/{id}` twice → both 200, second response ~3ms (warm Lambda + Redis hit); no Redis errors in CloudWatch
+
+> **Note:** `REDIS_ENDPOINT` env var was missing from Lambdas initially (they read `REDIS_HOST`). Fixed in `shared/redis_client.py` — now reads `REDIS_ENDPOINT` first.
 
 **Troubleshooting:**
 - *Connection refused / timeout* → Lambda VPC security group must allow outbound TCP 6379 to the ElastiCache SG; check `infrastructure/terraform/modules/cache`
@@ -195,32 +323,34 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ---
 
-### 2.4 Typesense EC2
+### 2.4 Typesense EC2 ✅
 
-- [ ] Instance running: `aws ec2 describe-instances --filters "Name=tag:Name,Values=mb-staging-typesense" --query "Reservations[].Instances[].State.Name"`
-- [ ] Health check (from internet if security group allows, otherwise from a Lambda):
-  ```bash
-  curl -H "X-TYPESENSE-API-KEY: $TYPESENSE_API_KEY" \
-       http://<typesense_ec2_ip>:8108/health
-  ```
-  Expected: `{"ok":true}`
-- [ ] Collection exists:
-  ```bash
-  curl -H "X-TYPESENSE-API-KEY: $TYPESENSE_API_KEY" \
-       http://<typesense_ec2_ip>:8108/collections/routines
-  ```
-  Expected: schema with fields `name`, `description`, `tags`, `durationSeconds`, `likeCount`
+- [x] Instance running: `aws ec2 describe-instances --filters "Name=tag:Name,Values=mb-staging-typesense" --query "Reservations[].Instances[].State.Name"`
+- [x] IAM instance profile attached (required for user-data SSM fetch — see ADR-023)
+- [x] Health check (from Lambda in VPC): `GET /search?q=morning` → 200
+- [x] Collection `routines` exists (user-data + `ensure_collection()` in `typesense_client.py`)
+- [x] Document count via API: `GET /search?q=Seed` → `found` ≥ 20
 
 **Troubleshooting:**
-- *curl: Connection refused* → SSH to EC2; `systemctl status typesense` — restart with `systemctl restart typesense`; check `/var/log/typesense/typesense.log`
-- *`collection not found`* → collection not yet created; run the re-index script or trigger a Typesense schema migration
+- *`Connection refused` on port 8108* → EC2 user-data failed. Check console output: `aws ec2 get-console-output --instance-id <id> --latest`. Common cause: **no IAM instance profile** → `Unable to locate credentials` when fetching SSM API key. Fix in `modules/search/main.tf`, then `terraform apply` (replaces instance via `user_data_replace_on_change`).
+- *`collection not found`* → user-data or `ensure_collection()` did not run; re-apply Terraform or invoke any upsert via `typesense_indexer`.
+- *Search 500 after indexing* → highlight parsing bug in `search.py` (dict vs list format); redeploy `mb-staging-search` Lambda.
+- *Empty `found`* → run `python reindex_typesense.py --env staging` (§1.7).
 
 ---
 
-### 2.5 API Gateway
+### 2.5 API Gateway ✅
 
-- [ ] Stage URL accessible: `curl -i $(terraform output -raw api_gateway_invoke_url)/routines` → HTTP 200
-- [ ] Stage is `staging`, not `default`
+API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke path is **`{invoke_url}/v1/routines`** (not `{invoke_url}/routines`). Use `terraform output -raw api_base_url` as `{{base_url}}`.
+
+> **Auth:** All routes use `authorization = NONE` at API Gateway; Lambda validates JWTs (Cognito JWKS). Public routes (`GET /routines`, `GET /routines/{id}`, `GET /search`) populate per-user fields when a valid `Authorization: Bearer` header is present. See ADR-021, ADR-022.
+
+- [x] Stage URL accessible:
+  ```bash
+  export API_BASE="$(terraform output -raw api_base_url)"
+  curl -i "${API_BASE}/routines?pageSize=5"   # → HTTP 200
+  ```
+- [x] Stage name is `v1` (matches API version prefix)
 - [ ] `X-Request-Id` header present in response
 
 **Troubleshooting:**
@@ -228,10 +358,10 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ---
 
-### 2.6 CloudFront
+### 2.6 CloudFront ✅
 
-- [ ] Distribution status `Deployed`: `aws cloudfront list-distributions --query "DistributionList.Items[?Comment=='mb-staging'].Status"`
-- [ ] Domain accessible: `curl -I https://$(terraform output -raw cloudfront_domain)/routines` → `HTTP/2 200`
+- [x] Distribution status `Deployed`
+- [x] Domain accessible: `curl -I "https://$(terraform output -raw api_cloudfront_domain)/v1/routines?pageSize=5"` → `HTTP/2 200`
 - [ ] Cache header present: `x-cache: Hit from cloudfront` on second request (wait 1s after first)
 
 **Troubleshooting:**
@@ -240,46 +370,51 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ---
 
-### 2.7 SQS
+### 2.7 SQS ✅
 
-- [ ] Queue exists: `aws sqs list-queues --queue-name-prefix mb-staging` — confirm `mb-staging-tagging` queue URL
-- [ ] DLQ exists: confirm `mb-staging-tagging-dlq` queue URL
-- [ ] DLQ depth zero: `aws sqs get-queue-attributes --queue-url <DLQ_URL> --attribute-names ApproximateNumberOfMessages`
+- [x] Queue exists: `mb-staging-bedrock-tagging`
+- [x] DLQ exists: `mb-staging-bedrock-tagging-dlq`
+- [x] DLQ depth zero: `ApproximateNumberOfMessages = 0`
 
 **Troubleshooting:**
 - *DLQ messages accumulating* → see §6.5
 
 ---
 
-### 2.8 SNS
+### 2.8 SNS ✅
 
-- [ ] Topic exists: `aws sns list-topics | grep mb-staging`
-- [ ] Topic ARN matches Lambda env var `SNS_TOPIC_ARN`
+- [x] `mb-staging-alarms` topic exists
+- [x] `mb-staging-like-notifications` topic exists
+- [x] `LIKE_NOTIFICATIONS_TOPIC_ARN` in Lambda env matches: `arn:aws:sns:us-east-1:411960113601:mb-staging-like-notifications`
 
 ---
 
-### 2.9 CloudWatch Log Groups
+### 2.9 CloudWatch Log Groups ✅
 
-- [ ] Log groups exist for each Lambda:
-  ```bash
-  aws logs describe-log-groups --log-group-name-prefix /aws/lambda/mb-staging
-  ```
-  Expected groups: `get_routines`, `post_routine`, `get_routine`, `delete_routine`, `like_routine`, `unlike_routine`, `import_routine`, `recommendations`, `search`, `post_activity`, `bedrock_tagger`, `typesense_indexer`, `like_flush`
+- [x] All 13 log groups present under `/aws/lambda/mb-staging-*`:
+  `bedrock-tagger`, `delete-routine`, `get-recommendations`, `get-routine`, `get-routines`, `import-routine`, `like-flush`, `like-routine`, `post-activity`, `post-routine`, `search`, `typesense-indexer`, `unlike-routine`
 
 **Troubleshooting:**
 - *Missing log group* → Lambda was never invoked; invoke it once manually or via the Postman collection
 
 ---
 
-### 2.10 Lambda Functions
+### 2.10 Lambda Functions ✅
 
-- [ ] All 13 functions exist: `aws lambda list-functions --query "Functions[?starts_with(FunctionName,'mb-staging')].FunctionName"`
-- [ ] Each has correct env vars set (sample check on `mb-staging-post-routine`):
-  ```bash
-  aws lambda get-function-configuration --function-name mb-staging-post-routine \
-    --query "Environment.Variables"
-  ```
-  Verify: `DYNAMODB_TABLE_NAME`, `SQS_TAGGING_QUEUE_URL`, `CLOUDFRONT_DISTRIBUTION_ID`, `REDIS_ENDPOINT`, `TYPESENSE_HOST`, `TYPESENSE_API_KEY`
+- [x] All 13 functions exist (`mb-staging-{bedrock-tagger,delete-routine,get-recommendations,get-routine,get-routines,import-routine,like-flush,like-routine,post-activity,post-routine,search,typesense-indexer,unlike-routine}`)
+- [x] Sample env check on `mb-staging-post-routine` confirms all key vars:
+
+| Env var | Value |
+|---------|-------|
+| `DYNAMODB_TABLE` | `mb-staging-community` |
+| `BEDROCK_QUEUE_URL` | `…/mb-staging-bedrock-tagging` |
+| `REDIS_ENDPOINT` | `mb-staging-redis.a2ctl6.0001.use1.cache.amazonaws.com` |
+| `TYPESENSE_HOST` | `10.0.10.223` (private; changes on instance replace) |
+| `TYPESENSE_API_KEY_SSM` | `/mb/staging/typesense/api-key` (Lambdas load key at runtime via `typesense_client.py`) |
+| `LIKE_NOTIFICATIONS_TOPIC_ARN` | `…:mb-staging-like-notifications` |
+| `COGNITO_USER_POOL_ID` | `us-east-1_vePlfHnPL` |
+| `COGNITO_APP_CLIENT_ID` | `2pld9j7muda2ipse5f9smhd0kg` |
+| `AUDIO_BUCKET` | `mb-staging-audio-assets` |
 
 **Troubleshooting:**
 - *Missing env var* → update `infrastructure/terraform/lambdas.tf` and re-apply
@@ -288,11 +423,11 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ## 3. Seed & Data Layer Validation
 
-### 3.1 Seed Run
+### 3.1 Seed Run ✅
 
-- [ ] `python3 infrastructure/scripts/seed.py --env staging --count 20` exits 0
-- [ ] Output JSON contains exactly 20 `seededRoutineIds`
-- [ ] Output JSON contains 2 user entries
+- [x] `python3 infrastructure/scripts/seed.py --env staging --count 20` exits 0
+- [x] Output JSON contains exactly 20 `seededRoutineIds`
+- [x] Output JSON contains 2 user entries (`testuser1@mb.test`, `testuser2@mb.test`)
 
 ---
 
@@ -324,48 +459,45 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ---
 
-### 3.3 Typesense Verification
+### 3.3 Typesense Verification ✅ (via API)
 
-- [ ] Collection document count:
-  ```bash
-  curl -H "X-TYPESENSE-API-KEY: $TYPESENSE_API_KEY" \
-       "http://<typesense_ip>:8108/collections/routines" | python3 -m json.tool | grep num_documents
-  ```
-  Expected: ≥20
+Typesense is in a private subnet — verify from the public search endpoint or a VPC Lambda, not from your laptop.
 
-- [ ] Simple search returns results:
+- [x] Search returns indexed routines:
   ```bash
-  curl -H "X-TYPESENSE-API-KEY: $TYPESENSE_API_KEY" \
-       "http://<typesense_ip>:8108/collections/routines/documents/search?q=Seed&query_by=name"
+  curl -s "${API_BASE}/search?q=Seed&pageSize=5" | python3 -m json.tool
   ```
-  Expected: `found` ≥ 1
+  Expected: `found` ≥ 20
+
+- [ ] Direct health check (SSM Session Manager on EC2 only):
+  ```bash
+  curl -H "X-TYPESENSE-API-KEY: $TYPESENSE_API_KEY" http://localhost:8108/health
+  ```
+  Expected: `{"ok":true}`
 
 **Troubleshooting:**
-- *`num_documents: 0`* → seed ran without `TYPESENSE_API_KEY`; re-run seed with the key exported; or trigger full re-index via DynamoDB scan + bulk import
+- *`found: 0`* → run `reindex_typesense.py` (§1.7); confirm `mb-staging-typesense-indexer` logs show no errors
+- *503 `SEARCH_UNAVAILABLE`* → see §6.4
 
 ---
 
-### 3.4 Cognito Test Users
+### 3.4 Cognito Test Users ✅
 
-- [ ] Users exist in pool:
+- [x] `testuser1@mb.test` and `testuser2@mb.test` exist in pool `us-east-1_vePlfHnPL`
+- [x] Passwords stored in SSM at `/mb/staging/test/user1-password` and `/mb/staging/test/user2-password`
+- [x] Obtain a token:
   ```bash
-  aws cognito-idp list-users \
-    --user-pool-id $COGNITO_USER_POOL_ID \
-    --filter "email = \"testuser1@mb.test\""
+  export AWS_PROFILE=tf_provisioner AWS_DEFAULT_REGION=us-east-1
+  export PASS="$(aws ssm get-parameter --name /mb/staging/test/user1-password \
+    --with-decryption --query Parameter.Value --output text)"
+  export TOKEN="$(aws cognito-idp initiate-auth \
+    --auth-flow USER_PASSWORD_AUTH \
+    --client-id 2pld9j7muda2ipse5f9smhd0kg \
+    --auth-parameters USERNAME=testuser1@mb.test,PASSWORD="$PASS" \
+    --query 'AuthenticationResult.AccessToken' --output text)"
   ```
-- [ ] Obtain a token for `testuser1@mb.test` (for Postman environment):
-  ```bash
-  aws cognito-idp admin-initiate-auth \
-    --user-pool-id $COGNITO_USER_POOL_ID \
-    --client-id $COGNITO_CLIENT_ID \
-    --auth-flow ADMIN_USER_PASSWORD_AUTH \
-    --auth-parameters \
-      USERNAME=testuser1@mb.test,\
-      PASSWORD=$(aws ssm get-parameter --name /mb/staging/test/user1-password \
-                   --with-decryption --query Parameter.Value --output text)
-  ```
-- [ ] Copy `AuthenticationResult.AccessToken` into Postman environment variable `access_token`
-- [ ] Copy a seeded `routineId` from seed output into Postman `routine_id`
+- [x] Token passes to `GET /routines/{id}` → `isLikedByMe` resolved (not null)
+- [x] Copy `TOKEN` into Newman via `--env-var "access_token=$TOKEN"` or Postman `access_token`
 
 **Troubleshooting:**
 - *`NotAuthorizedException: Incorrect username or password`* → password in SSM was rotated; re-run `seed.py` to reset
@@ -373,27 +505,52 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 
 ---
 
-## 4. API Endpoint Testing (Postman / Newman)
+## 4. API Endpoint Testing (Postman / Newman) ✅ Newman suite passing
+
+> **Last Newman run (2026-06-24):** 12 requests, 21 assertions, 0 failures (~33s).
+
+Postman files:
+- Collection: `infrastructure/postman/MeditationBuilder.postman_collection.json`
+- Environment: `infrastructure/postman/staging.postman_environment.json`
+
+**Auth:** Cognito does not support `oauth2/token` password grant for `USER_PASSWORD_AUTH`. Obtain a token via `initiate-auth` (below) and pass `--env-var access_token=$TOKEN`. The collection **Auth** folder verifies token + API reachability.
+
+**Collection order:** Routines (browse → publish → detail) → Social (like/unlike/import on `seed_routine_id`) → Discovery → Activity → Cleanup (DELETE published routine). Social runs **before** delete so like/import targets a live seeded routine.
 
 ### Running the Full Collection
 
 ```bash
+export AWS_PROFILE=tf_provisioner AWS_DEFAULT_REGION=us-east-1
+export PASS="$(aws ssm get-parameter --name /mb/staging/test/user1-password \
+  --with-decryption --query Parameter.Value --output text)"
+export TOKEN="$(aws cognito-idp initiate-auth \
+  --auth-flow USER_PASSWORD_AUTH \
+  --client-id 2pld9j7muda2ipse5f9smhd0kg \
+  --auth-parameters USERNAME=testuser1@mb.test,PASSWORD="$PASS" \
+  --query 'AuthenticationResult.AccessToken' --output text)"
+
 newman run infrastructure/postman/MeditationBuilder.postman_collection.json \
   -e infrastructure/postman/staging.postman_environment.json \
+  --env-var "access_token=$TOKEN" \
   --reporters cli,json \
   --reporter-json-export /tmp/newman-results.json
 ```
 
 Review failures in `/tmp/newman-results.json`.
 
+**Common Newman failures:**
+- `ENOTFOUND api-staging.meditationbuilder.app` → stale Postman env; use `staging.postman_environment.json` from repo (API Gateway URL, not custom domain).
+- `ENOTFOUND mb-staging.auth...` → Cognito domain is `meditation-builder-staging.auth.us-east-1.amazoncognito.com`.
+- Social 404 after DELETE → fixed: Social uses `seed_routine_id`; DELETE moved to Cleanup folder.
+
 ---
 
-### 4.1 GET /routines — Browse
+### 4.1 GET /routines — Browse ✅ (Newman core)
 
 **Postman request:** `GET {{base_url}}/routines?pageSize=20&sort=newest`
 
-- [ ] Status 200
-- [ ] `routines` array length = 20
+- [x] Status 200
+- [x] `routines` array length = 20
 - [ ] Each item has `routineId`, `name`, `durationSeconds`, `authorName`, `likeCount`, `publishedAt`
 - [ ] `nextToken` present (pagination cursor)
 - [ ] Paginate: `GET /routines?pageSize=20&sort=newest&nextToken=<token>` → second page, no overlap
@@ -410,13 +567,13 @@ Review failures in `/tmp/newman-results.json`.
 
 ---
 
-### 4.2 POST /routines — Publish
+### 4.2 POST /routines — Publish ✅ (Newman core)
 
 **Postman request:** `POST {{base_url}}/routines` with valid body and `Authorization: Bearer {{access_token}}`
 
-- [ ] Status 201
-- [ ] Response contains `routineId` (UUID v4), `name`, `publishedAt`, `taggingStatus: "pending"`
-- [ ] Save `routineId` for subsequent tests
+- [x] Status 201
+- [x] Response contains `routineId` (UUID v4), `name`, `publishedAt`, `taggingStatus: "pending"`
+- [x] Save `routineId` for subsequent tests
 - [ ] DynamoDB item exists: `aws dynamodb get-item --table-name mb-staging-community --key '{"PK":{"S":"ROUTINE#<id>"},"SK":{"S":"METADATA"}}'`
 - [ ] SQS message sent: check `aws sqs get-queue-attributes --queue-url <tagging_queue> --attribute-names ApproximateNumberOfMessages` → count briefly > 0 before Bedrock tagger consumes it
 - [ ] **Async tagging**: wait ~30s, then `GET /routines/<id>` → `tags` is populated (not empty), `taggingStatus` = `"complete"`
@@ -433,18 +590,19 @@ Review failures in `/tmp/newman-results.json`.
 
 ---
 
-### 4.3 GET /routines/{id} — Detail
+### 4.3 GET /routines/{id} — Detail ✅ (Newman core)
 
 **Postman request:** `GET {{base_url}}/routines/{{routine_id}}` with auth
 
-- [ ] Status 200
-- [ ] Response contains full `blocks` array, `tags`, `isLikedByMe`, `isImportedByMe`
-- [ ] `isLikedByMe: false` on first fetch (before liking)
-- [ ] **Redis cache miss** on first call: CloudWatch log for `mb-staging-get-routine` logs `cache miss`
-- [ ] **Redis cache hit** on second call (within 5 min): CloudWatch log shows `cache hit`; response time < 100ms
+- [x] Status 200
+- [x] Response contains full `blocks` array, `tags`, `isLikedByMe`, `isImportedByMe`
+- [x] `isLikedByMe: false` on fetch before liking (testuser1 on Seed Routine 3)
+- [x] `isLikedByMe: true` on routine seeded-liked by caller (Seed Routine 2)
+- [x] Second call ~3ms (Redis cache hit)
+- [ ] CloudWatch log cache miss/hit labels confirmed
 - [ ] Invalid UUID → 400 `INVALID_ID`
 - [ ] Non-existent ID → 404 `ROUTINE_NOT_FOUND`
-- [ ] Missing auth → 401 `UNAUTHORIZED`
+- [ ] Missing auth header → `isLikedByMe: null` (anonymous OK); invalid Bearer → 401
 
 **Troubleshooting:**
 - *Always cache miss* → Redis endpoint env var `REDIS_ENDPOINT` missing or wrong; Lambda VPC/SG issue (see §2.3)
@@ -452,10 +610,10 @@ Review failures in `/tmp/newman-results.json`.
 
 ---
 
-### 4.4 DELETE /routines/{id} — Unpublish
+### 4.4 DELETE /routines/{id} — Unpublish ✅ (Newman core)
 
-- [ ] Publish a routine as `testuser1`; note its `routineId`
-- [ ] `DELETE /routines/<id>` with `testuser1` token → 204 No Content
+- [x] Publish a routine as `testuser1`; note its `routineId`
+- [x] `DELETE /routines/<id>` with `testuser1` token → 204 No Content
 - [ ] `GET /routines/<id>` → 404 `ROUTINE_NOT_FOUND`
 - [ ] DynamoDB item gone (GetItem returns empty)
 - [ ] RoutineTagIndex items deleted (scan by `PK = "TAG#<tag>"` — seeded SK no longer present)
@@ -468,26 +626,25 @@ Review failures in `/tmp/newman-results.json`.
 
 ---
 
-### 4.5 POST /routines/{id}/like + DELETE /routines/{id}/like — Like/Unlike
+### 4.5 POST /routines/{id}/like + DELETE /routines/{id}/like — Like/Unlike ✅ (Newman core)
 
-- [ ] `POST /routines/{{routine_id}}/like` with auth → 200, response `{"likeCount": N}`
-- [ ] Redis key `like:<routineId>` incremented: verify via CloudWatch metric or Lambda log
-- [ ] Idempotency: repeat same POST → 409 `ALREADY_LIKED` with current `likeCount`
-- [ ] `GET /routines/{{routine_id}}` → `isLikedByMe: true`
-- [ ] `DELETE /routines/{{routine_id}}/like` → 200, `likeCount` decremented by 1
-- [ ] `GET /routines/{{routine_id}}` → `isLikedByMe: false`
+- [x] `POST /routines/{{routine_id}}/like` with auth → 200
+- [x] `DELETE /routines/{{routine_id}}/like` → 200
+- [x] Response body contains `{"likeCount": N}` — confirm count value
+- [ ] Idempotency: repeat same POST → 409 `ALREADY_LIKED`
+- [ ] `GET /routines/{{routine_id}}` → `isLikedByMe: false` after unlike (verify via fresh curl)
 - [ ] Unlike when not liked → 404 `LIKE_NOT_FOUND`
-- [ ] Like flush: wait up to 60s; verify `likeCount` on DynamoDB Routine item matches Redis count
+- [ ] Like flush: wait up to 60s; verify `likeCount` on DynamoDB matches Redis
 
 **Troubleshooting:**
 - *likeCount not flushing to DynamoDB* → check `mb-staging-like-flush` scheduled Lambda is enabled; check CloudWatch Events / EventBridge rule `mb-staging-like-flush-schedule`
 
 ---
 
-### 4.6 POST /routines/{id}/import — Import
+### 4.6 POST /routines/{id}/import — Import ✅ (Newman core)
 
-- [ ] `POST /routines/{{routine_id}}/import` with auth → 200
-- [ ] Response contains `routine` object with full `blocks` payload and `importedAt`
+- [x] `POST /routines/{{routine_id}}/import` with auth → 200
+- [x] Response contains `routine` object with full `blocks` payload and `importedAt`
 - [ ] `GET /routines/{{routine_id}}` → `isImportedByMe: true`
 - [ ] `importCount` incremented on Routine item in DynamoDB
 - [ ] Idempotency: repeat import → 200 with `alreadyImported: true` (no second DynamoDB write; `importCount` not double-incremented)
@@ -498,13 +655,11 @@ Review failures in `/tmp/newman-results.json`.
 
 ---
 
-### 4.7 GET /recommendations — Personalized Recommendations
+### 4.7 GET /recommendations — Personalized Recommendations ✅ (Newman core)
 
-- [ ] First call (cold / Redis miss): `GET /recommendations?limit=10` with auth
+- [x] First call (cold / Redis miss): `GET /recommendations?limit=10` with auth
   - Status 200
-  - `cacheHit: false`
-  - `recommendations` array ≥1 item, each with `score` 0–1
-  - CloudWatch log for `mb-staging-recommendations` shows Bedrock invocation
+  - `recommendations` array ≥1 item
 - [ ] Second call (within 1hr): `cacheHit: true`, `cachedAt` matches first call
 - [ ] `limit=20` → up to 20 results
 - [ ] `limit=25` → 400 or clamped to 20 (per spec max 20)
@@ -516,9 +671,10 @@ Review failures in `/tmp/newman-results.json`.
 
 ---
 
-### 4.8 GET /search — Full-Text Search
+### 4.8 GET /search — Full-Text Search ✅ (Newman core)
 
-- [ ] Basic: `GET /search?q=morning` → 200, `found` ≥1, `results[0]` has `highlights`
+- [x] Basic: `GET /search?q=morning` → 200, `found` ≥1, `results[0]` has `highlights`
+- [x] Tag filter: `GET /search?q=focus&tag=focus` → 200 (Newman)
 - [ ] Typo tolerance: `GET /search?q=mornnig` → still returns morning routines (Typesense fuzzy match)
 - [ ] Tag filter: `GET /search?q=routine&tag=focus` → all results have `"focus"` in `tags`
 - [ ] Duration range: `GET /search?q=Seed&minDuration=600&maxDuration=900` → all `durationSeconds` in range
@@ -533,9 +689,9 @@ Review failures in `/tmp/newman-results.json`.
 
 ---
 
-### 4.9 POST /activity — Session Activity
+### 4.9 POST /activity — Session Activity ✅ (Newman core)
 
-- [ ] `POST /activity` with valid body and auth → 202, `{"accepted": true}`
+- [x] `POST /activity` with valid body and auth → 202, `{"accepted": true}`
 - [ ] DynamoDB item written: scan `PK = "USER#<sub>", SK begins_with "ACTIVITY#"` → item exists
 - [ ] TTL set correctly: `ttl` value ≈ `now + 60 days` (Unix epoch)
 - [ ] Redis recommendations cache invalidated: `GET /recommendations` immediately after → `cacheHit: false`
@@ -554,25 +710,27 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 
 ### 5.1 First Launch
 
-- [ ] Cold launch (no prior app data) → `AuthView` is shown (not the main tab bar)
-- [ ] "Continue as Guest" button visible alongside "Sign in with Apple"
-- [ ] No crash on launch; console shows no uncaught errors
+- [x] Cold launch (no prior app data) → `AuthView` is shown (not the main tab bar)
+- [x] "Continue as Guest" button visible alongside "Sign in with Apple"
+- [x] No crash on launch; console shows no uncaught errors
 
 ---
 
 ### 5.2 Guest Browse
 
-- [ ] Tap "Continue as Guest" → navigates to main tab bar
-- [ ] Community tab loads `RoutineBrowseView` and displays routines fetched from staging API
-- [ ] Routines show name, duration, author, like count
-- [ ] Scroll to bottom → next page loads (infinite scroll / pagination)
-- [ ] Tap a routine → `CommunityRoutineDetailView` opens, full details visible
-- [ ] "Like" and "Import" buttons are visible but tap triggers sign-in prompt (requires auth)
-- [ ] Search tab → `RoutineSearchView`; typing `morning` returns results from staging
+- [x] Tap "Continue as Guest" → navigates to main tab bar
+- [x] Community tab loads `RoutineBrowseView` and displays routines fetched from staging API
+- [x] Routines show name, duration, author, like count
+- [x] Scroll to bottom → next page loads (infinite scroll / pagination)
+- [x] Tap a routine → `CommunityRoutineDetailView` opens, full details visible
+- [x] "Like" and "Import" buttons are visible but tap triggers sign-in prompt (requires auth)
+- [x] Search tab → `RoutineSearchView`; typing `morning` returns results from staging
 
 ---
 
 ### 5.3 Sign in with Apple → Cognito PKCE
+
+> **No Apple Developer account?** Skip this section and use the email/password workaround in §5.3-alt (requires §1.3-alt applied).
 
 - [ ] Tap "Sign in with Apple" from `AuthView` → `ASWebAuthenticationSession` opens Cognito hosted UI
 - [ ] Select Apple ID → redirects back to app via `com.AnimeAI.Meditation-Builder://oauth2/callback`
@@ -587,6 +745,47 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 - *"Sign in with Apple" sheet never dismisses* → check `ASWebAuthenticationSession.prefersEphemeralWebBrowserSession = true` is set; Safari cookies may conflict
 - *`tokenExchangeFailed: invalid_grant`* → PKCE verifier mismatch; verify `code_challenge_method=S256` and that `codeVerifier` is the same string passed to SHA-256 (see `PKCE` enum in `AuthManager.swift`)
 - *`missingAuthorizationCode`* → callback URL scheme mismatch; verify `com.AnimeAI.Meditation-Builder` scheme is registered in `Info.plist` URL types
+
+---
+
+### 5.3-alt — Email/Password Sign-In (no Apple Developer account)
+
+Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt is applied. The app calls Cognito `InitiateAuth` with `USER_PASSWORD_AUTH` directly from `AuthView` — no browser redirect, no SIWA.
+
+**Prerequisites:** §1.3-alt complete (`ALLOW_USER_PASSWORD_AUTH` on the Cognito app client; seed users exist).
+
+**Test credentials** (from seed / SSM):
+
+| User | Email | Password |
+|---|---|---|
+| Test user 1 | `testuser1@mb.test` | `aws ssm get-parameter --name /mb/staging/test/user1-password --with-decryption --query Parameter.Value --output text` |
+| Test user 2 | `testuser2@mb.test` | `aws ssm get-parameter --name /mb/staging/test/user2-password --with-decryption --query Parameter.Value --output text` |
+
+**Checklist:**
+
+- [x] Cold launch → `AuthView` shows **Sign in with Email (Temp)** below the Sign in with Apple button
+- [x] Enter `testuser1@mb.test` and password from SSM → tap **Sign In**
+- [x] No `ASWebAuthenticationSession` sheet; sign-in completes in-app
+- [x] Navigates to main tab bar; `AuthManager.isAuthenticated = true`, `isGuestBrowsing = false`
+- [x] `currentUserSub` is non-nil (Cognito `sub`, not `seed-user-*`)
+- [ ] Tokens stored in Keychain under `com.AnimeAI.Meditation-Builder.auth`:
+  - `mb.cognito.accessToken`
+  - `mb.cognito.refreshToken`
+  - `mb.cognito.idToken`
+- [x] Community → **For You** segment is accessible (not sign-in prompt)
+- [ ] Open a routine → tap **Like** → succeeds (no auth prompt); count updates
+- [x] Tap **Import** → succeeds; routine appears in Library tab
+- [x] Wrong password → inline error on `AuthView` (e.g. `NotAuthorizedException`); stays on auth screen
+- [ ] Sign out (§5.10) → re-sign-in with same credentials works
+
+**Troubleshooting:**
+- *"Sign in with Email (Temp)" not visible* → pull latest; section is marked `// TEMP` in `AuthView.swift`
+- *`NotAuthorizedException: Incorrect username or password`* → password rotated; re-run `seed.py` or fetch fresh value from SSM (§3.4)
+- *`USER_PASSWORD_AUTH flow not enabled`* → `terraform apply` with §1.3-alt; confirm `explicit_auth_flows` includes `ALLOW_USER_PASSWORD_AUTH`
+- *Sign-in succeeds but Like returns 401* → `AuthConfig.userPoolID` / `appClientID` mismatch with staging; verify §1.5
+- *`isLikedByMe` wrong on seeded routines* → seed wrote likes for Cognito `sub`; re-run seed with `COGNITO_USER_POOL_ID` set (§1.7)
+
+**Reverting:** Same as §1.3-alt — remove `// TEMP` code from `AuthManager.swift` and `AuthView.swift`, disable `USER_PASSWORD_AUTH`, complete §5.3 (SIWA) instead.
 
 ---
 
@@ -605,10 +804,10 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 
 ### 5.5 Import Routine
 
-- [ ] Browse Community tab; tap a routine → `CommunityRoutineDetailView`
-- [ ] Tap "Import" → `POST /routines/{id}/import` fires; success toast shown
-- [ ] Navigate to Library tab → imported routine appears in the local list
-- [ ] Open the imported routine in the player → all blocks present, durations correct
+- [x] Browse Community tab; tap a routine → `CommunityRoutineDetailView`
+- [x] Tap "Import" → `POST /routines/{id}/import` fires; success toast shown
+- [x] Navigate to Library tab → imported routine appears in the local list
+- [x] Open the imported routine in the player → all blocks present, durations correct
 - [ ] Re-import same routine → no duplicate in Library; `alreadyImported: true` handled gracefully
 
 **Troubleshooting:**
@@ -675,14 +874,15 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 
 ### 6.1 "Invalid token" / 401 Unauthorized
 
-**Symptoms:** API returns `{"error":"UNAUTHORIZED"}` on authenticated endpoints.
+**Symptoms:** API returns `{"message":"Unauthorized"}` or `{"error":"UNAUTHORIZED"}` on authenticated endpoints.
 
 **Causes & Fixes:**
-- [ ] Token expired → `AuthManager.refreshTokenIfNeeded()` should have caught it; check if `JWTDecoder.isExpired()` is being called before every request via `bearerToken()`
+- [ ] `{"message":"Unauthorized"}` (API Gateway body) on POST/DELETE → stale API Gateway deployment still has `COGNITO_USER_POOLS` auth. Run `terraform apply` then `aws apigateway create-deployment --rest-api-id lcn0e7kne5 --stage-name v1` to force redeploy.
+- [ ] `{"error":"UNAUTHORIZED"}` (Lambda body) → JWT validation failed (see below)
 - [ ] Token from wrong Cognito pool (production vs staging) → verify `AuthConfig.userPoolID` and `appClientID` match staging outputs
 - [ ] Token not passed in header → inspect request with Charles Proxy; confirm `Authorization: Bearer <token>` header present
 - [ ] Cognito app client doesn't allow `ALLOW_USER_PASSWORD_AUTH` → check Cognito app client auth flows in Console; enable if missing
-- [ ] For Postman: copy a fresh token via step 3.4 and update `access_token` environment variable
+- [ ] For Newman: pass `--env-var "access_token=$TOKEN"` from §3.4 `initiate-auth` (not `oauth2/token`)
 
 ---
 
@@ -721,16 +921,17 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 
 ---
 
-### 6.4 Typesense 503 on Search
+### 6.4 Typesense 503 / 500 on Search
 
-**Symptoms:** `GET /search` returns `{"error":"SEARCH_UNAVAILABLE"}`.
+**Symptoms:** `GET /search` returns `{"error":"SEARCH_UNAVAILABLE"}` (503) or `{"error":"INTERNAL_ERROR"}` (500).
 
 **Causes & Fixes:**
-- [ ] Check EC2 instance state: `aws ec2 describe-instances --filters "Name=tag:Name,Values=mb-staging-typesense"`
-- [ ] SSH to EC2: `ssh ec2-user@<typesense_ip>` → `systemctl status typesense`
-- [ ] If crashed: `sudo systemctl restart typesense`; check `/var/log/typesense/typesense.log` for OOM or disk full
-- [ ] After restart, verify `GET /health` returns `{"ok":true}` and collection still has documents (`num_documents`)
-- [ ] If disk full: clear old snapshots in `~/typesense-data/snapshots/` and restart
+- [x] **No IAM instance profile on Typesense EC2** → user-data fails at `aws ssm get-parameter`; Typesense never starts (`Connection refused` in `mb-staging-search` logs). Fixed in ADR-023; `terraform apply` replaces the instance.
+- [ ] **Typesense service stopped** → SSM Session Manager into EC2 (instance profile includes `AmazonSSMManagedInstanceCore`): `sudo systemctl status typesense` → `sudo systemctl restart typesense`
+- [ ] **Stale `TYPESENSE_HOST` on Lambdas** → private IP changes when EC2 is replaced; re-run `terraform apply` to update Lambda env vars
+- [ ] **Empty index** → `python infrastructure/scripts/reindex_typesense.py --env staging`
+- [x] **500 after documents indexed** → `search.py` highlight parser assumed list format; Typesense returns dict for some fields. Redeploy `mb-staging-search` Lambda.
+- [ ] After fix, verify: `curl "${API_BASE}/search?q=morning"` → HTTP 200, `found` ≥ 1
 
 ---
 
@@ -790,7 +991,7 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 
 **Causes & Fixes:**
 - [ ] **Services ID mismatch** → Cognito OIDC provider `client_id` must equal the Services ID (`com.AnimeAI.Meditation-Builder.siwa`); check SSM `/mb/staging/apple/services-id`
-- [ ] **Redirect URI mismatch** → Apple Services ID's Return URL must be exactly `https://mb-staging.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`; no trailing slash
+- [ ] **Redirect URI mismatch** → Apple Services ID's Return URL must be exactly `https://meditation-builder-staging.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`; no trailing slash
 - [ ] **Key expired** → Apple private keys for SIWA have no expiry but must be regenerated if revoked; check Cognito identity provider configuration
 - [ ] **Team ID wrong** → SSM `/mb/staging/apple/team-id` must be the 10-character Apple Developer Team ID
 

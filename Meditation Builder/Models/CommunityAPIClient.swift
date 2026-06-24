@@ -16,7 +16,7 @@ final class CommunityAPIClient {
     private weak var authManager: AuthManager?
 
     init(
-        baseURL: URL = URL(string: "https://api.meditationbuilder.app/v1")!,
+        baseURL: URL = APIConfig.baseURL,
         session: URLSession = .shared,
         authManager: AuthManager? = nil
     ) {
@@ -164,6 +164,7 @@ final class CommunityAPIClient {
 
         var request = URLRequest(url: url)
         request.httpMethod = method
+        request.cachePolicy = .reloadIgnoringLocalCacheData
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = body
 

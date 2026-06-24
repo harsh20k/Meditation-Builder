@@ -19,6 +19,7 @@ struct CommunityRoutineDetailView: View {
     @State private var errorMessage: String?
     @State private var isLiked = false
     @State private var likeCount = 0
+    @State private var isTogglingLike = false
     @State private var isImporting = false
     @State private var showImportSuccess = false
     @State private var showSignInPrompt = false
@@ -190,19 +191,54 @@ struct CommunityRoutineDetailView: View {
     }
 
     private func toggleLike() async {
+        guard !isTogglingLike else { return }
+        isTogglingLike = true
+        defer { isTogglingLike = false }
+
+        // Optimistic update — apply immediately before the network round-trip.
+        let rollbackLiked = isLiked
+        let rollbackCount = likeCount
+        let newLiked = !isLiked
+        isLiked = newLiked
+        likeCount = max(0, likeCount + (newLiked ? 1 : -1))
+        broadcastLikeChange(likeCount: likeCount, isLiked: isLiked)
+
         do {
-            if isLiked {
-                likeCount = try await CommunityAPIClient.shared.unlikeRoutine(id: routineId)
-                isLiked = false
-            } else {
-                likeCount = try await CommunityAPIClient.shared.likeRoutine(id: routineId)
-                isLiked = true
+            // Write-behind: server commits to Redis immediately and flushes to
+            // DynamoDB on a 60s schedule — UI doesn't wait for persistence.
+            let serverCount = try await (newLiked
+                ? CommunityAPIClient.shared.likeRoutine(id: routineId)
+                : CommunityAPIClient.shared.unlikeRoutine(id: routineId))
+            // Sync server count only if it diverged (concurrent likes from others).
+            if likeCount != serverCount {
+                likeCount = serverCount
+                broadcastLikeChange(likeCount: serverCount, isLiked: isLiked)
             }
+            routine?.likeCount = likeCount
+            routine?.isLikedByMe = isLiked
         } catch CommunityAPIError.unauthorized {
+            revertLike(liked: rollbackLiked, count: rollbackCount)
             showSignInPrompt = true
         } catch {
+            revertLike(liked: rollbackLiked, count: rollbackCount)
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func broadcastLikeChange(likeCount: Int, isLiked: Bool) {
+        NotificationCenter.default.post(
+            name: .communityRoutineLikeDidChange,
+            object: nil,
+            userInfo: ["routineId": routineId, "likeCount": likeCount, "isLiked": isLiked]
+        )
+    }
+
+    private func revertLike(liked: Bool, count: Int) {
+        isLiked = liked
+        likeCount = count
+        routine?.likeCount = count
+        routine?.isLikedByMe = liked
+        broadcastLikeChange(likeCount: count, isLiked: liked)
     }
 
     private func importRoutine() async {

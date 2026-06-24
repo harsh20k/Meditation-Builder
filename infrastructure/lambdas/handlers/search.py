@@ -19,10 +19,17 @@ SORT_MAP = {
 
 def _format_hit(hit: dict[str, Any]) -> dict[str, Any]:
     doc = hit.get("document") or {}
-    highlights = {}
+    highlights: dict[str, str] = {}
     for field, snippets in (hit.get("highlight") or {}).items():
-        if snippets:
-            highlights[field] = snippets[0].get("snippet") or snippets[0]
+        if not snippets:
+            continue
+        if isinstance(snippets, list):
+            first = snippets[0]
+            highlights[field] = first.get("snippet") if isinstance(first, dict) else str(first)
+        elif isinstance(snippets, dict):
+            highlights[field] = str(snippets.get("snippet") or snippets.get("matched_tokens") or snippets)
+        else:
+            highlights[field] = str(snippets)
     tags = doc.get("tags") or []
     return {
         "routineId": doc.get("id"),
@@ -32,6 +39,7 @@ def _format_hit(hit: dict[str, Any]) -> dict[str, Any]:
         "durationSeconds": int(doc.get("durationSeconds", 0)),
         "authorName": doc.get("authorName", ""),
         "likeCount": int(doc.get("likeCount", 0)),
+        "importCount": int(doc.get("importCount", 0)),
         "highlights": highlights,
     }
 

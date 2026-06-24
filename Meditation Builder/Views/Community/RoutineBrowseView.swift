@@ -4,6 +4,9 @@
 //
 
 import SwiftUI
+import os
+
+private let browseLog = Logger(subsystem: "com.AnimeAI.Meditation-Builder", category: "Browse")
 
 struct RoutineBrowseView: View {
     let onSearchTap: () -> Void
@@ -52,6 +55,15 @@ struct RoutineBrowseView: View {
         }
         .refreshable { await reload() }
         .task { await reload() }
+        .onReceive(NotificationCenter.default.publisher(for: .communityRoutineLikeDidChange)) { notification in
+            guard let routineId = notification.userInfo?["routineId"] as? String,
+                  let likeCount = notification.userInfo?["likeCount"] as? Int,
+                  let index = routines.firstIndex(where: { $0.routineId == routineId }) else { return }
+            routines[index].likeCount = likeCount
+            if let isLiked = notification.userInfo?["isLiked"] as? Bool {
+                routines[index].isLikedByMe = isLiked
+            }
+        }
     }
 
     private var searchBar: some View {
@@ -118,6 +130,7 @@ struct RoutineBrowseView: View {
             let response = try await CommunityAPIClient.shared.browseRoutines(nextToken: nil, filters: filters)
             routines = response.routines
             nextToken = response.nextToken
+            browseLog.info("Browse page 1: \(response.routines.count) routines, hasMore=\(self.nextToken != nil)")
         } catch {
             errorMessage = error.localizedDescription
             routines = []
@@ -132,6 +145,7 @@ struct RoutineBrowseView: View {
             let response = try await CommunityAPIClient.shared.browseRoutines(nextToken: token, filters: filters)
             routines.append(contentsOf: response.routines)
             nextToken = response.nextToken
+            browseLog.info("Browse page loaded: +\(response.routines.count), total=\(self.routines.count), hasMore=\(self.nextToken != nil)")
         } catch {
             errorMessage = error.localizedDescription
         }

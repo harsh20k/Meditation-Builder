@@ -14,7 +14,7 @@ _client: redis.Redis | None = None
 def get_redis() -> redis.Redis:
     global _client
     if _client is None:
-        host = os.environ.get("REDIS_HOST", "localhost")
+        host = os.environ.get("REDIS_ENDPOINT") or os.environ.get("REDIS_HOST", "localhost")
         port = int(os.environ.get("REDIS_PORT", "6379"))
         _client = redis.Redis(
             host=host,
@@ -42,11 +42,25 @@ def cache_get(key: str) -> Any | None:
 
 
 def cache_set(key: str, value: Any, ttl_seconds: int) -> None:
-    get_redis().setex(key, ttl_seconds, json.dumps(value, default=str))
+    def _default(obj: Any) -> Any:
+        if isinstance(obj, set):
+            return sorted(obj)  # DynamoDB StringSets arrive as Python sets
+        return str(obj)
+    get_redis().setex(key, ttl_seconds, json.dumps(value, default=_default))
 
 
 def cache_delete(key: str) -> None:
     get_redis().delete(key)
+
+
+def pending_like_delta(routine_id: str) -> int:
+    raw = get_redis().get(f"like:{routine_id}")
+    return int(raw) if raw else 0
+
+
+def effective_like_count(routine_id: str, base: int) -> int:
+    """DynamoDB likeCount plus unflushed Redis increments."""
+    return base + pending_like_delta(routine_id)
 
 
 def incr_like(routine_id: str) -> int:

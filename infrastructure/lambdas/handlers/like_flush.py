@@ -27,6 +27,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
                 ConditionExpression="attribute_exists(PK)",
             )
             client.delete(key)
+            redis_client.cache_delete(f"routine:{routine_id}")
             flushed += 1
         except Exception:
             logger.exception("like_flush failed for %s", routine_id)

@@ -142,3 +142,59 @@ Append-only log of architectural trade-offs. See `.cursor/rules/adr.mdc` for for
 **Reason:** Aligns handler implementation with pytest/moto testing stack, Bedrock boto3 SDK usage, and shared data-processing utilities; Python is the primary language for the Lambda agent workstream.
 **Trade-off:** Supersedes the Node.js 22 runtime mention in ADR-003 only; Lambda-over-Fargate decision unchanged. Cold-start profile differs slightly from Node.js (~250–500ms vs ~200–400ms).
 **Status:** Accepted (supersedes ADR-003 runtime only)
+
+---
+
+## ADR-017 — Account-scoped Terraform state bucket name
+**Date:** 2026-06-23
+**Decision:** Bootstrap creates `mb-tfstate-<account-id>` instead of a fixed global bucket name.
+**Reason:** S3 bucket names are globally unique; `mb-terraform-state` was already taken by another AWS account.
+**Trade-off:** Main stack `terraform init` requires `-backend-config=backend.hcl` (or CI secret `TF_STATE_BUCKET`) instead of a fully hardcoded backend block.
+**Status:** Accepted
+
+---
+
+## ADR-018 — Disable Lambda provisioned concurrency on staging
+**Date:** 2026-06-23
+**Decision:** Gate provisioned concurrency behind `enable_lambda_provisioned_concurrency` (false for staging).
+**Reason:** Small AWS accounts cannot reserve warm capacity without dropping unreserved concurrency below the AWS minimum of 10.
+**Trade-off:** Staging hot paths accept cold-start latency (~250–500ms); production can opt in via tfvars after a quota review.
+**Status:** Accepted
+
+## ADR-019 — Temporary Cognito USER_PASSWORD_AUTH workaround for iOS testing
+**Date:** 2026-06-23
+**Decision:** Add `ALLOW_USER_PASSWORD_AUTH` to the Cognito app client and a temp email/password sign-in path in `AuthView`/`AuthManager` to bypass the Sign in with Apple PKCE flow.
+**Reason:** Apple Developer Program enrollment is pending; the full authenticated app flow cannot be tested without a working SIWA federation.
+**Trade-off:** Plaintext password transmitted over HTTPS to Cognito; temp UI and auth flow must be removed before App Store submission.
+**Status:** Accepted
+
+---
+
+**Status:** Accepted
+
+---
+
+## ADR-021 — Optional Cognito JWT validation in Lambda for public GET routes
+**Date:** 2026-06-23
+**Decision:** For `get_routine`, `get_routines`, and `search` (API Gateway `auth = false`), validate `Authorization: Bearer` JWTs inside `shared/auth.py` using Cognito JWKS.
+**Reason:** Public routes must stay anonymous-capable while populating per-user fields (`isLikedByMe`) when a valid token is sent; API Gateway Cognito authorizers are all-or-nothing.
+**Trade-off:** Lambdas fetch/cache JWKS and verify tokens locally; invalid Bearer on `GET /routines/{id}` returns 401 instead of silent anonymity.
+**Status:** Accepted
+
+---
+
+## ADR-022 — Lambda-side JWT auth for all API routes
+**Date:** 2026-06-23
+**Decision:** Set API Gateway `authorization = NONE` on all routes; protected handlers call `shared/auth.authenticate()` (Cognito JWKS, access or ID token).
+**Reason:** API Gateway Cognito authorizers reject Cognito access tokens from `USER_PASSWORD_AUTH` while the iOS client sends access tokens; Lambda validation already accepts both token types.
+**Trade-off:** Auth failures invoke Lambda instead of failing at the edge; Cognito authorizer resource remains unused until removed.
+**Status:** Accepted
+
+---
+
+## ADR-023 — Typesense EC2 instance profile for bootstrap
+**Date:** 2026-06-24
+**Decision:** Attach an IAM instance profile to the Typesense EC2 instance granting `ssm:GetParameter` on the API-key parameter and S3 backup access.
+**Reason:** User-data installs Typesense at boot and reads the API key from SSM; without an instance profile cloud-init failed with "Unable to locate credentials" and port 8108 never listened.
+**Trade-off:** Instance replacement on user-data changes (`user_data_replace_on_change`); Lambdas also load the API key from SSM at runtime.
+**Status:** Accepted

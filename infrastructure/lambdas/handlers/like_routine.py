@@ -46,9 +46,9 @@ def _current_like_count(routine: dict[str, Any], routine_id: str) -> int:
 
 def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     request_id = response.get_request_id(event)
-    sub = auth.get_sub(event)
-    if not sub:
-        return response.error(401, "UNAUTHORIZED", "Authentication required.", request_id=request_id)
+    sub, err_resp = auth.authenticate(event, request_id)
+    if err_resp:
+        return err_resp
 
     try:
         routine_id = (event.get("pathParameters") or {}).get("id", "")
@@ -84,6 +84,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
         like_count = _current_like_count(routine, routine_id)
         if created:
             like_count = redis_client.incr_like(routine_id) + int(routine.get("likeCount", 0))
+            redis_client.cache_delete(f"routine:{routine_id}")
             topic = os.environ.get("SNS_LIKE_TOPIC_ARN")
             if topic and routine.get("authorSub") != sub:
                 try:

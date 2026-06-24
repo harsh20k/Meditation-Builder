@@ -31,9 +31,9 @@ def _cloudfront():
 
 def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     request_id = response.get_request_id(event)
-    sub = auth.get_sub(event)
-    if not sub:
-        return response.error(401, "UNAUTHORIZED", "Authentication required.", request_id=request_id)
+    sub, err_resp = auth.authenticate(event, request_id)
+    if err_resp:
+        return err_resp
 
     try:
         routine_id = (event.get("pathParameters") or {}).get("id", "")
@@ -57,6 +57,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
         like_count = int(routine.get("likeCount", 0)) + pending
         if like_count < 0:
             like_count = 0
+        redis_client.cache_delete(f"routine:{routine_id}")
 
         dist_id = os.environ.get("CLOUDFRONT_DISTRIBUTION_ID")
         if dist_id:

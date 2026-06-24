@@ -19,17 +19,30 @@ def _routine_summary(item: dict[str, Any]) -> dict[str, Any]:
     tags = item.get("tags") or []
     if isinstance(tags, set):
         tags = sorted(tags)
+    routine_id = item["routineId"]
     return {
-        "routineId": item["routineId"],
+        "routineId": routine_id,
         "name": item.get("name", ""),
         "description": item.get("description", ""),
         "tags": tags,
         "durationSeconds": int(item.get("durationSeconds", 0)),
         "authorName": item.get("authorName", ""),
-        "likeCount": int(item.get("likeCount", 0)),
+        "likeCount": redis_client.effective_like_count(
+            routine_id, int(item.get("likeCount", 0))
+        ),
         "importCount": int(item.get("importCount", 0)),
         "publishedAt": item.get("publishedAt"),
     }
+
+
+def _apply_pending_likes(body: dict[str, Any]) -> dict[str, Any]:
+    """Patch browse payloads so cached pages reflect unflushed like deltas."""
+    for routine in body.get("routines", []):
+        routine_id = routine["routineId"]
+        routine["likeCount"] = redis_client.effective_like_count(
+            routine_id, int(routine.get("likeCount", 0))
+        )
+    return body
 
 
 def _cache_key(params: dict[str, Any]) -> str:
@@ -70,7 +83,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
             if cached:
                 return response.success(
                     200,
-                    cached,
+                    _apply_pending_likes(cached),
                     request_id=request_id,
                     headers={"Cache-Control": "max-age=30, s-maxage=30"},
                 )
@@ -123,7 +136,7 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
 
         return response.success(
             200,
-            body,
+            _apply_pending_likes(body),
             request_id=request_id,
             headers={"Cache-Control": "max-age=30, s-maxage=30"},
         )

@@ -39,6 +39,65 @@ struct CommunityRoutine: Codable, Identifiable, Equatable, Hashable, Sendable {
 
     var id: String { routineId }
 
+    init(
+        routineId: String,
+        name: String,
+        description: String? = nil,
+        tags: [String] = [],
+        durationSeconds: Int,
+        authorName: String? = nil,
+        authorSub: String? = nil,
+        likeCount: Int = 0,
+        importCount: Int = 0,
+        blocks: [CommunityBlock]? = nil,
+        audioAssetKeys: [String]? = nil,
+        publishedAt: Date? = nil,
+        updatedAt: Date? = nil,
+        isLikedByMe: Bool? = nil,
+        isImportedByMe: Bool? = nil,
+        taggingStatus: String? = nil,
+        score: Double? = nil
+    ) {
+        self.routineId = routineId
+        self.name = name
+        self.description = description
+        self.tags = tags
+        self.durationSeconds = durationSeconds
+        self.authorName = authorName
+        self.authorSub = authorSub
+        self.likeCount = likeCount
+        self.importCount = importCount
+        self.blocks = blocks
+        self.audioAssetKeys = audioAssetKeys
+        self.publishedAt = publishedAt
+        self.updatedAt = updatedAt
+        self.isLikedByMe = isLikedByMe
+        self.isImportedByMe = isImportedByMe
+        self.taggingStatus = taggingStatus
+        self.score = score
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        routineId = try container.decode(String.self, forKey: .routineId)
+        name = try container.decode(String.self, forKey: .name)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        tags = try container.decodeIfPresent([String].self, forKey: .tags) ?? []
+        durationSeconds = try container.decode(Int.self, forKey: .durationSeconds)
+        authorName = try container.decodeIfPresent(String.self, forKey: .authorName)
+        authorSub = try container.decodeIfPresent(String.self, forKey: .authorSub)
+        likeCount = try container.decodeIfPresent(Int.self, forKey: .likeCount) ?? 0
+        importCount = try container.decodeIfPresent(Int.self, forKey: .importCount) ?? 0
+        blocks = try container.decodeIfPresent([CommunityBlock].self, forKey: .blocks)
+        audioAssetKeys = try container.decodeIfPresent([String].self, forKey: .audioAssetKeys)
+        publishedAt = try container.decodeIfPresent(Date.self, forKey: .publishedAt)
+        updatedAt = try container.decodeIfPresent(Date.self, forKey: .updatedAt)
+        isLikedByMe = try container.decodeIfPresent(Bool.self, forKey: .isLikedByMe)
+        isImportedByMe = try container.decodeIfPresent(Bool.self, forKey: .isImportedByMe)
+        taggingStatus = try container.decodeIfPresent(String.self, forKey: .taggingStatus)
+        score = try container.decodeIfPresent(Double.self, forKey: .score)
+    }
+
     var durationMinutes: Int { max(1, durationSeconds / 60) }
 
     var isTaggingPending: Bool { taggingStatus == "pending" }
@@ -165,6 +224,11 @@ struct SessionActivity: Codable, Sendable {
 }
 
 // MARK: - API Error
+
+extension Notification.Name {
+    /// Posted when a routine's like state changes (`userInfo`: `routineId`, `likeCount`, `isLiked`).
+    static let communityRoutineLikeDidChange = Notification.Name("mb.communityRoutineLikeDidChange")
+}
 
 struct CommunityAPIErrorResponse: Codable, Sendable {
     let error: String
