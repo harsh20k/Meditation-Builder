@@ -19,6 +19,22 @@ locals {
 
   optional_auth_handlers = ["get_routines", "get_routine", "search"]
 
+  lambda_shared_source_hash = sha256(join("", [
+    for f in fileset("${path.module}/../lambdas/shared", "*.py") :
+    filesha256("${path.module}/../lambdas/shared/${f}")
+  ]))
+
+  # Hash source inputs, not zip artifacts — avoids filebase64sha256 race while package.sh rebuilds dist/ during apply.
+  lambda_package_hash = {
+    for name in keys(local.lambda_handlers) :
+    name => base64sha256(join("", [
+      filesha256("${path.module}/../lambdas/handlers/${name}.py"),
+      local.lambda_shared_source_hash,
+      filesha256("${path.module}/../lambdas/shared/requirements.txt"),
+      filesha256("${path.module}/../lambdas/package.sh"),
+    ]))
+  }
+
   api_route_handlers = [
     "get_routines", "post_routine", "get_routine", "delete_routine",
     "like_routine", "unlike_routine", "import_routine", "get_recommendations",

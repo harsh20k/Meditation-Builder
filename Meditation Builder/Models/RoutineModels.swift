@@ -820,6 +820,7 @@ final class SavedRoutine: Identifiable {
                 blockStartBell: routineBlock.blockStartBell,
                 blockIcon: routineBlock.blockIcon,
                 orderIndex: blockIndex,
+                isFavorite: routineBlock.isFavorite,
                 media: routineBlock.media.enumerated().map { (mediaIndex, mediaInfo) in
                     MediaResource(
                         id: mediaInfo.id,
@@ -829,7 +830,9 @@ final class SavedRoutine: Identifiable {
                         url: mediaInfo.url,
                         orderIndex: mediaIndex
                     )
-                }
+                },
+                musicFileName: routineBlock.musicFileName,
+                musicDisplayName: routineBlock.musicDisplayName
             )
         }
         self.openingBell = routine.openingBell

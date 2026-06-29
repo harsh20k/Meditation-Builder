@@ -288,16 +288,29 @@ struct PreSessionState: View {
     
     var body: some View {
         GeometryReader { geometry in
-				// Beads Progress Indicator - positioned at top center
-			BeadsView(
-				currentBlockIndex: 0,
-				totalBlocks: viewModel.totalBlocks,
-				inBlockProgress: 0.0,
-				blockStartDate: Date(),
-				isRoutineSelected: true,
-				isPlaying: false
-			)
-			.position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 60)
+				// Beads + total duration — pre-session only
+			VStack(spacing: 8) {
+				BeadsView(
+					currentBlockIndex: 0,
+					totalBlocks: viewModel.totalBlocks,
+					inBlockProgress: 0.0,
+					blockStartDate: Date(),
+					isRoutineSelected: true,
+					isPlaying: false
+				)
+				
+				Text(String.localizedStringWithFormat(
+					String(localized: "routine.duration.format.simplified"),
+					viewModel.totalDurationInMinutes
+				))
+				.font(.system(size: 13, weight: .regular))
+				.foregroundColor(AppTheme.offWhiteText.opacity(0.6))
+				.accessibilityLabel(String.localizedStringWithFormat(
+					String(localized: "routine.duration.format"),
+					viewModel.totalDurationInMinutes
+				))
+			}
+			.position(x: geometry.size.width / 2, y: geometry.safeAreaInsets.top + 68)
 			
             ZStack {
                 // Player Header

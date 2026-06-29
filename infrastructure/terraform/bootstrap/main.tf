@@ -10,14 +10,26 @@ terraform {
 }
 
 provider "aws" {
-  region = "us-east-1"
+  region = var.aws_region
+
+  # Pin S3 to the provider region so CreateBucket does not follow ~/.aws/config
+  # default region (e.g. us-west-2) and fail with AuthorizationHeaderMalformed.
+  endpoints {
+    s3 = "https://s3.${var.aws_region}.amazonaws.com"
+  }
+}
+
+data "aws_caller_identity" "current" {}
+
+locals {
+  state_bucket_name = "mb-tfstate-${data.aws_caller_identity.current.account_id}"
 }
 
 resource "aws_s3_bucket" "terraform_state" {
-  bucket = "mb-terraform-state"
+  bucket = local.state_bucket_name
 
   tags = {
-    Name    = "mb-terraform-state"
+    Name    = local.state_bucket_name
     Project = "meditation-builder"
   }
 }

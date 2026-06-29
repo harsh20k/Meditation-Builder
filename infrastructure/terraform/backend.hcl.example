@@ -1,0 +1,5 @@
+# Copy to backend.hcl after bootstrap apply and fill in your account ID:
+#   cp backend.hcl.example backend.hcl
+#   # edit bucket value from: terraform -chdir=../bootstrap output -raw state_bucket_name
+bucket         = "mb-tfstate-ACCOUNT_ID"
+dynamodb_table = "mb-terraform-locks"

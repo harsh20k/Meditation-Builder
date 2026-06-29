@@ -87,12 +87,6 @@ struct MainTabView: View {
                 Label(LocalizedStringKey("tab.timer"), systemImage: "timer")
             }
 
-            Tab(value: TabSelection.history) {
-                SessionHistoryView()
-            } label: {
-                Label(LocalizedStringKey("tab.history"), systemImage: "clock.arrow.circlepath")
-            }
-
             Tab(value: TabSelection.settings) {
                 SettingsView()
             } label: {
@@ -100,9 +94,13 @@ struct MainTabView: View {
             }
         }
         .tabBarMinimizeBehavior(.onScrollDown)
-        .overlay(alignment: .bottomTrailing) {
+        .tabViewBottomAccessory {
             if selectedTab == .library && libraryPath.isEmpty {
-                createRitualButton
+                HStack {
+                    Spacer()
+                    createRitualButton
+                }
+                .padding(.horizontal, AppTheme.Spacing.extraLarge)
             }
         }
     }
@@ -119,8 +117,6 @@ struct MainTabView: View {
                     CommunityHomeView()
                 case .timer:
                     RoutinePlayerView(modelContext: modelContext)
-                case .history:
-                    SessionHistoryView()
                 case .settings:
                     SettingsView()
                 }
@@ -145,6 +141,8 @@ struct MainTabView: View {
         .overlay(alignment: .bottomTrailing) {
             if selectedTab == .library && legacyNavigationPath.isEmpty {
                 createRitualButton
+                    .padding(.trailing, AppTheme.Spacing.extraLarge)
+                    .padding(.bottom, AppTheme.Spacing.fabTabBarClearance)
             }
         }
     }
@@ -205,8 +203,6 @@ struct MainTabView: View {
             }
         )
         .accessibilityLabel("Create new ritual")
-        .padding(.trailing, AppTheme.Spacing.extraLarge)
-        .padding(.bottom, AppTheme.Spacing.fabTabBarClearance)
     }
 
     private func handleLegacyTabTap(_ tappedTab: TabSelection) {

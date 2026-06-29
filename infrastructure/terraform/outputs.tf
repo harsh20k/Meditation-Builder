@@ -6,6 +6,11 @@ output "api_invoke_url" {
   value = module.api.invoke_url
 }
 
+# Base URL for paths like /routines (stage "v1" + resource prefix "/v1").
+output "api_base_url" {
+  value = "${module.api.invoke_url}/v1"
+}
+
 output "api_cloudfront_domain" {
   value = module.cdn.api_distribution_domain_name
 }

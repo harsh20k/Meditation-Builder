@@ -59,8 +59,8 @@ resource "aws_cognito_user_pool_client" "ios" {
   allowed_oauth_flows                    = ["code"]
   allowed_oauth_scopes                   = ["email", "openid", "profile"]
   supported_identity_providers           = var.apple_services_id != "" ? ["SignInWithApple"] : []
-  callback_urls                          = ["https://localhost/callback"]
-  logout_urls                            = ["https://localhost/logout"]
+  callback_urls                          = ["https://localhost/callback", "com.AnimeAI.Meditation-Builder://oauth2/callback"]
+  logout_urls                            = ["https://localhost/logout", "com.AnimeAI.Meditation-Builder://oauth2/logout"]
 
   access_token_validity  = 1
   id_token_validity      = 1
@@ -75,6 +75,7 @@ resource "aws_cognito_user_pool_client" "ios" {
   explicit_auth_flows = [
     "ALLOW_REFRESH_TOKEN_AUTH",
     "ALLOW_USER_SRP_AUTH",
+    "ALLOW_USER_PASSWORD_AUTH", # TEMP: remove when Apple Developer account is set up
   ]
 }
 

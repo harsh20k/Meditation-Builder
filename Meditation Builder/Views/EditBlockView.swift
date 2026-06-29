@@ -37,6 +37,7 @@ struct EditBlockView: View {
                                 }
                             }
                             .buttonStyle(PlainButtonStyle())
+                            .sensoryFeedback(.impact(flexibility: .soft), trigger: showIconPicker)
                             
                             TextField(LocalizedStringKey("block.name.placeholder"), text: $block.name)
                                 .font(AppTheme.Typography.headlineFont)
@@ -57,6 +58,7 @@ struct EditBlockView: View {
                                 .foregroundColor(AppTheme.lightGrey)
                         }
                         .padding(.horizontal, AppTheme.Spacing.small)
+                        .sensoryFeedback(.impact(flexibility: .rigid), trigger: block.durationInMinutes)
                         
                         // Bell Selection
                         Button(action: { showBellPicker = true }) {
@@ -78,6 +80,7 @@ struct EditBlockView: View {
                             .padding(.horizontal, AppTheme.Spacing.small)
                         }
                         .buttonStyle(PlainButtonStyle())
+                        .sensoryFeedback(.impact(flexibility: .soft), trigger: showBellPicker)
 
                         // Music Selection
                         Divider()
@@ -128,6 +131,7 @@ struct EditBlockView: View {
                                 .padding(.horizontal, AppTheme.Spacing.small)
                             }
                             .buttonStyle(PlainButtonStyle())
+                            .sensoryFeedback(.impact(flexibility: .soft), trigger: showMusicPicker)
                         }
 
                         if let error = musicImportError {

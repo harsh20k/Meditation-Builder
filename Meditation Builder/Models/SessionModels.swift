@@ -913,6 +913,9 @@ class RoutinePlayerViewModel {
     var totalBlocks: Int {
         routine?.getRoutine().blocks.count ?? 0
     }
+    var totalDurationInMinutes: Int {
+        routineData.blocks.map(\.durationInMinutes).reduce(0, +)
+    }
     var elapsedTime: Int {
         guard routine != nil else { return 0 }
         guard !isPaused else {
@@ -1049,12 +1052,21 @@ class RoutinePlayerViewModel {
         musicPlayer?.stop()
         musicPlayer = nil
         guard let fileName = block.musicFileName,
-              let url = BlockMusicManager.shared.musicURL(for: fileName) else { return }
+              let url = BlockMusicManager.shared.musicURL(for: fileName) else {
+            if block.musicFileName != nil {
+                logger.warning("Music file missing for block '\(block.name)': \(block.musicFileName ?? "unknown")", category: "Timer")
+            }
+            return
+        }
         do {
+            try AVAudioSession.sharedInstance().setActive(true)
             let player = try AVAudioPlayer(contentsOf: url)
             player.numberOfLoops = -1
             player.prepareToPlay()
-            player.play()
+            guard player.play() else {
+                logger.error("AVAudioPlayer.play() returned false for block '\(block.name)'", category: "Timer")
+                return
+            }
             musicPlayer = player
             logger.info("Playing music '\(block.musicDisplayName ?? fileName)' for block '\(block.name)'", category: "Timer")
         } catch {

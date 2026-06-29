@@ -97,10 +97,9 @@ final class CommunityAPIClient {
         }
     }
 
-    func importRoutine(id: String) async throws -> CommunityRoutine {
+    func importRoutine(id: String) async throws -> ImportResponse {
         let request = try await makeRequest(path: "/routines/\(id)/import", method: "POST", requiresAuth: true)
-        let response: ImportResponse = try await perform(request)
-        return response.routine
+        return try await perform(request)
     }
 
     func likeRoutine(id: String) async throws -> Int {

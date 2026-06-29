@@ -60,6 +60,60 @@ final class AuthManager {
         logger.info("Sign in with Apple completed", category: "Auth")
     }
 
+    // TEMP: remove when Apple Developer account is set up
+    func signInWithEmailPassword(email: String, password: String) async throws {
+        isSigningIn = true
+        lastError = nil
+        defer { isSigningIn = false }
+
+        let url = URL(string: "https://cognito-idp.\(AuthConfig.region).amazonaws.com/")!
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/x-amz-json-1.1", forHTTPHeaderField: "Content-Type")
+        request.setValue("AWSCognitoIdentityProviderService.InitiateAuth", forHTTPHeaderField: "X-Amz-Target")
+
+        let body: [String: Any] = [
+            "AuthFlow": "USER_PASSWORD_AUTH",
+            "ClientId": AuthConfig.appClientID,
+            "AuthParameters": ["USERNAME": email, "PASSWORD": password]
+        ]
+        request.httpBody = try JSONSerialization.data(withJSONObject: body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+
+        guard let http = response as? HTTPURLResponse else { throw AuthError.invalidResponse }
+        guard (200...299).contains(http.statusCode) else {
+            let message = String(data: data, encoding: .utf8) ?? "HTTP \(http.statusCode)"
+            logger.error("Cognito InitiateAuth error: \(message)", category: "Auth")
+            throw AuthError.tokenExchangeFailed(message)
+        }
+
+        struct InitiateAuthResponse: Decodable {
+            struct AuthResult: Decodable {
+                let AccessToken: String?
+                let RefreshToken: String?
+                let IdToken: String?
+            }
+            let AuthenticationResult: AuthResult?
+        }
+
+        let parsed = try JSONDecoder().decode(InitiateAuthResponse.self, from: data)
+        guard let result = parsed.AuthenticationResult else {
+            throw AuthError.missingAccessToken
+        }
+
+        let tokenResponse = TokenResponse(
+            accessToken: result.AccessToken,
+            refreshToken: result.RefreshToken,
+            idToken: result.IdToken,
+            expiresIn: nil
+        )
+        try applyTokens(tokenResponse)
+        isGuestBrowsing = false
+        UserDefaults.standard.set(false, forKey: Keys.guestBrowsing)
+        logger.info("Email/password sign-in completed", category: "Auth")
+    }
+
     func continueAsGuest() {
         isGuestBrowsing = true
         UserDefaults.standard.set(true, forKey: Keys.guestBrowsing)

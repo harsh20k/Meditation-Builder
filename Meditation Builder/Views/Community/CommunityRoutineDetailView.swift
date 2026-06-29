@@ -22,6 +22,7 @@ struct CommunityRoutineDetailView: View {
     @State private var isTogglingLike = false
     @State private var isImporting = false
     @State private var showImportSuccess = false
+    @State private var showAlreadyImported = false
     @State private var showSignInPrompt = false
 
     private var displayRoutine: CommunityRoutine? { routine ?? preview }
@@ -65,6 +66,11 @@ struct CommunityRoutineDetailView: View {
             Button(String(localized: "button.ok"), role: .cancel) {}
         } message: {
             Text(String(localized: "community.import.success.message"))
+        }
+        .alert(String(localized: "community.import.already.title"), isPresented: $showAlreadyImported) {
+            Button(String(localized: "button.ok"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "community.import.already.message"))
         }
         .sheet(isPresented: $showSignInPrompt) {
             NavigationStack {
@@ -112,6 +118,8 @@ struct CommunityRoutineDetailView: View {
         .padding(.top, AppTheme.Spacing.medium)
     }
 
+    private var isImported: Bool { routine?.isImportedByMe == true }
+
     private func actionBar(for routine: CommunityRoutine) -> some View {
         HStack(spacing: AppTheme.Spacing.medium) {
             Button {
@@ -130,11 +138,13 @@ struct CommunityRoutineDetailView: View {
             }
             .buttonStyle(.plain)
 
-            AppTheme.primaryButton(isEnabled: !isImporting, action: {
+            AppTheme.primaryButton(isEnabled: !isImporting && !isImported, action: {
                 guardAuth { Task { await importRoutine() } }
             }) {
                 if isImporting {
                     ProgressView().tint(AppTheme.offWhiteText)
+                } else if isImported {
+                    Text(LocalizedStringKey("community.import.already.button"))
                 } else {
                     Text(LocalizedStringKey("community.import.button"))
                 }
@@ -245,8 +255,15 @@ struct CommunityRoutineDetailView: View {
         isImporting = true
         defer { isImporting = false }
         do {
-            let imported = try await CommunityAPIClient.shared.importRoutine(id: routineId)
-            let localRoutine = imported.toLocalRoutine()
+            let response = try await CommunityAPIClient.shared.importRoutine(id: routineId)
+            routine?.isImportedByMe = true
+
+            if response.alreadyImported == true {
+                showAlreadyImported = true
+                return
+            }
+
+            let localRoutine = response.routine.toLocalRoutine()
             let saved = SavedRoutine(routine: localRoutine)
             modelContext.insert(saved)
             try modelContext.save()

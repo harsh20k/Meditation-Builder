@@ -66,3 +66,9 @@ variable "typesense_api_key" {
   default     = ""
   sensitive   = true
 }
+
+variable "enable_lambda_provisioned_concurrency" {
+  description = "Enable provisioned concurrency on hot-path Lambdas. Disable on small accounts where reserved capacity would drop unreserved concurrency below AWS minimum (10)."
+  type        = bool
+  default     = false
+}

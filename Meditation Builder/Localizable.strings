@@ -207,6 +207,9 @@
 "settings.data.title" = "Data";
 "settings.about.title" = "About";
 "settings.developer.title" = "Developer";
+"settings.account.title" = "Account";
+"settings.sign.out" = "Sign Out";
+"settings.history.title" = "Session History";
 "sounds.master.volume" = "Master Volume";
 
 // MARK: - Ritual Page
@@ -263,6 +266,9 @@
 "community.sort.newest" = "Newest";
 "community.sort.popular" = "Most liked";
 "community.import.button" = "Import";
+"community.import.already.button" = "In Library";
+"community.import.already.title" = "Already Imported";
+"community.import.already.message" = "This routine is already in your local library.";
 "community.import.success.title" = "Imported";
 "community.import.success.message" = "Routine added to your local library.";
 "community.blocks.unavailable" = "Block details unavailable in preview.";

@@ -72,6 +72,7 @@ struct AddBlockView: View {
                     .cornerRadius(AppTheme.CornerRadius.medium)
                     .padding(.horizontal)
                     .padding(.top, AppTheme.Spacing.medium)
+                    .sensoryFeedback(.selection, trigger: selectedTab)
                     
                     if selectedTab == 0 {
                         // Default blocks list
@@ -179,6 +180,7 @@ struct AddBlockView: View {
                                     .font(.subheadline)
                                     .foregroundColor(AppTheme.lightGrey)
                             }
+                            .sensoryFeedback(.impact(flexibility: .rigid), trigger: customDuration)
 
                             // Music picker
                             if let displayName = customMusicDisplayName {
@@ -218,6 +220,7 @@ struct AddBlockView: View {
                                     }
                                 }
                                 .buttonStyle(PlainButtonStyle())
+                                .sensoryFeedback(.impact(flexibility: .soft), trigger: showMusicPicker)
                             }
 
                             if let error = musicImportError {

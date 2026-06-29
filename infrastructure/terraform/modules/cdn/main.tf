@@ -14,6 +14,8 @@ resource "aws_cloudfront_distribution" "api" {
   origin {
     domain_name = var.api_gateway_domain_name
     origin_id   = "api-gateway"
+    # Stage name is "v1" and API resources are under /v1/* — prepend stage at origin.
+    origin_path = "/v1"
 
     custom_origin_config {
       http_port              = 80

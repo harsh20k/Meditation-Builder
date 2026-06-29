@@ -72,7 +72,7 @@ locals {
     post_routine = {
       resource_id = aws_api_gateway_resource.routines.id
       method      = "POST"
-      auth        = true
+      auth        = false
     }
     get_routine = {
       resource_id = aws_api_gateway_resource.routine_id.id
@@ -82,27 +82,27 @@ locals {
     delete_routine = {
       resource_id = aws_api_gateway_resource.routine_id.id
       method      = "DELETE"
-      auth        = true
+      auth        = false
     }
     like_routine = {
       resource_id = aws_api_gateway_resource.like.id
       method      = "POST"
-      auth        = true
+      auth        = false
     }
     unlike_routine = {
       resource_id = aws_api_gateway_resource.like.id
       method      = "DELETE"
-      auth        = true
+      auth        = false
     }
     import_routine = {
       resource_id = aws_api_gateway_resource.import.id
       method      = "POST"
-      auth        = true
+      auth        = false
     }
     get_recommendations = {
       resource_id = aws_api_gateway_resource.recommendations.id
       method      = "GET"
-      auth        = true
+      auth        = false
     }
     search = {
       resource_id = aws_api_gateway_resource.search.id
@@ -112,7 +112,7 @@ locals {
     post_activity = {
       resource_id = aws_api_gateway_resource.activity.id
       method      = "POST"
-      auth        = true
+      auth        = false
     }
   }
 }
@@ -151,19 +151,27 @@ resource "aws_lambda_permission" "api_gateway" {
 resource "aws_api_gateway_deployment" "main" {
   rest_api_id = aws_api_gateway_rest_api.main.id
 
+  # Hash method auth/routing only — integration URIs change when Lambda versions publish
+  # and must not force a replacement mid-apply (provider inconsistent plan bug).
   triggers = {
-    redeployment = sha1(jsonencode([
-      aws_api_gateway_resource.v1.id,
-      aws_api_gateway_method.route,
-      aws_api_gateway_integration.route,
-    ]))
+    redeployment = sha1(jsonencode({
+      for k, m in aws_api_gateway_method.route : k => {
+        authorization = m.authorization
+        authorizer_id = m.authorizer_id
+        http_method   = m.http_method
+        resource_id   = m.resource_id
+      }
+    }))
   }
 
   lifecycle {
     create_before_destroy = true
   }
 
-  depends_on = [aws_api_gateway_integration.route]
+  depends_on = [
+    aws_api_gateway_integration.route,
+    aws_api_gateway_method.route,
+  ]
 }
 
 resource "aws_api_gateway_stage" "main" {
@@ -172,6 +180,30 @@ resource "aws_api_gateway_stage" "main" {
   stage_name    = "v1"
 
   xray_tracing_enabled = true
+
+  depends_on = [aws_api_gateway_account.main]
+}
+
+resource "aws_iam_role" "api_gateway_cloudwatch" {
+  name = "${var.name_prefix}-apigw-cloudwatch"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect    = "Allow"
+      Action    = "sts:AssumeRole"
+      Principal = { Service = "apigateway.amazonaws.com" }
+    }]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "api_gateway_cloudwatch" {
+  role       = aws_iam_role.api_gateway_cloudwatch.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs"
+}
+
+resource "aws_api_gateway_account" "main" {
+  cloudwatch_role_arn = aws_iam_role.api_gateway_cloudwatch.arn
 }
 
 resource "aws_api_gateway_method_settings" "all" {
@@ -186,6 +218,8 @@ resource "aws_api_gateway_method_settings" "all" {
     throttling_burst_limit = 100
     throttling_rate_limit  = 50
   }
+
+  depends_on = [aws_api_gateway_account.main]
 }
 
 resource "aws_api_gateway_usage_plan" "main" {

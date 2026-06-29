@@ -8,9 +8,9 @@ import Foundation
 /// Cognito auth configuration. Replace placeholders after Terraform deploy; SSM runtime override later.
 enum AuthConfig {
     static let region = "us-east-1"
-    static let userPoolID = "us-east-1_PLACEHOLDER"
-    static let appClientID = "PLACEHOLDER_CLIENT_ID"
-    static let domain = "mb-staging.auth.us-east-1.amazoncognito.com"
+    static let userPoolID = "us-east-1_vePlfHnPL"
+    static let appClientID = "2pld9j7muda2ipse5f9smhd0kg"
+    static let domain = "meditation-builder-staging.auth.us-east-1.amazoncognito.com"
     static let redirectURI = "com.AnimeAI.Meditation-Builder://oauth2/callback"
     static let redirectURLScheme = "com.AnimeAI.Meditation-Builder"
     static let appleIdentityProvider = "SignInWithApple"

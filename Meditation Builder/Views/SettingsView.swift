@@ -18,8 +18,15 @@ struct SettingsView: View {
     @State private var showImportPicker = false
 
     @Environment(\.modelContext) private var modelContext
+    @Environment(AuthManager.self) private var authManager
 
     var body: some View {
+        NavigationStack {
+            settingsContent
+        }
+    }
+
+    private var settingsContent: some View {
         ZStack {
             AppTheme.backgroundColor.ignoresSafeArea()
 
@@ -41,6 +48,10 @@ struct SettingsView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: AppTheme.Spacing.large) {
+                        if authManager.canAccessMainApp {
+                            accountSection
+                        }
+                        historySection
                         appearanceSection
                         notificationsSection
                         dataSection
@@ -64,6 +75,55 @@ struct SettingsView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This will permanently delete all session history. Routines will not be affected.")
+        }
+    }
+
+    // MARK: - Account Section
+
+    private var accountSection: some View {
+        SettingsCard {
+            VStack(alignment: .leading, spacing: AppTheme.Spacing.medium) {
+                sectionHeader(icon: "person.fill", title: String(localized: "settings.account.title"))
+
+                Button {
+                    authManager.signOut()
+                } label: {
+                    HStack {
+                        Image(systemName: "rectangle.portrait.and.arrow.right")
+                            .font(.system(size: 16, weight: .medium))
+                        Text(LocalizedStringKey("settings.sign.out"))
+                            .font(AppTheme.Typography.bodyFont)
+                        Spacer()
+                    }
+                    .foregroundColor(.red)
+                    .padding(.vertical, AppTheme.Spacing.small)
+                }
+                .buttonStyle(PlainButtonStyle())
+            }
+        }
+    }
+
+    // MARK: - History Section
+
+    private var historySection: some View {
+        SettingsCard {
+            NavigationLink {
+                SessionHistoryView()
+            } label: {
+                HStack {
+                    Image(systemName: "clock.arrow.circlepath")
+                        .font(.system(size: 16, weight: .medium))
+                    Text(LocalizedStringKey("tab.history"))
+                        .font(AppTheme.Typography.bodyFont)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundColor(AppTheme.lightGrey)
+                }
+                .foregroundColor(AppTheme.offWhiteText)
+                .padding(.vertical, AppTheme.Spacing.small)
+            }
+            .buttonStyle(PlainButtonStyle())
         }
     }
 
@@ -331,6 +391,7 @@ private struct SessionExport: Codable {
 #Preview {
     SettingsView()
         .preferredColorScheme(.dark)
+        .environment(AuthManager())
         .environment(\.modelContext, try! ModelContainer(
             for: MeditationSession.self,
             configurations: ModelConfiguration(isStoredInMemoryOnly: true)

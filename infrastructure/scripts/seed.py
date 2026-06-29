@@ -50,7 +50,7 @@ def _routine_item(env: str, idx: int, author: dict[str, str]) -> dict:
     published_at = _now()
     tags = TAG_POOL[idx % len(TAG_POOL) : idx % len(TAG_POOL) + 2]
     name = f"Seed Routine {idx + 1}"
-    return {
+    item = {
         "PK": f"ROUTINE#{routine_id}",
         "SK": "METADATA",
         "EntityType": "Routine",
@@ -67,7 +67,6 @@ def _routine_item(env: str, idx: int, author: dict[str, str]) -> dict:
                 {"blockId": "b2", "type": "bell", "soundKey": "singing_bowl_c", "label": "Bell"},
             ]
         ),
-        "audioAssetKeys": set(),
         "likeCount": idx,
         "importCount": max(0, idx // 4),
         "publishedAt": published_at,
@@ -79,6 +78,7 @@ def _routine_item(env: str, idx: int, author: dict[str, str]) -> dict:
         "seeded": True,
         "taggingStatus": "complete",
     }
+    return item
 
 
 def _tag_items(routine: dict) -> list[dict]:
@@ -127,6 +127,26 @@ def _typesense_doc(routine: dict) -> dict:
         "importCount": int(routine["importCount"]),
         "publishedAt": int(dt.timestamp()),
     }
+
+
+def _upsert_typesense(routine: dict, env: str) -> None:
+    """Best-effort Typesense upsert; skipped when unreachable (e.g. private VPC IP from laptop)."""
+    if not os.environ.get("TYPESENSE_API_KEY"):
+        return
+    try:
+        base = _typesense_base(env)
+        resp = requests.post(
+            f"{base}/collections/routines/documents",
+            headers=_typesense_headers(),
+            json=_typesense_doc(routine),
+            timeout=10,
+        )
+        resp.raise_for_status()
+    except requests.RequestException as exc:
+        print(
+            f"Warning: Typesense upsert skipped for {routine['routineId']}: {exc}",
+            file=sys.stderr,
+        )
 
 
 def _random_password(length: int = 16) -> str:
@@ -201,15 +221,7 @@ def seed(env: str, count: int) -> list[str]:
         for tag_item in _tag_items(routine):
             table.put_item(Item=tag_item)
         routine_ids.append(routine["routineId"])
-
-        base = _typesense_base(env)
-        if os.environ.get("TYPESENSE_API_KEY"):
-            requests.post(
-                f"{base}/collections/routines/documents",
-                headers=_typesense_headers(),
-                json=_typesense_doc(routine),
-                timeout=10,
-            )
+        _upsert_typesense(routine, env)
 
     # 5 likes across routines
     for i, rid in enumerate(routine_ids[:5]):

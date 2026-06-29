@@ -39,6 +39,8 @@ fastlane/test_output
 .env
 .env.*
 *.p8
+infrastructure/terraform/backend.hcl
+infrastructure/scripts/.venv/
 
 # IDE / local tooling
 .lean-ctx/
@@ -50,3 +52,6 @@ playground.xcworkspace
 
 #notes
 notes/
+
+# Obsidian
+.obsidian/

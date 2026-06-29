@@ -17,36 +17,16 @@
         "exec": [
           "const needsAuth = pm.request.auth && pm.request.auth.type === 'bearer';",
           "if (!needsAuth) { return; }",
-          "const expires = Number(pm.collectionVariables.get('token_expires_at') || 0);",
           "const now = Math.floor(Date.now() / 1000);",
-          "if (pm.collectionVariables.get('access_token') && expires > now + 60) { return; }",
-          "const domain = pm.environment.get('cognito_domain');",
-          "const clientId = pm.environment.get('cognito_client_id');",
-          "const username = pm.environment.get('test_username');",
-          "const password = pm.environment.get('test_password');",
-          "if (!domain || !clientId || !username || !password) {",
-          "  console.warn('Missing Cognito env vars — skipping token refresh');",
+          "const envToken = pm.environment.get('access_token');",
+          "if (envToken) {",
+          "  pm.collectionVariables.set('access_token', envToken);",
+          "  pm.collectionVariables.set('token_expires_at', String(now + 3600));",
           "  return;",
           "}",
-          "pm.sendRequest({",
-          "  url: `${domain}/oauth2/token`,",
-          "  method: 'POST',",
-          "  header: { 'Content-Type': 'application/x-www-form-urlencoded' },",
-          "  body: {",
-          "    mode: 'urlencoded',",
-          "    urlencoded: [",
-          "      { key: 'grant_type', value: 'password' },",
-          "      { key: 'client_id', value: clientId },",
-          "      { key: 'username', value: username },",
-          "      { key: 'password', value: password }",
-          "    ]",
-          "  }",
-          "}, (err, res) => {",
-          "  if (err || !res.ok) { throw new Error('Cognito token request failed: ' + (err || res.text())); }",
-          "  const json = res.json();",
-          "  pm.collectionVariables.set('access_token', json.access_token);",
-          "  pm.collectionVariables.set('token_expires_at', String(now + (json.expires_in || 3600)));",
-          "});"
+          "const expires = Number(pm.collectionVariables.get('token_expires_at') || 0);",
+          "if (pm.collectionVariables.get('access_token') && expires > now + 60) { return; }",
+          "console.warn('No access_token — obtain via aws cognito-idp initiate-auth (see docs/E2E_TESTING.md §3.4) and pass --env-var access_token=$TOKEN');"
         ]
       }
     }
@@ -54,7 +34,8 @@
   "variable": [
     { "key": "access_token", "value": "" },
     { "key": "token_expires_at", "value": "0" },
-    { "key": "routine_id", "value": "{{seed_routine_id}}" }
+    { "key": "routine_id", "value": "{{seed_routine_id}}" },
+    { "key": "published_routine_id", "value": "" }
   ],
   "item": [
     {
@@ -63,29 +44,30 @@
         {
           "name": "Refresh Cognito Token",
           "request": {
-            "auth": { "type": "noauth" },
-            "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/x-www-form-urlencoded" }],
-            "body": {
-              "mode": "urlencoded",
-              "urlencoded": [
-                { "key": "grant_type", "value": "password" },
-                { "key": "client_id", "value": "{{cognito_client_id}}" },
-                { "key": "username", "value": "{{test_username}}" },
-                { "key": "password", "value": "{{test_password}}" }
-              ]
-            },
-            "url": "{{cognito_domain}}/oauth2/token"
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url}}/routines?pageSize=1"
           },
           "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "const token = pm.environment.get('access_token');",
+                  "if (!token) {",
+                  "  pm.execution.skipRequest('Set access_token via aws cognito-idp initiate-auth (E2E_TESTING.md §3.4)');",
+                  "}",
+                  "pm.collectionVariables.set('access_token', token);"
+                ],
+                "type": "text/javascript"
+              }
+            },
             {
               "listen": "test",
               "script": {
                 "exec": [
-                  "pm.test('Token issued', () => pm.response.to.have.status(200));",
-                  "const json = pm.response.json();",
-                  "pm.test('access_token present', () => pm.expect(json.access_token).to.be.a('string'));",
-                  "pm.collectionVariables.set('access_token', json.access_token);"
+                  "pm.test('access_token configured', () => pm.expect(pm.environment.get('access_token')).to.be.a('string').and.not.empty);",
+                  "pm.test('API reachable with token', () => pm.response.to.have.status(200));"
                 ],
                 "type": "text/javascript"
               }
@@ -122,8 +104,7 @@
                 "exec": [
                   "pm.test('Status 200', () => pm.response.to.have.status(200));",
                   "const json = pm.response.json();",
-                  "pm.test('Has routines array', () => pm.expect(json.routines).to.be.an('array'));",
-                  "if (json.routines.length) { pm.collectionVariables.set('routine_id', json.routines[0].routineId); }"
+                  "pm.test('Has routines array', () => pm.expect(json.routines).to.be.an('array'));"
                 ],
                 "type": "text/javascript"
               }
@@ -149,6 +130,7 @@
                   "pm.test('Status 201', () => pm.response.to.have.status(201));",
                   "const json = pm.response.json();",
                   "pm.test('routineId returned', () => pm.expect(json.routineId).to.be.a('string'));",
+                  "pm.collectionVariables.set('published_routine_id', json.routineId);",
                   "pm.collectionVariables.set('routine_id', json.routineId);"
                 ],
                 "type": "text/javascript"
@@ -186,27 +168,22 @@
               }
             }
           ]
-        },
-        {
-          "name": "DELETE /routines/{id}",
-          "request": {
-            "method": "DELETE",
-            "url": "{{base_url}}/routines/{{routine_id}}"
-          },
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"],
-                "type": "text/javascript"
-              }
-            }
-          ]
         }
       ]
     },
     {
       "name": "Social",
+      "event": [
+        {
+          "listen": "prerequest",
+          "script": {
+            "exec": [
+              "pm.collectionVariables.set('routine_id', pm.environment.get('seed_routine_id'));"
+            ],
+            "type": "text/javascript"
+          }
+        }
+      ],
       "item": [
         {
           "name": "POST /routines/{id}/like",
@@ -339,7 +316,7 @@
             "header": [{ "key": "Content-Type", "value": "application/json" }],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"sessionDurationSeconds\": 1200,\n  \"routinesPlayed\": [\"{{routine_id}}\"],\n  \"tagsEngaged\": [\"focus\", \"morning\"],\n  \"blockTypes\": [\"timer\", \"bell\"]\n}"
+              "raw": "{\n  \"sessionDurationSeconds\": 1200,\n  \"routinesPlayed\": [\"{{seed_routine_id}}\"],\n  \"tagsEngaged\": [\"focus\", \"morning\"],\n  \"blockTypes\": [\"timer\", \"bell\"]\n}"
             },
             "url": "{{base_url}}/activity"
           },
@@ -351,6 +328,38 @@
                   "pm.test('Status 202', () => pm.response.to.have.status(202));",
                   "pm.test('accepted true', () => pm.expect(pm.response.json().accepted).to.eql(true));"
                 ],
+                "type": "text/javascript"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Cleanup",
+      "item": [
+        {
+          "name": "DELETE /routines/{id} (published)",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/routines/{{published_routine_id}}"
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "exec": [
+                  "if (!pm.collectionVariables.get('published_routine_id')) {",
+                  "  pm.execution.skipRequest('No published_routine_id from POST /routines');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "exec": ["pm.test('Status 204', () => pm.response.to.have.status(204));"],
                 "type": "text/javascript"
               }
             }

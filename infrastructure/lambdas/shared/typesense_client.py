@@ -2,13 +2,44 @@
 
 from __future__ import annotations
 
+import logging
 import os
 from datetime import datetime, timezone
 from typing import Any
 
+import boto3
 import typesense
 
+logger = logging.getLogger(__name__)
+
 _client: typesense.Client | None = None
+_collection_ready = False
+
+ROUTINES_SCHEMA: dict[str, Any] = {
+    "name": "routines",
+    "fields": [
+        {"name": "name", "type": "string"},
+        {"name": "description", "type": "string"},
+        {"name": "tags", "type": "string[]", "facet": True},
+        {"name": "durationSeconds", "type": "int32", "facet": True},
+        {"name": "authorName", "type": "string"},
+        {"name": "likeCount", "type": "int32"},
+        {"name": "importCount", "type": "int32"},
+        {"name": "publishedAt", "type": "int64"},
+    ],
+    "default_sorting_field": "publishedAt",
+}
+
+
+def _resolve_api_key() -> str:
+    direct = os.environ.get("TYPESENSE_API_KEY")
+    if direct:
+        return direct
+    ssm_path = os.environ.get("TYPESENSE_API_KEY_SSM")
+    if ssm_path:
+        value = boto3.client("ssm").get_parameter(Name=ssm_path, WithDecryption=True)["Parameter"]["Value"]
+        return str(value)
+    return "test-key"
 
 
 def get_client() -> typesense.Client:
@@ -17,7 +48,7 @@ def get_client() -> typesense.Client:
         host = os.environ.get("TYPESENSE_HOST", "localhost")
         port = os.environ.get("TYPESENSE_PORT", "8108")
         protocol = os.environ.get("TYPESENSE_PROTOCOL", "http")
-        api_key = os.environ.get("TYPESENSE_API_KEY", "test-key")
+        api_key = _resolve_api_key()
         _client = typesense.Client(
             {
                 "nodes": [{"host": host, "port": port, "protocol": protocol}],
@@ -28,9 +59,26 @@ def get_client() -> typesense.Client:
     return _client
 
 
+def ensure_collection() -> None:
+    global _collection_ready
+    if _collection_ready:
+        return
+    client = get_client()
+    try:
+        client.collections["routines"].retrieve()
+        _collection_ready = True
+        return
+    except typesense.exceptions.ObjectNotFound:
+        pass
+    client.collections.create(ROUTINES_SCHEMA)
+    _collection_ready = True
+    logger.info("Created Typesense collection: routines")
+
+
 def reset_client() -> None:
-    global _client
+    global _client, _collection_ready
     _client = None
+    _collection_ready = False
 
 
 def routine_to_document(item: dict[str, Any]) -> dict[str, Any]:
@@ -57,11 +105,13 @@ def routine_to_document(item: dict[str, Any]) -> dict[str, Any]:
 
 
 def upsert_routine(item: dict[str, Any]) -> None:
+    ensure_collection()
     doc = routine_to_document(item)
     get_client().collections["routines"].documents.upsert(doc)
 
 
 def delete_routine(routine_id: str) -> None:
+    ensure_collection()
     get_client().collections["routines"].documents[routine_id].delete()
 
 
@@ -92,4 +142,5 @@ def search_routines(
     }
     if filters:
         params["filter_by"] = " && ".join(filters)
+    ensure_collection()
     return get_client().collections["routines"].documents.search(params)
