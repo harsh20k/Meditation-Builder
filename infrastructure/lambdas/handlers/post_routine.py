@@ -82,9 +82,9 @@ def _invalidate_cloudfront() -> None:
 
 def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     request_id = response.get_request_id(event)
-    sub = auth.get_sub(event)
-    if not sub:
-        return response.error(401, "UNAUTHORIZED", "Authentication required.", request_id=request_id)
+    sub, err_resp = auth.authenticate(event, request_id)
+    if err_resp:
+        return err_resp
 
     try:
         raw = event.get("body") or "{}"
@@ -101,10 +101,23 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
         if err:
             return response.error(400, "INVALID_BODY", err, request_id=request_id)
 
+        # Check for duplicate name under the same author (GSI2-author-routines)
+        existing_resp = dynamo.get_table().query(
+            IndexName="GSI2-author-routines",
+            KeyConditionExpression="GSI2PK = :gsi2pk",
+            FilterExpression="#nm = :name",
+            ExpressionAttributeNames={"#nm": "name"},
+            ExpressionAttributeValues={":gsi2pk": f"USER#{sub}", ":name": body["name"]},
+            Limit=1,
+        )
+        if existing_resp.get("Items"):
+            return response.error(
+                409, "ALREADY_EXISTS", "A routine with this name already exists.", request_id=request_id
+            )
+
         routine_id = str(uuid.uuid4())
         now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         author_name = auth.get_display_name(event) or "Community Member"
-        tags: set[str] = set()
 
         routine_item = {
             "PK": f"ROUTINE#{routine_id}",
@@ -115,10 +128,8 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
             "authorName": author_name,
             "name": body["name"],
             "description": body.get("userDescription") or "",
-            "tags": tags,
             "durationSeconds": body["durationSeconds"],
             "blocks": json.dumps(body["blocks"]),
-            "audioAssetKeys": set(body.get("audioAssetKeys") or []),
             "likeCount": 0,
             "importCount": 0,
             "publishedAt": now,
@@ -129,6 +140,9 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
             "GSI2PK": f"USER#{sub}",
             "taggingStatus": "pending",
         }
+        audio_keys = body.get("audioAssetKeys") or []
+        if audio_keys:
+            routine_item["audioAssetKeys"] = set(audio_keys)
 
         dynamo.put_item(routine_item)
 

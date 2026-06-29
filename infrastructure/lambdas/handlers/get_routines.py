@@ -54,7 +54,12 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     request_id = response.get_request_id(event)
     try:
         qs = event.get("queryStringParameters") or {}
-        page_size = min(int(qs.get("pageSize", 20)), 50)
+        raw_page_size = int(qs.get("pageSize", 20))
+        if raw_page_size > 50:
+            return response.error(
+                400, "INVALID_PARAMETER", "pageSize must be <= 50", request_id=request_id
+            )
+        page_size = raw_page_size
         if page_size < 1:
             return response.error(
                 400, "INVALID_PARAMETER", "pageSize must be >= 1", request_id=request_id

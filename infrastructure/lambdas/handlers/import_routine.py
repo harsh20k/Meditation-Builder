@@ -41,9 +41,9 @@ def _routine_payload(item: dict[str, Any]) -> dict[str, Any]:
 
 def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     request_id = response.get_request_id(event)
-    sub = auth.get_sub(event)
-    if not sub:
-        return response.error(401, "UNAUTHORIZED", "Authentication required.", request_id=request_id)
+    sub, err_resp = auth.authenticate(event, request_id)
+    if err_resp:
+        return err_resp
 
     try:
         routine_id = (event.get("pathParameters") or {}).get("id", "")

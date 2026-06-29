@@ -10,29 +10,54 @@
 
 ---
 
+
+
 ## Progress summary (staging)
 
-| Section | Status |
-|---|---|
-| §1 Pre-flight | Done except SIWA (§1.3), Hosted UI (§1.4), Xcode (§1.6) |
-| §2 Infrastructure | Done except TTL check (§2.1), redis-cli PING (§2.3), X-Request-Id (§2.5), CF cache hit (§2.6) |
-| §3 Seed & data | Seed + Cognito done; DynamoDB scan + direct Typesense curl optional |
-| §4 API (Newman) | **21/21 assertions passing** (2026-06-24); manual edge cases remain |
-| §5 iOS app | Not started |
+
+| Section           | Status                                                                                        |
+| ----------------- | --------------------------------------------------------------------------------------------- |
+| §1 Pre-flight     | Done except SIWA (§1.3), Hosted UI (§1.4), Xcode (§1.6)                                       |
+| §2 Infrastructure | ✅ All done (2026-06-29)                                                                       |
+| §3 Seed & data    | ✅ All done (2026-06-29)                                                                       |
+| §4 API            | ✅ Tested (2026-06-29) — **6 bugs found** (see below)                                         |
+| §5 iOS app        | Not started                                                                                   |
+
+### 🐛 Bugs found (2026-06-29)
+
+| # | Endpoint | Bug |
+|---|---|---|
+| 1 | `GET /routines?pageSize=100` | Returns 200 with all results instead of 400 `INVALID_PARAMETER` |
+| 2 | `POST /routines` | `SQS_TAGGING_QUEUE_URL` env var missing on Lambda — Bedrock tagging never triggered, `taggingStatus` stuck at `"pending"` |
+| 3 | `POST /routines` | Duplicate name from same user returns 201 (not 409 `ALREADY_EXISTS`) |
+| 4 | `GET/DELETE /routines/{id}` (non-existent) | Returns `INVALID_ID` instead of `ROUTINE_NOT_FOUND` for valid UUID that doesn't exist |
+| 5 | `POST /routines/{id}/like` (repeat) | Returns 200 (not 409 `ALREADY_LIKED`) on duplicate like |
+| 6 | `POST /routines/{id}/import` | `importCount` not incremented on Routine item after import |
+| 7 | `DELETE /routines/{id}` | CloudFront invalidation not triggered — deleted routine still served from cache |
+| 8 | `POST /activity` | `TypeError: unhashable type: 'dict'` at `set(body["routinesPlayed"])` line 62 — causes 500 `INTERNAL_ERROR` |
+
+
+
 
 ## 0. Pre-requisites
 
-| Tool | Version |
-|---|---|
-| Terraform | 1.9.0 |
-| AWS CLI | ≥2.x, configured with an IAM principal that can assume `$AWS_ROLE_ARN` |
-| Python | ≥3.10 |
-| Newman | latest (`npm install -g newman`) |
-| Xcode | ≥15 (iOS 17 SDK) |
+
+| Tool      | Version                                                                |
+| --------- | ---------------------------------------------------------------------- |
+| Terraform | 1.9.0                                                                  |
+| AWS CLI   | ≥2.x, configured with an IAM principal that can assume `$AWS_ROLE_ARN` |
+| Python    | ≥3.10                                                                  |
+| Newman    | latest (`npm install -g newman`)                                       |
+| Xcode     | ≥15 (iOS 17 SDK)                                                       |
+
 
 ---
 
+
+
 ## 1. Pre-flight Setup
+
+
 
 ### 1.1 Terraform Bootstrap (one-time, per AWS account)
 
@@ -58,12 +83,15 @@ Bootstrap resources live in **us-east-1** (see ADR-001). Your shell `AWS_REGION`
   ```
 
 **Troubleshooting:**
+
 - *AccessDenied on bucket creation* → ensure the IAM role has `s3:CreateBucket`, `dynamodb:CreateTable`
-- *`BucketAlreadyExists` on `mb-terraform-state`* → generic name is taken globally; bootstrap now uses `mb-tfstate-<account-id>`. Re-run `terraform apply` after pulling latest bootstrap changes.
-- *`AuthorizationHeaderMalformed: region 'us-east-1' is wrong; expecting 'us-west-2'`* → your AWS CLI default region is not us-east-1. Export `AWS_DEFAULT_REGION=us-east-1` and re-run `terraform apply`. DynamoDB may already exist from a partial apply; that is OK — apply is idempotent.
+- `BucketAlreadyExists` *on* `mb-terraform-state` → generic name is taken globally; bootstrap now uses `mb-tfstate-<account-id>`. Re-run `terraform apply` after pulling latest bootstrap changes.
+- `AuthorizationHeaderMalformed: region 'us-east-1' is wrong; expecting 'us-west-2'` → your AWS CLI default region is not us-east-1. Export `AWS_DEFAULT_REGION=us-east-1` and re-run `terraform apply`. DynamoDB may already exist from a partial apply; that is OK — apply is idempotent.
 - *Partial apply (DynamoDB created, S3 failed)* → fix region as above, then `terraform apply` again; only missing resources are created.
 
 ---
+
+
 
 ### 1.2 Terraform Apply — Staging
 
@@ -78,10 +106,13 @@ Bootstrap resources live in **us-east-1** (see ADR-001). Your shell `AWS_REGION`
 - [x] Note `api_gateway_invoke_url`, `cloudfront_domain`, `cognito_user_pool_id`, `cognito_client_id`, `redis_endpoint`, `typesense_ec2_ip`
 
 **Troubleshooting:**
+
 - *Lambda zip not found* → re-run `package.sh`; check it creates `infrastructure/lambdas/dist/*.zip`
 - *Timeout on ElastiCache/Typesense EC2* → these take ~5 min; re-run `terraform apply`
 
 ---
+
+
 
 ### 1.3 Apple Developer — Sign in with Apple Setup
 
@@ -112,10 +143,13 @@ aws ssm put-parameter \
 ```
 
 **Troubleshooting:**
+
 - *Cognito "invalid_client" on SIWA federation* → verify Services ID matches SSM parameter exactly
 - *"redirect_uri_mismatch"* → confirm the Return URL on the Services ID matches `cognito_domain/oauth2/idpresponse`
 
 ---
+
+
 
 ### 1.3-alt — Email/Password Workaround (no Apple Developer account) ✅ Applied
 
@@ -173,6 +207,8 @@ Use `AccessToken` (not `IdToken`) — Lambda JWT validation accepts both, but `A
 
 ---
 
+
+
 ### 1.4 Cognito Hosted UI — Callback URL Registration
 
 - [ ] In the AWS Console → Cognito → User Pools → `mb-staging-user-pool` → App client → Hosted UI
@@ -181,9 +217,12 @@ Use `AccessToken` (not `IdToken`) — Lambda JWT validation accepts both, but `A
 - [ ] Confirm identity provider **SignInWithApple** is enabled on the app client
 
 **Troubleshooting:**
+
 - *ASWebAuthenticationSession fails with "redirect_uri_mismatch"* → the custom URL scheme above must match `AuthConfig.redirectURI` exactly
 
 ---
+
+
 
 ### 1.5 Populate `AuthConfig.swift` and `APIConfig.swift`
 
@@ -205,10 +244,13 @@ After `terraform output` supplies values, update staging endpoints in the iOS ap
 - [ ] Optional: switch to CloudFront via `terraform output -raw api_cloudfront_domain` → `https://<domain>/v1`
 
 **Troubleshooting:**
+
 - *Build warning "PLACEHOLDER"* → grep for `PLACEHOLDER` in config files; replace before testing
 - *§5.2 Community tab empty / network error* → `CommunityAPIClient` uses `APIConfig.baseURL`; confirm it is not the default production hostname `api.meditationbuilder.app` (DNS does not exist yet)
 
 ---
+
+
 
 ### 1.6 Xcode Provisioning
 
@@ -219,9 +261,12 @@ After `terraform output` supplies values, update staging endpoints in the iOS ap
 - [ ] Build succeeds with zero errors: `Product → Build`
 
 **Troubleshooting:**
+
 - *"Provisioning profile doesn't include Sign in with Apple"* → regenerate profile in developer portal with SIWA capability
 
 ---
+
+
 
 ### 1.7 Seed Script
 
@@ -256,11 +301,12 @@ python seed.py --env staging --count 20
 - [x] Note the two test user credentials stored in SSM at `/mb/staging/test/user1-password` and `/mb/staging/test/user2-password`
 
 **Troubleshooting:**
-- *`cd: no such file or directory: infrastructure/scripts`* → run from repo root, or use full path: `cd "/path/to/Meditation Builder/infrastructure/scripts"`
-- *`ModuleNotFoundError: No module named 'boto3'`* → Homebrew `python3` (3.14) ≠ the Python where `pip` installed packages. Use the venv steps above, or `python3.10 seed.py` if boto3 is only on 3.10.
-- *`ExpiredTokenException`* → refresh AWS credentials (`aws sso login` or re-export `AWS_ACCESS_KEY_ID` / session token), then retry.
-- *`COGNITO_USER_POOL_ID` not set* → seed falls back to fake `sub` values (`seed-user-1`/`seed-user-2`); Cognito test users won't be created
-- *`ValidationException: number set may not be empty`* → DynamoDB rejects empty sets; seed omits `audioAssetKeys` when none (fixed in `seed.py`).
+
+- `cd: no such file or directory: infrastructure/scripts` → run from repo root, or use full path: `cd "/path/to/Meditation Builder/infrastructure/scripts"`
+- `ModuleNotFoundError: No module named 'boto3'` → Homebrew `python3` (3.14) ≠ the Python where `pip` installed packages. Use the venv steps above, or `python3.10 seed.py` if boto3 is only on 3.10.
+- `ExpiredTokenException` → refresh AWS credentials (`aws sso login` or re-export `AWS_ACCESS_KEY_ID` / session token), then retry.
+- `COGNITO_USER_POOL_ID` *not set* → seed falls back to fake `sub` values (`seed-user-1`/`seed-user-2`); Cognito test users won't be created
+- `ValidationException: number set may not be empty` → DynamoDB rejects empty sets; seed omits `audioAssetKeys` when none (fixed in `seed.py`).
 - *Typesense upsert fails silently* → `TYPESENSE_API_KEY` empty; verify SSM parameter. From laptop, skip Typesense vars — use `reindex_typesense.py` after EC2 is healthy (see §3.3).
 
 **Re-index after Typesense EC2 replacement:**
@@ -276,6 +322,8 @@ Triggers DynamoDB Stream → `typesense_indexer` Lambda upserts all public routi
 
 ---
 
+
+
 ## 2. Infrastructure Validation
 
 Run all checks from the AWS CLI after `terraform apply` completes.
@@ -287,13 +335,16 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 - [x] GSI `GSI1-public-by-date` status is `ACTIVE`
 - [x] GSI `GSI2-author-routines` status is `ACTIVE`
 - [x] PITR enabled: `aws dynamodb describe-continuous-backups --table-name mb-staging-community` → `PointInTimeRecoveryStatus: ENABLED`
-- [ ] TTL enabled on attribute `ttl`: check `TimeToLiveDescription.AttributeName = ttl`
+- [x] TTL enabled on attribute `ttl`: check `TimeToLiveDescription.AttributeName = ttl`
 
 **Troubleshooting:**
-- *GSI status `CREATING`* → wait 2–5 min; DynamoDB provisions GSI capacity asynchronously
+
+- *GSI status* `CREATING` → wait 2–5 min; DynamoDB provisions GSI capacity asynchronously
 - *PITR not enabled* → check `aws_dynamodb_table` resource in `infrastructure/terraform/modules/storage/main.tf`
 
 ---
+
+
 
 ### 2.2 S3
 
@@ -305,23 +356,29 @@ Run all checks from the AWS CLI after `terraform apply` completes.
   Confirm `AllowedOrigins` includes the app domain or `*`, `AllowedMethods` includes `GET`
 
 **Troubleshooting:**
+
 - *NoSuchCORSConfiguration* → Terraform CORS resource failed; re-run `terraform apply`
 
 ---
 
+
+
 ### 2.3 Redis (ElastiCache) ✅
 
 - [x] Cluster endpoint from Terraform output: `terraform output -raw redis_endpoint`
-- [ ] From a Lambda test invocation (or EC2 in the same VPC), `redis-cli -h <endpoint> -p 6379 PING` → `PONG`
+- [x] From a Lambda test invocation (or EC2 in the same VPC), `redis-cli -h <endpoint> -p 6379 PING` → `PONG` *(verified indirectly: `GET /recommendations` returns `cacheHit: true`; SG allows TCP 6379 from Lambda SG)*
 - [x] `GET /routines/{id}` twice → both 200, second response ~3ms (warm Lambda + Redis hit); no Redis errors in CloudWatch
 
 > **Note:** `REDIS_ENDPOINT` env var was missing from Lambdas initially (they read `REDIS_HOST`). Fixed in `shared/redis_client.py` — now reads `REDIS_ENDPOINT` first.
 
 **Troubleshooting:**
+
 - *Connection refused / timeout* → Lambda VPC security group must allow outbound TCP 6379 to the ElastiCache SG; check `infrastructure/terraform/modules/cache`
 - *NOAUTH error* → Redis AUTH token mismatch; verify `REDIS_AUTH_TOKEN` Lambda env var matches SSM
 
 ---
+
+
 
 ### 2.4 Typesense EC2 ✅
 
@@ -332,16 +389,19 @@ Run all checks from the AWS CLI after `terraform apply` completes.
 - [x] Document count via API: `GET /search?q=Seed` → `found` ≥ 20
 
 **Troubleshooting:**
-- *`Connection refused` on port 8108* → EC2 user-data failed. Check console output: `aws ec2 get-console-output --instance-id <id> --latest`. Common cause: **no IAM instance profile** → `Unable to locate credentials` when fetching SSM API key. Fix in `modules/search/main.tf`, then `terraform apply` (replaces instance via `user_data_replace_on_change`).
-- *`collection not found`* → user-data or `ensure_collection()` did not run; re-apply Terraform or invoke any upsert via `typesense_indexer`.
+
+- `Connection refused` *on port 8108* → EC2 user-data failed. Check console output: `aws ec2 get-console-output --instance-id <id> --latest`. Common cause: **no IAM instance profile** → `Unable to locate credentials` when fetching SSM API key. Fix in `modules/search/main.tf`, then `terraform apply` (replaces instance via `user_data_replace_on_change`).
+- `collection not found` → user-data or `ensure_collection()` did not run; re-apply Terraform or invoke any upsert via `typesense_indexer`.
 - *Search 500 after indexing* → highlight parsing bug in `search.py` (dict vs list format); redeploy `mb-staging-search` Lambda.
-- *Empty `found`* → run `python reindex_typesense.py --env staging` (§1.7).
+- *Empty* `found` → run `python reindex_typesense.py --env staging` (§1.7).
 
 ---
 
+
+
 ### 2.5 API Gateway ✅
 
-API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke path is **`{invoke_url}/v1/routines`** (not `{invoke_url}/routines`). Use `terraform output -raw api_base_url` as `{{base_url}}`.
+API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke path is `{invoke_url}/v1/routines` (not `{invoke_url}/routines`). Use `terraform output -raw api_base_url` as `{{base_url}}`.
 
 > **Auth:** All routes use `authorization = NONE` at API Gateway; Lambda validates JWTs (Cognito JWKS). Public routes (`GET /routines`, `GET /routines/{id}`, `GET /search`) populate per-user fields when a valid `Authorization: Bearer` header is present. See ADR-021, ADR-022.
 
@@ -351,24 +411,30 @@ API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke 
   curl -i "${API_BASE}/routines?pageSize=5"   # → HTTP 200
   ```
 - [x] Stage name is `v1` (matches API version prefix)
-- [ ] `X-Request-Id` header present in response
+- [x] `X-Request-Id` header present in response *(both `x-amzn-requestid` and `x-request-id` present)*
 
 **Troubleshooting:**
+
 - *403 Forbidden on invoke URL* → API Gateway resource policy or usage plan key missing; check Lambda authorizer and `aws_api_gateway_usage_plan`
 
 ---
+
+
 
 ### 2.6 CloudFront ✅
 
 - [x] Distribution status `Deployed`
 - [x] Domain accessible: `curl -I "https://$(terraform output -raw api_cloudfront_domain)/v1/routines?pageSize=5"` → `HTTP/2 200`
-- [ ] Cache header present: `x-cache: Hit from cloudfront` on second request (wait 1s after first)
+- [x] Cache header present: `x-cache: Hit from cloudfront` on second request (wait 1s after first)
 
 **Troubleshooting:**
-- *Distribution status `InProgress`* → wait 10–15 min for CloudFront propagation
+
+- *Distribution status* `InProgress` → wait 10–15 min for CloudFront propagation
 - *522/523 from CloudFront* → origin (API Gateway) unreachable; check API GW stage URL directly
 
 ---
+
+
 
 ### 2.7 SQS ✅
 
@@ -377,9 +443,12 @@ API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke 
 - [x] DLQ depth zero: `ApproximateNumberOfMessages = 0`
 
 **Troubleshooting:**
+
 - *DLQ messages accumulating* → see §6.5
 
 ---
+
+
 
 ### 2.8 SNS ✅
 
@@ -389,39 +458,51 @@ API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke 
 
 ---
 
+
+
 ### 2.9 CloudWatch Log Groups ✅
 
 - [x] All 13 log groups present under `/aws/lambda/mb-staging-*`:
   `bedrock-tagger`, `delete-routine`, `get-recommendations`, `get-routine`, `get-routines`, `import-routine`, `like-flush`, `like-routine`, `post-activity`, `post-routine`, `search`, `typesense-indexer`, `unlike-routine`
 
 **Troubleshooting:**
+
 - *Missing log group* → Lambda was never invoked; invoke it once manually or via the Postman collection
 
 ---
+
+
 
 ### 2.10 Lambda Functions ✅
 
 - [x] All 13 functions exist (`mb-staging-{bedrock-tagger,delete-routine,get-recommendations,get-routine,get-routines,import-routine,like-flush,like-routine,post-activity,post-routine,search,typesense-indexer,unlike-routine}`)
 - [x] Sample env check on `mb-staging-post-routine` confirms all key vars:
 
-| Env var | Value |
-|---------|-------|
-| `DYNAMODB_TABLE` | `mb-staging-community` |
-| `BEDROCK_QUEUE_URL` | `…/mb-staging-bedrock-tagging` |
-| `REDIS_ENDPOINT` | `mb-staging-redis.a2ctl6.0001.use1.cache.amazonaws.com` |
-| `TYPESENSE_HOST` | `10.0.10.223` (private; changes on instance replace) |
-| `TYPESENSE_API_KEY_SSM` | `/mb/staging/typesense/api-key` (Lambdas load key at runtime via `typesense_client.py`) |
-| `LIKE_NOTIFICATIONS_TOPIC_ARN` | `…:mb-staging-like-notifications` |
-| `COGNITO_USER_POOL_ID` | `us-east-1_vePlfHnPL` |
-| `COGNITO_APP_CLIENT_ID` | `2pld9j7muda2ipse5f9smhd0kg` |
-| `AUDIO_BUCKET` | `mb-staging-audio-assets` |
+
+| Env var                        | Value                                                                                   |
+| ------------------------------ | --------------------------------------------------------------------------------------- |
+| `DYNAMODB_TABLE`               | `mb-staging-community`                                                                  |
+| `BEDROCK_QUEUE_URL`            | `…/mb-staging-bedrock-tagging`                                                          |
+| `REDIS_ENDPOINT`               | `mb-staging-redis.a2ctl6.0001.use1.cache.amazonaws.com`                                 |
+| `TYPESENSE_HOST`               | `10.0.10.223` (private; changes on instance replace)                                    |
+| `TYPESENSE_API_KEY_SSM`        | `/mb/staging/typesense/api-key` (Lambdas load key at runtime via `typesense_client.py`) |
+| `LIKE_NOTIFICATIONS_TOPIC_ARN` | `…:mb-staging-like-notifications`                                                       |
+| `COGNITO_USER_POOL_ID`         | `us-east-1_vePlfHnPL`                                                                   |
+| `COGNITO_APP_CLIENT_ID`        | `2pld9j7muda2ipse5f9smhd0kg`                                                            |
+| `AUDIO_BUCKET`                 | `mb-staging-audio-assets`                                                               |
+
 
 **Troubleshooting:**
+
 - *Missing env var* → update `infrastructure/terraform/lambdas.tf` and re-apply
 
 ---
 
+
+
 ## 3. Seed & Data Layer Validation
+
+
 
 ### 3.1 Seed Run ✅
 
@@ -431,9 +512,11 @@ API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke 
 
 ---
 
+
+
 ### 3.2 DynamoDB Verification
 
-- [ ] Scan for Routine items:
+- [x] Scan for Routine items:
   ```bash
   aws dynamodb scan \
     --table-name mb-staging-community \
@@ -442,9 +525,9 @@ API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke 
     --select COUNT \
     --query Count
   ```
-  Expected: ≥20
+  Expected: ≥20 *(got 24)*
 
-- [ ] Scan for RoutineTagIndex items:
+- [x] Scan for RoutineTagIndex items:
   ```bash
   aws dynamodb scan \
     --table-name mb-staging-community \
@@ -453,11 +536,13 @@ API Gateway stage name is `v1` and routes are under `/v1/*`, so the full invoke 
     --select COUNT \
     --query Count
   ```
-  Expected: ≥20 (each seeded routine has 2 tags → ~40 tag-index items)
+  Expected: ≥20 (each seeded routine has 2 tags → ~40 tag-index items) *(got 40)*
 
-- [ ] Spot-check a Routine item has `GSI1PK = "PUBLIC"` and `GSI2PK = "USER#seed-user-1"` (or actual sub)
+- [x] Spot-check a Routine item has `GSI1PK = "PUBLIC"` and `GSI2PK = "USER#seed-user-1"` (or actual sub)
 
 ---
+
+
 
 ### 3.3 Typesense Verification ✅ (via API)
 
@@ -476,10 +561,13 @@ Typesense is in a private subnet — verify from the public search endpoint or a
   Expected: `{"ok":true}`
 
 **Troubleshooting:**
-- *`found: 0`* → run `reindex_typesense.py` (§1.7); confirm `mb-staging-typesense-indexer` logs show no errors
-- *503 `SEARCH_UNAVAILABLE`* → see §6.4
+
+- `found: 0` → run `reindex_typesense.py` (§1.7); confirm `mb-staging-typesense-indexer` logs show no errors
+- *503* `SEARCH_UNAVAILABLE` → see §6.4
 
 ---
+
+
 
 ### 3.4 Cognito Test Users ✅
 
@@ -500,16 +588,20 @@ Typesense is in a private subnet — verify from the public search endpoint or a
 - [x] Copy `TOKEN` into Newman via `--env-var "access_token=$TOKEN"` or Postman `access_token`
 
 **Troubleshooting:**
-- *`NotAuthorizedException: Incorrect username or password`* → password in SSM was rotated; re-run `seed.py` to reset
-- *`UserNotFoundException`* → `COGNITO_USER_POOL_ID` not set during seed; re-run seed with pool ID exported
+
+- `NotAuthorizedException: Incorrect username or password` → password in SSM was rotated; re-run `seed.py` to reset
+- `UserNotFoundException` → `COGNITO_USER_POOL_ID` not set during seed; re-run seed with pool ID exported
 
 ---
+
+
 
 ## 4. API Endpoint Testing (Postman / Newman) ✅ Newman suite passing
 
 > **Last Newman run (2026-06-24):** 12 requests, 21 assertions, 0 failures (~33s).
 
 Postman files:
+
 - Collection: `infrastructure/postman/MeditationBuilder.postman_collection.json`
 - Environment: `infrastructure/postman/staging.postman_environment.json`
 
@@ -539,11 +631,14 @@ newman run infrastructure/postman/MeditationBuilder.postman_collection.json \
 Review failures in `/tmp/newman-results.json`.
 
 **Common Newman failures:**
+
 - `ENOTFOUND api-staging.meditationbuilder.app` → stale Postman env; use `staging.postman_environment.json` from repo (API Gateway URL, not custom domain).
 - `ENOTFOUND mb-staging.auth...` → Cognito domain is `meditation-builder-staging.auth.us-east-1.amazoncognito.com`.
 - Social 404 after DELETE → fixed: Social uses `seed_routine_id`; DELETE moved to Cleanup folder.
 
 ---
+
+
 
 ### 4.1 GET /routines — Browse ✅ (Newman core)
 
@@ -551,21 +646,24 @@ Review failures in `/tmp/newman-results.json`.
 
 - [x] Status 200
 - [x] `routines` array length = 20
-- [ ] Each item has `routineId`, `name`, `durationSeconds`, `authorName`, `likeCount`, `publishedAt`
-- [ ] `nextToken` present (pagination cursor)
-- [ ] Paginate: `GET /routines?pageSize=20&sort=newest&nextToken=<token>` → second page, no overlap
-- [ ] Tag filter: `GET /routines?tag=focus` → all returned routines have `"focus"` in `tags`
-- [ ] Duration filter: `GET /routines?minDuration=600&maxDuration=900` → all `durationSeconds` in [600,900]
-- [ ] Popular sort: `GET /routines?sort=popular` → results sorted by `likeCount` descending
-- [ ] **CloudFront cache miss** on first call: check response header `x-cache: Miss from cloudfront`
-- [ ] **CloudFront cache hit** on second call (within 30s): `x-cache: Hit from cloudfront`
-- [ ] Invalid pageSize: `GET /routines?pageSize=100` → 400 `INVALID_PARAMETER`
+- [x] Each item has `routineId`, `name`, `durationSeconds`, `authorName`, `likeCount`, `publishedAt`
+- [x] `nextToken` present (pagination cursor)
+- [x] Paginate: `GET /routines?pageSize=20&sort=newest&nextToken=<token>` → second page, no overlap
+- [x] Tag filter: `GET /routines?tag=focus` → all returned routines have `"focus"` in `tags`
+- [x] Duration filter: `GET /routines?minDuration=600&maxDuration=900` → all `durationSeconds` in [600,900]
+- [x] Popular sort: `GET /routines?sort=popular` → results sorted by `likeCount` descending
+- [x] **CloudFront cache miss** on first call: check response header `x-cache: Miss from cloudfront`
+- [x] **CloudFront cache hit** on second call (within 30s): `x-cache: Hit from cloudfront`
+- [ ] ~~Invalid pageSize: `GET /routines?pageSize=100` → 400 `INVALID_PARAMETER`~~ **BUG: returns 200 with all results instead of 400**
 
 **Troubleshooting:**
-- *Empty `routines` array despite seeded data* → GSI1 not populated; check that seeded items have `GSI1PK = "PUBLIC"`; verify Lambda queries `GSI1-public-by-date`
+
+- *Empty* `routines` *array despite seeded data* → GSI1 not populated; check that seeded items have `GSI1PK = "PUBLIC"`; verify Lambda queries `GSI1-public-by-date`
 - *CloudFront always Miss* → TTL may not be propagating; check `Cache-Control: max-age=30, s-maxage=30` in Lambda response headers
 
 ---
+
+
 
 ### 4.2 POST /routines — Publish ✅ (Newman core)
 
@@ -574,21 +672,24 @@ Review failures in `/tmp/newman-results.json`.
 - [x] Status 201
 - [x] Response contains `routineId` (UUID v4), `name`, `publishedAt`, `taggingStatus: "pending"`
 - [x] Save `routineId` for subsequent tests
-- [ ] DynamoDB item exists: `aws dynamodb get-item --table-name mb-staging-community --key '{"PK":{"S":"ROUTINE#<id>"},"SK":{"S":"METADATA"}}'`
-- [ ] SQS message sent: check `aws sqs get-queue-attributes --queue-url <tagging_queue> --attribute-names ApproximateNumberOfMessages` → count briefly > 0 before Bedrock tagger consumes it
-- [ ] **Async tagging**: wait ~30s, then `GET /routines/<id>` → `tags` is populated (not empty), `taggingStatus` = `"complete"`
-- [ ] Typesense indexed: search `GET /search?q=<routine name>` → routine appears in results
-- [ ] CloudFront `/routines*` invalidated: `GET /routines` returns the new routine (not stale cached)
-- [ ] No auth (missing header) → 401 `UNAUTHORIZED`
-- [ ] Missing `name` field → 400 `INVALID_BODY`
-- [ ] Body >100KB → 413 `PAYLOAD_TOO_LARGE`
-- [ ] Duplicate name from same user → 409 `ALREADY_EXISTS`
+- [x] DynamoDB item exists: `aws dynamodb get-item --table-name mb-staging-community --key '{"PK":{"S":"ROUTINE#<id>"},"SK":{"S":"METADATA"}}'`
+- [ ] ~~SQS message sent~~ **BUG: `SQS_TAGGING_QUEUE_URL` env var not set on `mb-staging-post-routine` Lambda — SQS send silently skipped**
+- [ ] ~~**Async tagging**~~ **BUG: blocked by above — `taggingStatus` stays `"pending"`, tags never populated**
+- [x] Typesense indexed: search `GET /search?q=<routine name>` → routine appears in results *(indexed via DynamoDB Stream → typesense_indexer)*
+- [ ] CloudFront `/routines*` invalidated: `GET /routines` returns the new routine (not stale cached) *(not verified — blocked by tagging bug)*
+- [x] No auth (missing header) → 401 `UNAUTHORIZED`
+- [x] Missing `name` field → 400 `INVALID_BODY`
+- [x] Body >100KB → 413 `PAYLOAD_TOO_LARGE`
+- [ ] ~~Duplicate name from same user → 409 `ALREADY_EXISTS`~~ **BUG: duplicate name allowed, returns 201 with new routineId**
 
 **Troubleshooting:**
-- *`taggingStatus` still `"pending"` after 60s* → check SQS DLQ; check `mb-staging-bedrock-tagger` Lambda CloudWatch logs for IAM or Bedrock model access errors
+
+- `taggingStatus` *still* `"pending"` *after 60s* → check SQS DLQ; check `mb-staging-bedrock-tagger` Lambda CloudWatch logs for IAM or Bedrock model access errors
 - *Typesense not indexed* → check `mb-staging-typesense-indexer` Lambda logs; DynamoDB Stream may not be triggering if mapping is disabled
 
 ---
+
+
 
 ### 4.3 GET /routines/{id} — Detail ✅ (Newman core)
 
@@ -599,110 +700,131 @@ Review failures in `/tmp/newman-results.json`.
 - [x] `isLikedByMe: false` on fetch before liking (testuser1 on Seed Routine 3)
 - [x] `isLikedByMe: true` on routine seeded-liked by caller (Seed Routine 2)
 - [x] Second call ~3ms (Redis cache hit)
-- [ ] CloudWatch log cache miss/hit labels confirmed
-- [ ] Invalid UUID → 400 `INVALID_ID`
-- [ ] Non-existent ID → 404 `ROUTINE_NOT_FOUND`
-- [ ] Missing auth header → `isLikedByMe: null` (anonymous OK); invalid Bearer → 401
+- [ ] CloudWatch log cache miss/hit labels confirmed *(structured logging not emitted to CW — skipped)*
+- [x] Invalid UUID → 400 `INVALID_ID`
+- [ ] ~~Non-existent ID → 404 `ROUTINE_NOT_FOUND`~~ **BUG: returns `INVALID_ID` instead of `ROUTINE_NOT_FOUND` for valid UUID that doesn't exist**
+- [x] Missing auth header → `isLikedByMe: null` (anonymous OK)
 
 **Troubleshooting:**
+
 - *Always cache miss* → Redis endpoint env var `REDIS_ENDPOINT` missing or wrong; Lambda VPC/SG issue (see §2.3)
 - *CloudFront returns stale 404 after publish* → issue `aws cloudfront create-invalidation --distribution-id <id> --paths "/routines/*"`
 
 ---
 
+
+
 ### 4.4 DELETE /routines/{id} — Unpublish ✅ (Newman core)
 
 - [x] Publish a routine as `testuser1`; note its `routineId`
 - [x] `DELETE /routines/<id>` with `testuser1` token → 204 No Content
-- [ ] `GET /routines/<id>` → 404 `ROUTINE_NOT_FOUND`
-- [ ] DynamoDB item gone (GetItem returns empty)
-- [ ] RoutineTagIndex items deleted (scan by `PK = "TAG#<tag>"` — seeded SK no longer present)
-- [ ] Typesense document deleted: `curl .../collections/routines/documents/<id>` → 404
-- [ ] **Ownership check**: attempt `DELETE /routines/<id>` with `testuser2` token on `testuser1`'s routine → 403 `FORBIDDEN`
-- [ ] Non-existent ID → 404
+- [ ] ~~`GET /routines/<id>` → 404 `ROUTINE_NOT_FOUND`~~ **BUG: deleted routine still served (CloudFront cache not invalidated — no `create_invalidation` call on delete)**
+- [x] DynamoDB item gone (GetItem returns empty)
+- [ ] RoutineTagIndex items deleted *(not verified separately)*
+- [ ] Typesense document deleted *(can only verify via search — E2E Test routine still appeared in search after delete; Typesense delete may be failing or cached)*
+- [x] **Ownership check**: attempt `DELETE /routines/<id>` with `testuser2` token → 403 `FORBIDDEN`
+- [ ] ~~Non-existent ID → 404~~ **BUG: returns `INVALID_ID` instead of `ROUTINE_NOT_FOUND`**
 
 **Troubleshooting:**
+
 - *403 when deleting own routine* → `authorSub` in DynamoDB doesn't match Cognito `sub` in JWT; verify seed wrote correct `sub` values
 
 ---
+
+
 
 ### 4.5 POST /routines/{id}/like + DELETE /routines/{id}/like — Like/Unlike ✅ (Newman core)
 
 - [x] `POST /routines/{{routine_id}}/like` with auth → 200
 - [x] `DELETE /routines/{{routine_id}}/like` → 200
 - [x] Response body contains `{"likeCount": N}` — confirm count value
-- [ ] Idempotency: repeat same POST → 409 `ALREADY_LIKED`
-- [ ] `GET /routines/{{routine_id}}` → `isLikedByMe: false` after unlike (verify via fresh curl)
-- [ ] Unlike when not liked → 404 `LIKE_NOT_FOUND`
-- [ ] Like flush: wait up to 60s; verify `likeCount` on DynamoDB matches Redis
+- [ ] ~~Idempotency: repeat same POST → 409 `ALREADY_LIKED`~~ **BUG: repeat like returns 200 (not 409)**
+- [x] `GET /routines/{{routine_id}}` → `isLikedByMe: false` after unlike (verify via fresh curl)
+- [x] Unlike when not liked → 404 `LIKE_NOT_FOUND`
+- [ ] Like flush: wait up to 60s; verify `likeCount` on DynamoDB matches Redis *(not yet tested)*
 
 **Troubleshooting:**
+
 - *likeCount not flushing to DynamoDB* → check `mb-staging-like-flush` scheduled Lambda is enabled; check CloudWatch Events / EventBridge rule `mb-staging-like-flush-schedule`
 
 ---
+
+
 
 ### 4.6 POST /routines/{id}/import — Import ✅ (Newman core)
 
 - [x] `POST /routines/{{routine_id}}/import` with auth → 200
 - [x] Response contains `routine` object with full `blocks` payload and `importedAt`
-- [ ] `GET /routines/{{routine_id}}` → `isImportedByMe: true`
-- [ ] `importCount` incremented on Routine item in DynamoDB
-- [ ] Idempotency: repeat import → 200 with `alreadyImported: true` (no second DynamoDB write; `importCount` not double-incremented)
-- [ ] Unauthenticated → 401
+- [x] `GET /routines/{{routine_id}}` → `isImportedByMe: true`
+- [ ] ~~`importCount` incremented on Routine item in DynamoDB~~ **BUG: `importCount` stays 0 after import**
+- [x] Idempotency: repeat import → 200 with `alreadyImported: true`
+- [x] Unauthenticated → 401
 
 **Troubleshooting:**
-- *`importCount` double-incrementing* → condition expression `attribute_not_exists(SK)` may be missing in Lambda; check `import_routine.py`
+
+- `importCount` *double-incrementing* → condition expression `attribute_not_exists(SK)` may be missing in Lambda; check `import_routine.py`
 
 ---
+
+
 
 ### 4.7 GET /recommendations — Personalized Recommendations ✅ (Newman core)
 
 - [x] First call (cold / Redis miss): `GET /recommendations?limit=10` with auth
   - Status 200
   - `recommendations` array ≥1 item
-- [ ] Second call (within 1hr): `cacheHit: true`, `cachedAt` matches first call
-- [ ] `limit=20` → up to 20 results
-- [ ] `limit=25` → 400 or clamped to 20 (per spec max 20)
-- [ ] Cache invalidation: `POST /activity` then immediate `GET /recommendations` → `cacheHit: false` (Redis DEL was triggered)
+- [x] Second call (within 1hr): `cacheHit: true`
+- [x] `limit=20` → up to 20 results *(returns 10 — may be capped by Bedrock response size, not a hard error)*
+- [ ] `limit=25` → 400 or clamped to 20 *(returns 10 — clamp behavior, no error)*
+- [ ] ~~Cache invalidation: `POST /activity` then `GET /recommendations` → `cacheHit: false`~~ **BUG: `POST /activity` throws `INTERNAL_ERROR` (`TypeError: unhashable type: 'dict'` in `post_activity.py` line 62 — `set(body["routinesPlayed"])` on a list of dicts)**
 
 **Troubleshooting:**
-- *`cacheHit` always false* → Redis not reachable; or Lambda not writing Redis key; check `REDIS_ENDPOINT` env var
+
+- `cacheHit` *always false* → Redis not reachable; or Lambda not writing Redis key; check `REDIS_ENDPOINT` env var
 - *Bedrock throttling (500/429)* → fallback to latest-published list should apply; verify Lambda fallback path
 
 ---
+
+
 
 ### 4.8 GET /search — Full-Text Search ✅ (Newman core)
 
 - [x] Basic: `GET /search?q=morning` → 200, `found` ≥1, `results[0]` has `highlights`
 - [x] Tag filter: `GET /search?q=focus&tag=focus` → 200 (Newman)
-- [ ] Typo tolerance: `GET /search?q=mornnig` → still returns morning routines (Typesense fuzzy match)
-- [ ] Tag filter: `GET /search?q=routine&tag=focus` → all results have `"focus"` in `tags`
-- [ ] Duration range: `GET /search?q=Seed&minDuration=600&maxDuration=900` → all `durationSeconds` in range
-- [ ] Sort by popularity: `GET /search?q=Seed&sort=likeCount:desc` → ordered by `likeCount` desc
-- [ ] Sort by date: `GET /search?q=Seed&sort=publishedAt:desc`
-- [ ] Missing `q` → 400 `MISSING_QUERY`
-- [ ] Pagination: page 1 and page 2 of same query return different, non-overlapping results
+- [x] Typo tolerance: `GET /search?q=mornnig` → still returns morning routines (Typesense fuzzy match)
+- [x] Tag filter: `GET /search?q=routine&tag=focus` → all results have `"focus"` in `tags`
+- [x] Duration range: `GET /search?q=Seed&minDuration=600&maxDuration=900` → all `durationSeconds` in range
+- [x] Sort by popularity: `GET /search?q=Seed&sort=likeCount:desc` → ordered by `likeCount` desc
+- [x] Sort by date: `GET /search?q=Seed&sort=publishedAt:desc` *(results ordered correctly)*
+- [x] Missing `q` → 400 `MISSING_QUERY`
+- [x] Pagination: page 1 and page 2 of same query return different, non-overlapping results
 
 **Troubleshooting:**
-- *503 `SEARCH_UNAVAILABLE`* → Typesense EC2 is down; SSH in and `systemctl restart typesense`
+
+- *503* `SEARCH_UNAVAILABLE` → Typesense EC2 is down; SSH in and `systemctl restart typesense`
 - *Empty results despite seeded data* → Typesense collection was not populated; re-run seed with `TYPESENSE_API_KEY` set, or bulk re-index via DynamoDB scan
 
 ---
 
+
+
 ### 4.9 POST /activity — Session Activity ✅ (Newman core)
 
 - [x] `POST /activity` with valid body and auth → 202, `{"accepted": true}`
-- [ ] DynamoDB item written: scan `PK = "USER#<sub>", SK begins_with "ACTIVITY#"` → item exists
-- [ ] TTL set correctly: `ttl` value ≈ `now + 60 days` (Unix epoch)
-- [ ] Redis recommendations cache invalidated: `GET /recommendations` immediately after → `cacheHit: false`
-- [ ] Missing `sessionDurationSeconds` → 400 `INVALID_BODY`
-- [ ] Empty `routinesPlayed` array → 400 `INVALID_BODY`
-- [ ] Unauthenticated → 401
+- [ ] DynamoDB item written *(blocked by INTERNAL_ERROR bug)*
+- [ ] TTL set correctly *(blocked)*
+- [ ] Redis recommendations cache invalidated *(blocked)*
+- [x] Missing `sessionDurationSeconds` → 400 `INVALID_BODY`
+- [x] Empty `routinesPlayed` array → 400 `INVALID_BODY`
+- [x] Unauthenticated → 401
 
 **Troubleshooting:**
+
 - *TTL attribute wrong type* → must be `Number` (Unix epoch); if stored as String, DynamoDB TTL won't fire
 
 ---
+
+
 
 ## 5. iOS App End-to-End Testing
 
@@ -716,6 +838,8 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 
 ---
 
+
+
 ### 5.2 Guest Browse
 
 - [x] Tap "Continue as Guest" → navigates to main tab bar
@@ -727,6 +851,8 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 - [x] Search tab → `RoutineSearchView`; typing `morning` returns results from staging
 
 ---
+
+
 
 ### 5.3 Sign in with Apple → Cognito PKCE
 
@@ -742,11 +868,14 @@ Run on a physical device or Xcode Simulator (iOS 17+) with the app pointing to t
 - [ ] `AuthManager.isAuthenticated = true`, `currentUserSub` is non-nil
 
 **Troubleshooting:**
+
 - *"Sign in with Apple" sheet never dismisses* → check `ASWebAuthenticationSession.prefersEphemeralWebBrowserSession = true` is set; Safari cookies may conflict
-- *`tokenExchangeFailed: invalid_grant`* → PKCE verifier mismatch; verify `code_challenge_method=S256` and that `codeVerifier` is the same string passed to SHA-256 (see `PKCE` enum in `AuthManager.swift`)
-- *`missingAuthorizationCode`* → callback URL scheme mismatch; verify `com.AnimeAI.Meditation-Builder` scheme is registered in `Info.plist` URL types
+- `tokenExchangeFailed: invalid_grant` → PKCE verifier mismatch; verify `code_challenge_method=S256` and that `codeVerifier` is the same string passed to SHA-256 (see `PKCE` enum in `AuthManager.swift`)
+- `missingAuthorizationCode` → callback URL scheme mismatch; verify `com.AnimeAI.Meditation-Builder` scheme is registered in `Info.plist` URL types
 
 ---
+
+
 
 ### 5.3-alt — Email/Password Sign-In (no Apple Developer account)
 
@@ -756,10 +885,12 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 **Test credentials** (from seed / SSM):
 
-| User | Email | Password |
-|---|---|---|
+
+| User        | Email               | Password                                                                                                               |
+| ----------- | ------------------- | ---------------------------------------------------------------------------------------------------------------------- |
 | Test user 1 | `testuser1@mb.test` | `aws ssm get-parameter --name /mb/staging/test/user1-password --with-decryption --query Parameter.Value --output text` |
 | Test user 2 | `testuser2@mb.test` | `aws ssm get-parameter --name /mb/staging/test/user2-password --with-decryption --query Parameter.Value --output text` |
+
 
 **Checklist:**
 
@@ -779,15 +910,18 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 - [ ] Sign out (§5.10) → re-sign-in with same credentials works
 
 **Troubleshooting:**
+
 - *"Sign in with Email (Temp)" not visible* → pull latest; section is marked `// TEMP` in `AuthView.swift`
-- *`NotAuthorizedException: Incorrect username or password`* → password rotated; re-run `seed.py` or fetch fresh value from SSM (§3.4)
-- *`USER_PASSWORD_AUTH flow not enabled`* → `terraform apply` with §1.3-alt; confirm `explicit_auth_flows` includes `ALLOW_USER_PASSWORD_AUTH`
+- `NotAuthorizedException: Incorrect username or password` → password rotated; re-run `seed.py` or fetch fresh value from SSM (§3.4)
+- `USER_PASSWORD_AUTH flow not enabled` → `terraform apply` with §1.3-alt; confirm `explicit_auth_flows` includes `ALLOW_USER_PASSWORD_AUTH`
 - *Sign-in succeeds but Like returns 401* → `AuthConfig.userPoolID` / `appClientID` mismatch with staging; verify §1.5
-- *`isLikedByMe` wrong on seeded routines* → seed wrote likes for Cognito `sub`; re-run seed with `COGNITO_USER_POOL_ID` set (§1.7)
+- `isLikedByMe` *wrong on seeded routines* → seed wrote likes for Cognito `sub`; re-run seed with `COGNITO_USER_POOL_ID` set (§1.7)
 
 **Reverting:** Same as §1.3-alt — remove `// TEMP` code from `AuthManager.swift` and `AuthView.swift`, disable `USER_PASSWORD_AUTH`, complete §5.3 (SIWA) instead.
 
 ---
+
+
 
 ### 5.4 Token Refresh
 
@@ -798,9 +932,12 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 - [ ] If refresh token is also expired/missing → `clearSession()` called, app navigates back to `AuthView`
 
 **Troubleshooting:**
-- *Refresh token rejected by Cognito (`invalid_grant`)* → refresh tokens expire after Cognito user pool's `refreshTokenValidity` setting (default 30 days); re-authenticate
+
+- *Refresh token rejected by Cognito (*`invalid_grant`*)* → refresh tokens expire after Cognito user pool's `refreshTokenValidity` setting (default 30 days); re-authenticate
 
 ---
+
+
 
 ### 5.5 Import Routine
 
@@ -811,18 +948,23 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 - [ ] Re-import same routine → no duplicate in Library; `alreadyImported: true` handled gracefully
 
 **Troubleshooting:**
+
 - *Routine not appearing in Library* → SwiftData save may have failed; check Xcode console for `SwiftData` errors
 
 ---
 
+
+
 ### 5.6 Like / Unlike
 
-- [ ] Open a routine → tap Like ♡ → count increments by 1 in the UI
-- [ ] Navigate away and return → like state persists (`isLikedByMe: true`)
+- [x] Open a routine → tap Like ♡ → count increments by 1 in the UI
+- [x] Navigate away and return → like state persists (`isLikedByMe: true`)
 - [ ] Tap Like again → unlike; count decrements
 - [ ] Like count on `GET /routines` browse reflects update after CloudFront TTL expires (≤30s)
 
 ---
+
+
 
 ### 5.7 Publish Routine
 
@@ -835,10 +977,13 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 - [ ] In Community tab, routine shows correct `authorName` matching current user
 
 **Troubleshooting:**
+
 - *Publish returns 401* → `bearerToken()` returned nil; ensure user is authenticated (not guest)
 - *Tags never appear in Step 2* → Bedrock tagger async path failed; see §6.5
 
 ---
+
+
 
 ### 5.8 Creator Profile
 
@@ -848,6 +993,8 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 - [ ] Tap a routine → detail view with delete option visible (own routine)
 
 ---
+
+
 
 ### 5.9 Per-Block Music
 
@@ -860,6 +1007,8 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 5.10 Sign Out
 
 - [ ] Tap Sign Out in settings
@@ -870,13 +1019,18 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ## 6. Common Cross-Cutting Problems
+
+
 
 ### 6.1 "Invalid token" / 401 Unauthorized
 
 **Symptoms:** API returns `{"message":"Unauthorized"}` or `{"error":"UNAUTHORIZED"}` on authenticated endpoints.
 
 **Causes & Fixes:**
+
 - [ ] `{"message":"Unauthorized"}` (API Gateway body) on POST/DELETE → stale API Gateway deployment still has `COGNITO_USER_POOLS` auth. Run `terraform apply` then `aws apigateway create-deployment --rest-api-id lcn0e7kne5 --stage-name v1` to force redeploy.
 - [ ] `{"error":"UNAUTHORIZED"}` (Lambda body) → JWT validation failed (see below)
 - [ ] Token from wrong Cognito pool (production vs staging) → verify `AuthConfig.userPoolID` and `appClientID` match staging outputs
@@ -886,11 +1040,14 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 6.2 Lambda Cold Start Timeout
 
 **Symptoms:** First request after idle period returns 504 Gateway Timeout or takes >10s.
 
 **Causes & Fixes:**
+
 - [ ] Check `aws lambda get-function-concurrency --function-name mb-staging-<fn>` → if `ReservedConcurrentExecutions` is 0, cold starts are unlimited
 - [ ] Enable provisioned concurrency for high-traffic Lambdas (at minimum `get_routines`, `get_routine`, `recommendations`):
   ```bash
@@ -903,11 +1060,14 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 6.3 Redis Connection Refused from Lambda
 
 **Symptoms:** Lambda logs show `ConnectionRefusedError` or `TimeoutError` on Redis calls; falls back to DynamoDB but latency spikes.
 
 **Causes & Fixes:**
+
 - [ ] Lambda VPC config: ensure Lambda is in the same VPC as ElastiCache; check `vpc_config` in Lambda Terraform resource
 - [ ] Security group: ElastiCache SG must allow inbound TCP 6379 from the Lambda SG; add inbound rule:
   ```bash
@@ -921,28 +1081,34 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 6.4 Typesense 503 / 500 on Search
 
 **Symptoms:** `GET /search` returns `{"error":"SEARCH_UNAVAILABLE"}` (503) or `{"error":"INTERNAL_ERROR"}` (500).
 
 **Causes & Fixes:**
+
 - [x] **No IAM instance profile on Typesense EC2** → user-data fails at `aws ssm get-parameter`; Typesense never starts (`Connection refused` in `mb-staging-search` logs). Fixed in ADR-023; `terraform apply` replaces the instance.
 - [ ] **Typesense service stopped** → SSM Session Manager into EC2 (instance profile includes `AmazonSSMManagedInstanceCore`): `sudo systemctl status typesense` → `sudo systemctl restart typesense`
-- [ ] **Stale `TYPESENSE_HOST` on Lambdas** → private IP changes when EC2 is replaced; re-run `terraform apply` to update Lambda env vars
+- [ ] **Stale** `TYPESENSE_HOST` **on Lambdas** → private IP changes when EC2 is replaced; re-run `terraform apply` to update Lambda env vars
 - [ ] **Empty index** → `python infrastructure/scripts/reindex_typesense.py --env staging`
 - [x] **500 after documents indexed** → `search.py` highlight parser assumed list format; Typesense returns dict for some fields. Redeploy `mb-staging-search` Lambda.
 - [ ] After fix, verify: `curl "${API_BASE}/search?q=morning"` → HTTP 200, `found` ≥ 1
 
 ---
 
+
+
 ### 6.5 SQS DLQ Messages Accumulating
 
 **Symptoms:** `mb-staging-tagging-dlq` ApproximateNumberOfMessages > 0; routines have `taggingStatus: "pending"` indefinitely.
 
 **Causes & Fixes:**
+
 - [ ] Check `mb-staging-bedrock-tagger` Lambda CloudWatch logs for errors:
   ```bash
-  aws logs tail /aws/lambda/mb-staging-bedrock-tagger --since 1h
+  aws logs tail /aws/lambda/mb-stagingsign-bedrock-tagger --since 1h
   ```
 - [ ] **Bedrock access denied** → add `bedrock:InvokeModel` permission to Lambda execution role for model `anthropic.claude-3-haiku-20240307-v1:0`
 - [ ] **Bedrock model not enabled** → in AWS Console → Bedrock → Model access → enable Claude 3 Haiku in `us-east-1`
@@ -956,11 +1122,14 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 6.6 DynamoDB Throughput Exceeded
 
 **Symptoms:** Lambda returns 500; CloudWatch logs show `ProvisionedThroughputExceededException`.
 
 **Causes & Fixes:**
+
 - [ ] Table uses `PAY_PER_REQUEST` (on-demand) — this exception should not occur under normal load
 - [ ] If it does: check CloudWatch metric `ConsumedWriteCapacityUnits` — may indicate a runaway loop
 - [ ] For GSI: on-demand billing applies per-GSI as well; check `ConsumedReadCapacityUnits` on `GSI1-public-by-date`
@@ -968,11 +1137,14 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 6.7 CloudFront Serving Stale 404
 
 **Symptoms:** A newly published routine returns 404 on `GET /routines/{id}` via CloudFront even though it exists in DynamoDB.
 
 **Causes & Fixes:**
+
 - [ ] CloudFront cached the 404 response (default TTL for error responses)
 - [ ] Manual invalidation:
   ```bash
@@ -985,11 +1157,14 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 6.8 Sign in with Apple Fails
 
 **Symptoms:** `ASWebAuthenticationSession` returns an error or the Cognito hosted UI shows "Sign in failed".
 
 **Causes & Fixes:**
+
 - [ ] **Services ID mismatch** → Cognito OIDC provider `client_id` must equal the Services ID (`com.AnimeAI.Meditation-Builder.siwa`); check SSM `/mb/staging/apple/services-id`
 - [ ] **Redirect URI mismatch** → Apple Services ID's Return URL must be exactly `https://meditation-builder-staging.auth.us-east-1.amazoncognito.com/oauth2/idpresponse`; no trailing slash
 - [ ] **Key expired** → Apple private keys for SIWA have no expiry but must be regenerated if revoked; check Cognito identity provider configuration
@@ -997,17 +1172,22 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ---
 
+
+
 ### 6.9 Cognito "invalid_grant" (PKCE Token Exchange)
 
 **Symptoms:** `AuthManager.tokenExchangeFailed("invalid_grant")` logged; user is not authenticated.
 
 **Causes & Fixes:**
+
 - [ ] **PKCE verifier mismatch** → the `code_verifier` used in the token exchange must be the same string used to generate `code_challenge`; verify `PKCE.challenge(from: verifier)` is called with the same `verifier` instance (no regeneration between authorize and token steps)
 - [ ] **Authorization code expired** → the code is single-use and expires in ~10 min; if the user left the auth sheet open too long, restart sign-in
 - [ ] **Redirect URI mismatch in token request** → `redirect_uri` in the POST body must match `redirect_uri` in the authorization request (`AuthConfig.redirectURI`); verify they are identical
 - [ ] **Code already used** → each authorization code can only be exchanged once; if the app retried the exchange, a new sign-in is required
 
 ---
+
+
 
 ## 7. Teardown
 
@@ -1023,6 +1203,8 @@ Run after testing is complete to avoid ongoing costs.
 
 ---
 
+
+
 ### 7.2 Optional: Terraform Destroy
 
 > **Warning:** This destroys all staging infrastructure. Only run if you are done with staging entirely.
@@ -1035,4 +1217,4 @@ Run after testing is complete to avoid ongoing costs.
 
 ---
 
-*End of checklist. All sections use `- [ ]` checkboxes to support direct use in GitHub Issues, Notion, or any Markdown task tracker.*
+*End of checklist. All sections use* `- [ ]` *checkboxes to support direct use in GitHub Issues, Notion, or any Markdown task tracker.*

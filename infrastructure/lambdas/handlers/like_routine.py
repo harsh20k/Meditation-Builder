@@ -81,38 +81,36 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
             else:
                 raise
 
-        like_count = _current_like_count(routine, routine_id)
-        if created:
-            like_count = redis_client.incr_like(routine_id) + int(routine.get("likeCount", 0))
-            redis_client.cache_delete(f"routine:{routine_id}")
-            topic = os.environ.get("SNS_LIKE_TOPIC_ARN")
-            if topic and routine.get("authorSub") != sub:
-                try:
-                    _sns().publish(
-                        TopicArn=topic,
-                        Message=f"Someone liked your routine {routine.get('name')}",
-                        Subject="Routine liked",
-                    )
-                except Exception:
-                    logger.warning("SNS publish failed", exc_info=True)
-            dist_id = os.environ.get("CLOUDFRONT_DISTRIBUTION_ID")
-            if dist_id:
-                try:
-                    _cloudfront().create_invalidation(
-                        DistributionId=dist_id,
-                        InvalidationBatch={
-                            "Paths": {"Quantity": 1, "Items": [f"/v1/routines/{routine_id}"]},
-                            "CallerReference": str(uuid.uuid4()),
-                        },
-                    )
-                except Exception:
-                    logger.warning("CloudFront invalidation failed", exc_info=True)
-        else:
-            return response.success(
-                200,
-                {"likeCount": like_count},
-                request_id=request_id,
+        if not created:
+            like_count = _current_like_count(routine, routine_id)
+            return response.error(
+                409, "ALREADY_LIKED", "You have already liked this routine.", request_id=request_id
             )
+
+        like_count = redis_client.incr_like(routine_id) + int(routine.get("likeCount", 0))
+        redis_client.cache_delete(f"routine:{routine_id}")
+        topic = os.environ.get("SNS_LIKE_TOPIC_ARN")
+        if topic and routine.get("authorSub") != sub:
+            try:
+                _sns().publish(
+                    TopicArn=topic,
+                    Message=f"Someone liked your routine {routine.get('name')}",
+                    Subject="Routine liked",
+                )
+            except Exception:
+                logger.warning("SNS publish failed", exc_info=True)
+        dist_id = os.environ.get("CLOUDFRONT_DISTRIBUTION_ID")
+        if dist_id:
+            try:
+                _cloudfront().create_invalidation(
+                    DistributionId=dist_id,
+                    InvalidationBatch={
+                        "Paths": {"Quantity": 1, "Items": [f"/v1/routines/{routine_id}"]},
+                        "CallerReference": str(uuid.uuid4()),
+                    },
+                )
+            except Exception:
+                logger.warning("CloudFront invalidation failed", exc_info=True)
 
         return response.success(200, {"likeCount": like_count}, request_id=request_id)
     except Exception:

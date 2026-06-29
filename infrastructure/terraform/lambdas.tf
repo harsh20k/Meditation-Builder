@@ -1,13 +1,10 @@
 resource "null_resource" "lambda_packages" {
   triggers = {
     package_script = filesha256("${path.module}/../lambdas/package.sh")
-    shared_hash = sha256(join("", [
-      for f in fileset("${path.module}/../lambdas/shared", "*.py") :
-      filesha256("${path.module}/../lambdas/shared/${f}")
-    ]))
+    shared_hash    = local.lambda_shared_source_hash
     handlers_hash = sha256(join("", [
-      for f in fileset("${path.module}/../lambdas/handlers", "*.py") :
-      filesha256("${path.module}/../lambdas/handlers/${f}")
+      for name in keys(local.lambda_handlers) :
+      filesha256("${path.module}/../lambdas/handlers/${name}.py")
     ]))
     requirements = filesha256("${path.module}/../lambdas/shared/requirements.txt")
   }
@@ -29,7 +26,7 @@ resource "aws_lambda_function" "handlers" {
   memory_size   = 256
 
   filename         = "${path.module}/../lambdas/dist/${each.key}.zip"
-  source_code_hash = filebase64sha256("${path.module}/../lambdas/dist/${each.key}.zip")
+  source_code_hash = local.lambda_package_hash[each.key]
 
   publish = true
 
@@ -53,13 +50,18 @@ resource "aws_lambda_function" "handlers" {
       TYPESENSE_API_KEY_SSM         = module.search.typesense_api_key_ssm_path
       AUDIO_BUCKET                  = module.storage.audio_bucket_name
       BEDROCK_QUEUE_URL             = module.messaging.bedrock_tagging_queue_url
+      SQS_TAGGING_QUEUE_URL         = module.messaging.bedrock_tagging_queue_url
+      CLOUDFRONT_DISTRIBUTION_ID    = module.cdn.api_distribution_id
       LIKE_NOTIFICATIONS_TOPIC_ARN  = module.messaging.like_notifications_topic_arn
+      COGNITO_USER_POOL_ID          = module.auth.user_pool_id
+      COGNITO_APP_CLIENT_ID         = module.auth.app_client_id
     }
   }
 
   depends_on = [
     null_resource.lambda_packages,
     module.iam,
+    module.auth,
     module.networking,
     module.cache,
     module.search,
@@ -68,9 +70,9 @@ resource "aws_lambda_function" "handlers" {
 }
 
 resource "aws_lambda_provisioned_concurrency_config" "handlers" {
-  for_each = {
+  for_each = var.enable_lambda_provisioned_concurrency ? {
     for k, v in local.lambda_handlers : k => v if v.provisioned > 0
-  }
+  } : {}
 
   function_name                     = aws_lambda_function.handlers[each.key].function_name
   provisioned_concurrent_executions = each.value.provisioned

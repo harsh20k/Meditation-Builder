@@ -37,9 +37,9 @@ def _validate_body(body: dict[str, Any]) -> str | None:
 
 def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
     request_id = response.get_request_id(event)
-    sub = auth.get_sub(event)
-    if not sub:
-        return response.error(401, "UNAUTHORIZED", "Authentication required.", request_id=request_id)
+    sub, err_resp = auth.authenticate(event, request_id)
+    if err_resp:
+        return err_resp
 
     try:
         raw = event.get("body") or "{}"
@@ -59,7 +59,10 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
             "SK": f"ACTIVITY#{created_at}",
             "EntityType": "UserActivity",
             "sessionDurationSeconds": body["sessionDurationSeconds"],
-            "routinesPlayed": set(body["routinesPlayed"]),
+            "routinesPlayed": set(
+                r["routineId"] if isinstance(r, dict) else r
+                for r in body["routinesPlayed"]
+            ),
             "tagsEngaged": set(t.lower() for t in (body.get("tagsEngaged") or [])),
             "blockTypes": set(body.get("blockTypes") or []),
             "createdAt": created_at,
