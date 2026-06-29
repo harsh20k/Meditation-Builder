@@ -5,7 +5,7 @@
 > **CloudFront:** `https://dhdnv4iakcz7z.cloudfront.net/v1/...`  
 > **Cognito pool:** `us-east-1_vePlfHnPL` · client: `2pld9j7muda2ipse5f9smhd0kg`  
 > **Cognito domain:** `meditation-builder-staging.auth.us-east-1.amazoncognito.com`  
-> **Last updated:** 2026-06-24  
+> **Last updated:** 2026-06-29  
 > **Typesense private IP:** `terraform output -raw typesense_private_ip` → `10.0.10.223`
 
 ---
@@ -20,21 +20,23 @@
 | §1 Pre-flight     | Done except SIWA (§1.3), Hosted UI (§1.4), Xcode (§1.6)                                       |
 | §2 Infrastructure | ✅ All done (2026-06-29)                                                                       |
 | §3 Seed & data    | ✅ All done (2026-06-29)                                                                       |
-| §4 API            | ✅ Tested (2026-06-29) — **6 bugs found** (see below)                                         |
+| §4 API            | ✅ Tested (2026-06-29) — 8 bugs found; §4.2/4.4/4.5/4.7 retested & passing 2026-06-29          |
 | §5 iOS app        | Not started                                                                                   |
 
 ### 🐛 Bugs found (2026-06-29)
 
-| # | Endpoint | Bug |
-|---|---|---|
-| 1 | `GET /routines?pageSize=100` | Returns 200 with all results instead of 400 `INVALID_PARAMETER` |
-| 2 | `POST /routines` | `SQS_TAGGING_QUEUE_URL` env var missing on Lambda — Bedrock tagging never triggered, `taggingStatus` stuck at `"pending"` |
-| 3 | `POST /routines` | Duplicate name from same user returns 201 (not 409 `ALREADY_EXISTS`) |
-| 4 | `GET/DELETE /routines/{id}` (non-existent) | Returns `INVALID_ID` instead of `ROUTINE_NOT_FOUND` for valid UUID that doesn't exist |
-| 5 | `POST /routines/{id}/like` (repeat) | Returns 200 (not 409 `ALREADY_LIKED`) on duplicate like |
-| 6 | `POST /routines/{id}/import` | `importCount` not incremented on Routine item after import |
-| 7 | `DELETE /routines/{id}` | CloudFront invalidation not triggered — deleted routine still served from cache |
-| 8 | `POST /activity` | `TypeError: unhashable type: 'dict'` at `set(body["routinesPlayed"])` line 62 — causes 500 `INTERNAL_ERROR` |
+| # | Endpoint | Bug | Status |
+|---|---|---|---|
+| 1 | `GET /routines?pageSize=100` | Returns 200 with all results instead of 400 `INVALID_PARAMETER` | Open |
+| 2 | `POST /routines` | `SQS_TAGGING_QUEUE_URL` env var missing on Lambda — Bedrock tagging never triggered | **Fixed** |
+| 3 | `POST /routines` | Duplicate name from same user returns 201 (not 409 `ALREADY_EXISTS`) | Open |
+| 4 | `GET/DELETE /routines/{id}` (non-existent) | Returns `INVALID_ID` instead of `ROUTINE_NOT_FOUND` for valid UUID | Open |
+| 5 | `POST /routines/{id}/like` (repeat) | Returns 200 (not 409 `ALREADY_LIKED`) on duplicate like | Open |
+| 6 | `POST /routines/{id}/import` | `importCount` not incremented on Routine item after import | Open |
+| 7 | `DELETE /routines/{id}` | CloudFront invalidation not triggered — deleted routine still served from cache | Open |
+| 8 | `POST /activity` | `TypeError: unhashable type: 'dict'` at `set(body["routinesPlayed"])` line 62 — 500 `INTERNAL_ERROR` | Open |
+| 9 | `bedrock_tagger` Lambda | `_bedrock`/`_bedrock_client` name collision; legacy model `claude-3-haiku`; missing SSM IAM policy | **Fixed 2026-06-29** |
+| 10 | `delete_routine` Lambda | Missing SSM IAM policy (`ssm:GetParameter`) → Typesense delete always failed silently | **Fixed 2026-06-29** |
 
 
 
@@ -673,10 +675,10 @@ Review failures in `/tmp/newman-results.json`.
 - [x] Response contains `routineId` (UUID v4), `name`, `publishedAt`, `taggingStatus: "pending"`
 - [x] Save `routineId` for subsequent tests
 - [x] DynamoDB item exists: `aws dynamodb get-item --table-name mb-staging-community --key '{"PK":{"S":"ROUTINE#<id>"},"SK":{"S":"METADATA"}}'`
-- [ ] ~~SQS message sent~~ **BUG: `SQS_TAGGING_QUEUE_URL` env var not set on `mb-staging-post-routine` Lambda — SQS send silently skipped**
-- [ ] ~~**Async tagging**~~ **BUG: blocked by above — `taggingStatus` stays `"pending"`, tags never populated**
+- [x] SQS message sent → `SQS_TAGGING_QUEUE_URL` confirmed set; fixed via Terraform (was missing earlier)
+- [x] **Async tagging** (2026-06-29): `taggingStatus: "complete"`, `tags` non-empty after ~45s. **Fixes applied:** (1) `_bedrock`/`_bedrock_client` name collision in `bedrock_tagger.py`; (2) updated `BEDROCK_MODEL_ID` to inference profile `us.anthropic.claude-haiku-4-5-20251001-v1:0` (old `claude-3-haiku` model is legacy/inactive); (3) added SSM IAM policy to `bedrock_tagger` role; (4) updated IAM policy Bedrock resource ARN.
 - [x] Typesense indexed: search `GET /search?q=<routine name>` → routine appears in results *(indexed via DynamoDB Stream → typesense_indexer)*
-- [ ] CloudFront `/routines*` invalidated: `GET /routines` returns the new routine (not stale cached) *(not verified — blocked by tagging bug)*
+- [x] CloudFront `/routines*` invalidated (2026-06-29): new routine appears as first item in `GET /v1/routines` via CloudFront immediately after publish.
 - [x] No auth (missing header) → 401 `UNAUTHORIZED`
 - [x] Missing `name` field → 400 `INVALID_BODY`
 - [x] Body >100KB → 413 `PAYLOAD_TOO_LARGE`
@@ -720,8 +722,8 @@ Review failures in `/tmp/newman-results.json`.
 - [x] `DELETE /routines/<id>` with `testuser1` token → 204 No Content
 - [ ] ~~`GET /routines/<id>` → 404 `ROUTINE_NOT_FOUND`~~ **BUG: deleted routine still served (CloudFront cache not invalidated — no `create_invalidation` call on delete)**
 - [x] DynamoDB item gone (GetItem returns empty)
-- [ ] RoutineTagIndex items deleted *(not verified separately)*
-- [ ] Typesense document deleted *(can only verify via search — E2E Test routine still appeared in search after delete; Typesense delete may be failing or cached)*
+- [x] RoutineTagIndex items deleted (2026-06-29): DynamoDB scan confirms `TAG#<tag>` SK entries for deleted routine are gone after DELETE. **Fix applied:** added SSM IAM policy to `delete_routine` role (`ssm:GetParameter` was missing, causing Typesense delete to fail).
+- [x] Typesense document deleted (2026-06-29): `GET /search?q=<name>` → `found: 0` after DELETE (confirmed after SSM IAM fix).
 - [x] **Ownership check**: attempt `DELETE /routines/<id>` with `testuser2` token → 403 `FORBIDDEN`
 - [ ] ~~Non-existent ID → 404~~ **BUG: returns `INVALID_ID` instead of `ROUTINE_NOT_FOUND`**
 
@@ -741,7 +743,7 @@ Review failures in `/tmp/newman-results.json`.
 - [ ] ~~Idempotency: repeat same POST → 409 `ALREADY_LIKED`~~ **BUG: repeat like returns 200 (not 409)**
 - [x] `GET /routines/{{routine_id}}` → `isLikedByMe: false` after unlike (verify via fresh curl)
 - [x] Unlike when not liked → 404 `LIKE_NOT_FOUND`
-- [ ] Like flush: wait up to 60s; verify `likeCount` on DynamoDB matches Redis *(not yet tested)*
+- [x] Like flush (2026-06-29): liked a seeded routine; waited 70s; DynamoDB `likeCount` incremented by 1 (matches Redis optimistic count). Like-flush Lambda confirmed working.
 
 **Troubleshooting:**
 
@@ -775,7 +777,7 @@ Review failures in `/tmp/newman-results.json`.
   - `recommendations` array ≥1 item
 - [x] Second call (within 1hr): `cacheHit: true`
 - [x] `limit=20` → up to 20 results *(returns 10 — may be capped by Bedrock response size, not a hard error)*
-- [ ] `limit=25` → 400 or clamped to 20 *(returns 10 — clamp behavior, no error)*
+- [x] `limit=25` (2026-06-29): returns HTTP 200 with 20 results — **clamped to 20, no error** (not a 400). Behavior noted: max enforced silently.
 - [ ] ~~Cache invalidation: `POST /activity` then `GET /recommendations` → `cacheHit: false`~~ **BUG: `POST /activity` throws `INTERNAL_ERROR` (`TypeError: unhashable type: 'dict'` in `post_activity.py` line 62 — `set(body["routinesPlayed"])` on a list of dicts)**
 
 **Troubleshooting:**
@@ -1110,8 +1112,9 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
   ```bash
   aws logs tail /aws/lambda/mb-stagingsign-bedrock-tagger --since 1h
   ```
-- [ ] **Bedrock access denied** → add `bedrock:InvokeModel` permission to Lambda execution role for model `anthropic.claude-3-haiku-20240307-v1:0`
-- [ ] **Bedrock model not enabled** → in AWS Console → Bedrock → Model access → enable Claude 3 Haiku in `us-east-1`
+- [x] **`_bedrock` name collision** (fixed 2026-06-29): module-level `_bedrock = None` overwrote the function of the same name after first invocation. Renamed cache var to `_bedrock_client`.
+- [x] **Legacy Bedrock model** (fixed 2026-06-29): `anthropic.claude-3-haiku-20240307-v1:0` is legacy/inactive. Updated to inference profile `us.anthropic.claude-haiku-4-5-20251001-v1:0`. Update `BEDROCK_MODEL_ID` env var and IAM resource ARN.
+- [ ] **Bedrock access denied** → update IAM `bedrock:InvokeModel` resource ARN to match the inference profile ID (not just foundation model ARN). Also update `arn:aws:bedrock:*::foundation-model/...` to inference profile ARN.
 - [ ] **IAM permission on DynamoDB** → tagger Lambda needs `dynamodb:UpdateItem` on `mb-staging-community` table
 - [ ] Once fixed, move DLQ messages back to source queue for reprocessing:
   ```bash

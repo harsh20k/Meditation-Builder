@@ -3,7 +3,7 @@ data "aws_region" "current" {}
 
 locals {
   bedrock_model_arns = [
-    "arn:aws:bedrock:${data.aws_region.current.name}::foundation-model/anthropic.claude-3-haiku-20240307-v1:0",
+    "arn:aws:bedrock:${data.aws_region.current.name}::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
     "arn:aws:bedrock:${data.aws_region.current.name}::foundation-model/amazon.titan-embed-text-v2:0",
   ]
 }
@@ -179,7 +179,7 @@ resource "aws_iam_role_policy" "lambda_stream" {
 }
 
 resource "aws_iam_role_policy" "lambda_ssm" {
-  for_each = toset(["search", "typesense_indexer", "get_recommendations"])
+  for_each = toset(["search", "typesense_indexer", "get_recommendations", "delete_routine", "bedrock_tagger", "post_routine", "import_routine"])
 
   name = "${var.name_prefix}-${replace(each.key, "_", "-")}-ssm"
   role = aws_iam_role.lambda[each.key].id

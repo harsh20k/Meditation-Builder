@@ -15,15 +15,15 @@ from shared import dynamo, typesense_client
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-_bedrock = None
-MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-3-haiku-20240307-v1:0")
+_bedrock_client = None
+MODEL_ID = os.environ.get("BEDROCK_MODEL_ID", "anthropic.claude-haiku-4-5-20251001-v1:0")
 
 
 def _bedrock():
-    global _bedrock
-    if _bedrock is None:
-        _bedrock = boto3.client("bedrock-runtime")
-    return _bedrock
+    global _bedrock_client
+    if _bedrock_client is None:
+        _bedrock_client = boto3.client("bedrock-runtime")
+    return _bedrock_client
 
 
 def _parse_tags_response(text: str) -> tuple[list[str], str]:
