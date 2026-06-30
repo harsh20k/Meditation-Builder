@@ -17,12 +17,16 @@ def test_like_routine_increments_count(dynamodb_table, fake_redis):
 
 def test_like_routine_idempotent(dynamodb_table, fake_redis):
     rid = seed_routine(dynamodb_table)
-    handler(
-        auth_event(method="POST", path="/v1/routines/{id}/like", path_parameters={"id": rid}),
-        None,
-    )
     resp = handler(
         auth_event(method="POST", path="/v1/routines/{id}/like", path_parameters={"id": rid}),
         None,
     )
     assert resp["statusCode"] == 200
+
+    resp = handler(
+        auth_event(method="POST", path="/v1/routines/{id}/like", path_parameters={"id": rid}),
+        None,
+    )
+    assert resp["statusCode"] == 409
+    body = json.loads(resp["body"])
+    assert body["error"] == "ALREADY_LIKED"
