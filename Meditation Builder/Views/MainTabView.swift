@@ -8,15 +8,10 @@
 import SwiftUI
 import os.log
 
-// MARK: - Navigation Destination Types
-enum RoutineBuilderDestination: Hashable {
-    case create
-    case edit(SavedRoutine)
-}
-
 struct MainTabView: View {
     @State private var selectedTab: TabSelection = .library
     @State private var tabHapticTrigger = 0
+    @State private var showCreateRoutine = false
     @Environment(AuthManager.self) private var authManager
     @Environment(\.modelContext) private var modelContext
     @State private var libraryPath = NavigationPath()
@@ -36,7 +31,10 @@ struct MainTabView: View {
             }
         }
         .sheet(item: $routineToEdit) { routine in
-            RoutineBuilderView(editingRoutine: routine)
+            RoutineBuilderView(editingRoutine: routine, isModal: true)
+        }
+        .fullScreenCover(isPresented: $showCreateRoutine) {
+            RoutineBuilderView(isModal: true)
         }
         .fullScreenCover(item: $routineToPlay) { routine in
             RoutinePlayerView(routine: routine, modelContext: modelContext)
@@ -116,7 +114,7 @@ struct MainTabView: View {
         NavigationStack(path: $legacyNavigationPath) {
             Group {
                 switch selectedTab {
-                case .library:
+                case .library, .create:
                     RoutineLibraryView(navigationPath: $legacyNavigationPath)
                 case .community:
                     CommunityHomeView()
@@ -129,9 +127,6 @@ struct MainTabView: View {
             .animation(.easeInOut(duration: 0.18), value: selectedTab)
             .navigationDestination(for: SavedRoutine.self) { routine in
                 ritualDestination(routine, path: $legacyNavigationPath)
-            }
-            .navigationDestination(for: RoutineBuilderDestination.self) { destination in
-                routineBuilderDestination(destination)
             }
         }
         .liquidGlassNavigationBar()
@@ -153,9 +148,6 @@ struct MainTabView: View {
             RoutineLibraryView(navigationPath: path)
                 .navigationDestination(for: SavedRoutine.self) { routine in
                     ritualDestination(routine, path: path)
-                }
-                .navigationDestination(for: RoutineBuilderDestination.self) { destination in
-                    routineBuilderDestination(destination)
                 }
         }
         .liquidGlassNavigationBar()
@@ -180,24 +172,10 @@ struct MainTabView: View {
         )
     }
 
-    @ViewBuilder
-    private func routineBuilderDestination(_ destination: RoutineBuilderDestination) -> some View {
-        switch destination {
-        case .create:
-            RoutineBuilderView()
-        case .edit(let routine):
-            RoutineBuilderView(editingRoutine: routine)
-        }
-    }
-
     private func openCreateRitual() {
         tabHapticTrigger += 1
         selectedTab = .library
-        if #available(iOS 26.0, *) {
-            libraryPath.append(RoutineBuilderDestination.create)
-        } else {
-            legacyNavigationPath.append(RoutineBuilderDestination.create)
-        }
+        showCreateRoutine = true
     }
 
     private func handleLegacyTabTap(_ tappedTab: TabSelection) {

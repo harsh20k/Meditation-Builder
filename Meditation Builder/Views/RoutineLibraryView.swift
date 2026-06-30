@@ -156,7 +156,7 @@ struct RoutineLibraryView: View {
 			.scrollIndicators(.hidden)
 		}
 		.sheet(item: $editingRoutine) { routine in
-			RoutineBuilderView(editingRoutine: routine)
+			RoutineBuilderView(editingRoutine: routine, isModal: true)
 		}
 		.fullScreenCover(item: $playingRoutine) { routine in
 			RoutinePlayerView(routine: routine, modelContext: modelContext)

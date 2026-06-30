@@ -19,9 +19,10 @@ struct EditBlockView: View {
     @Environment(\.dismiss) var dismiss
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.backgroundColor.ignoresSafeArea()
+        VStack(spacing: 0) {
+            LiquidGlassSheetHeader(title: LocalizedStringKey("block.edit.title"), onClose: { dismiss() })
+
+            ScrollView(showsIndicators: false) {
                 VStack(spacing: AppTheme.Spacing.section) {
                     VStack(spacing: AppTheme.Spacing.extraLarge) {
                         // Icon + Name
@@ -169,47 +170,40 @@ struct EditBlockView: View {
                             )
                     }
                     .padding(.horizontal)
-                    Spacer()
                 }
+                .padding(.bottom, AppTheme.Spacing.extraLarge)
             }
-            .navigationTitle(LocalizedStringKey("block.edit.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(LocalizedStringKey("button.cancel")) {
-                        dismiss()
-                    }
-                    .foregroundColor(AppTheme.accentColor)
+        }
+        .background(AppTheme.backgroundColor)
+        .sheet(isPresented: $showIconPicker) {
+            IconPickerView(selectedIcon: $block.blockIcon)
+                .liquidGlassSheet(size: .compact)
+        }
+        .sheet(isPresented: $showBellPicker) {
+            BellPickerView(selected: block.blockStartBell) { selectedBell in
+                block.blockStartBell = selectedBell
+            }
+            .liquidGlassSheet(size: .compact)
+        }
+        .fileImporter(
+            isPresented: $showMusicPicker,
+            allowedContentTypes: [.mp3, .mpeg4Audio, .aiff, .wav, .audio],
+            allowsMultipleSelection: false
+        ) { result in
+            musicImportError = nil
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                do {
+                    let (storedFileName, displayName) = try BlockMusicManager.shared.importMusic(from: url)
+                    block.musicFileName = storedFileName
+                    block.musicDisplayName = displayName
+                } catch {
+                    musicImportError = "Could not import file: \(error.localizedDescription)"
+                    logger.error("Music import failed: \(error.localizedDescription)", category: "EditBlock")
                 }
-            }
-            .sheet(isPresented: $showIconPicker) {
-                IconPickerView(selectedIcon: $block.blockIcon)
-            }
-            .sheet(isPresented: $showBellPicker) {
-                BellPickerView(selected: block.blockStartBell) { selectedBell in
-                    block.blockStartBell = selectedBell
-                }
-            }
-            .fileImporter(
-                isPresented: $showMusicPicker,
-                allowedContentTypes: [.mp3, .mpeg4Audio, .aiff, .wav, .audio],
-                allowsMultipleSelection: false
-            ) { result in
-                musicImportError = nil
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    do {
-                        let (storedFileName, displayName) = try BlockMusicManager.shared.importMusic(from: url)
-                        block.musicFileName = storedFileName
-                        block.musicDisplayName = displayName
-                    } catch {
-                        musicImportError = "Could not import file: \(error.localizedDescription)"
-                        logger.error("Music import failed: \(error.localizedDescription)", category: "EditBlock")
-                    }
-                case .failure(let error):
-                    musicImportError = "Could not open file: \(error.localizedDescription)"
-                }
+            case .failure(let error):
+                musicImportError = "Could not open file: \(error.localizedDescription)"
             }
         }
     }

@@ -30,12 +30,11 @@ struct AddBlockView: View {
     }
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.backgroundColor.ignoresSafeArea()
-                VStack(spacing: 0) {
-                    // Search bar
-                    HStack {
+        VStack(spacing: 0) {
+            LiquidGlassSheetHeader(title: LocalizedStringKey("block.add.title"), onClose: { dismiss() })
+
+            // Search bar
+            HStack {
                         Image(systemName: "magnifyingglass")
                             .foregroundColor(AppTheme.accentColor)
                         TextField(LocalizedStringKey("search.blocks.placeholder"), text: $searchText)
@@ -258,38 +257,27 @@ struct AddBlockView: View {
                         }
                         .padding()
                     }
+        }
+        .background(AppTheme.backgroundColor)
+        .fileImporter(
+            isPresented: $showMusicPicker,
+            allowedContentTypes: [.mp3, .mpeg4Audio, .aiff, .wav, .audio],
+            allowsMultipleSelection: false
+        ) { result in
+            musicImportError = nil
+            switch result {
+            case .success(let urls):
+                guard let url = urls.first else { return }
+                do {
+                    let (storedFileName, displayName) = try BlockMusicManager.shared.importMusic(from: url)
+                    customMusicFileName = storedFileName
+                    customMusicDisplayName = displayName
+                } catch {
+                    musicImportError = "Could not import file: \(error.localizedDescription)"
+                    logger.error("Music import failed: \(error.localizedDescription)", category: "AddBlock")
                 }
-            }
-            .navigationTitle(LocalizedStringKey("block.add.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(LocalizedStringKey("button.cancel")) {
-                        dismiss()
-                    }
-                    .foregroundColor(AppTheme.accentColor)
-                }
-            }
-            .fileImporter(
-                isPresented: $showMusicPicker,
-                allowedContentTypes: [.mp3, .mpeg4Audio, .aiff, .wav, .audio],
-                allowsMultipleSelection: false
-            ) { result in
-                musicImportError = nil
-                switch result {
-                case .success(let urls):
-                    guard let url = urls.first else { return }
-                    do {
-                        let (storedFileName, displayName) = try BlockMusicManager.shared.importMusic(from: url)
-                        customMusicFileName = storedFileName
-                        customMusicDisplayName = displayName
-                    } catch {
-                        musicImportError = "Could not import file: \(error.localizedDescription)"
-                        logger.error("Music import failed: \(error.localizedDescription)", category: "AddBlock")
-                    }
-                case .failure(let error):
-                    musicImportError = "Could not open file: \(error.localizedDescription)"
-                }
+            case .failure(let error):
+                musicImportError = "Could not open file: \(error.localizedDescription)"
             }
         }
     }

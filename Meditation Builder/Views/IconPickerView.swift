@@ -2,7 +2,7 @@
 //  IconPickerView.swift
 //  Meditation Builder
 //
-//  Created by harsh on 09/07/25.
+//  Created by harsh  on 09/07/25.
 //
 
 import SwiftUI
@@ -78,54 +78,37 @@ struct IconPickerView: View {
     @State private var selectedCategory = 0
     
     var body: some View {
-        NavigationStack {
-            ZStack {
-                AppTheme.backgroundColor.ignoresSafeArea()
-                
-                VStack(spacing: 0) {
-                    // Category Picker
-                    Picker("Category", selection: $selectedCategory) {
-                        ForEach(iconCategories.indices, id: \.self) { index in
-                            Text(iconCategories[index].name)
-                                .tag(index)
-                        }
-                    }
-                    .pickerStyle(SegmentedPickerStyle())
-                    .padding(.horizontal)
-                    .padding(.top, AppTheme.Spacing.medium)
-                    
-                    // Icon Grid
-                    ScrollView {
-                        LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: AppTheme.Spacing.medium), count: 5), spacing: AppTheme.Spacing.medium) {
-                            ForEach(iconCategories[selectedCategory].icons, id: \.self) { iconName in
-                                IconButton(
-                                    iconName: iconName,
-                                    isSelected: selectedIcon == iconName,
-                                    onTap: {
-                                        selectedIcon = iconName
-                                        dismiss()
-                                    }
-                                )
-                            }
-                        }
-                        .padding(.horizontal)
-                        .padding(.vertical, AppTheme.Spacing.large)
-                    }
-                    
-                    Spacer()
+        VStack(spacing: 0) {
+            LiquidGlassSheetHeader(title: LocalizedStringKey("icon.picker.title"), onClose: { dismiss() })
+
+            Picker("Category", selection: $selectedCategory) {
+                ForEach(iconCategories.indices, id: \.self) { index in
+                    Text(iconCategories[index].name)
+                        .tag(index)
                 }
             }
-            .navigationTitle(LocalizedStringKey("icon.picker.title"))
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(LocalizedStringKey("button.cancel")) {
-                        dismiss()
+            .pickerStyle(SegmentedPickerStyle())
+            .padding(.horizontal)
+            .padding(.bottom, AppTheme.Spacing.medium)
+
+            ScrollView {
+                LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: AppTheme.Spacing.medium), count: 5), spacing: AppTheme.Spacing.medium) {
+                    ForEach(iconCategories[selectedCategory].icons, id: \.self) { iconName in
+                        IconButton(
+                            iconName: iconName,
+                            isSelected: selectedIcon == iconName,
+                            onTap: {
+                                selectedIcon = iconName
+                                dismiss()
+                            }
+                        )
                     }
-                    .foregroundColor(AppTheme.accentColor)
                 }
+                .padding(.horizontal)
+                .padding(.bottom, AppTheme.Spacing.extraLarge)
             }
         }
+        .background(AppTheme.backgroundColor)
     }
 }
 
@@ -165,4 +148,5 @@ struct IconButton: View {
 // MARK: - Preview
 #Preview {
     IconPickerView(selectedIcon: .constant("sun.max.fill"))
-} 
+        .liquidGlassSheet(size: .compact)
+}

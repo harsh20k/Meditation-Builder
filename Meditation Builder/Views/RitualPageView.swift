@@ -153,7 +153,7 @@ struct RitualPageView: View {
             .scrollIndicators(.hidden)
         }
         .sheet(isPresented: $viewModel.showingEditSheet) {
-            RoutineBuilderView(editingRoutine: viewModel.routine)
+            RoutineBuilderView(editingRoutine: viewModel.routine, isModal: true)
         }
         .fullScreenCover(isPresented: $viewModel.showingPlaySheet) {
             RoutinePlayerView(routine: viewModel.routine, modelContext: modelContext)

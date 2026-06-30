@@ -11,6 +11,7 @@ import os.log
 
 struct RoutineBuilderView: View {
     let savedRoutineToEdit: SavedRoutine?
+    let isModal: Bool
     
     @State private var routine: Routine
     @State private var editBlock: RoutineBlock? = nil
@@ -29,8 +30,9 @@ struct RoutineBuilderView: View {
 
     
     // Initializer for creating new routine
-    init() {
+    init(isModal: Bool = false) {
         self.savedRoutineToEdit = nil
+        self.isModal = isModal
         self._routine = State(initialValue: Routine(
             name: "New Routine",
             icon: "sun.max.fill",
@@ -48,8 +50,9 @@ struct RoutineBuilderView: View {
     }
     
     // Initializer for editing existing routine
-    init(editingRoutine: SavedRoutine) {
+    init(editingRoutine: SavedRoutine, isModal: Bool = false) {
         self.savedRoutineToEdit = editingRoutine
+        self.isModal = isModal
         self._routine = State(initialValue: editingRoutine.getRoutine())
         self._routineName = State(initialValue: editingRoutine.routineName)
         self._routineIcon = State(initialValue: editingRoutine.routineIcon)
@@ -89,6 +92,15 @@ struct RoutineBuilderView: View {
         ZStack(alignment: .bottomTrailing) {
             AppTheme.backgroundColor.ignoresSafeArea()
             VStack(spacing: 0) {
+                if isModal {
+                    HStack {
+                        LiquidGlassCloseButton { dismiss() }
+                        Spacer()
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, AppTheme.Spacing.medium)
+                }
+
                 // Header
                 HStack {
                     Button(action: { showIconPicker = true }) {
@@ -223,7 +235,7 @@ struct RoutineBuilderView: View {
                     .disabled(!canSave)
                     .padding(.horizontal, 40)
                 }
-                .padding(.bottom, 80) // Account for tab bar
+                .padding(.bottom, isModal ? AppTheme.Spacing.extraLarge : 80)
             }
             
             // Floating Add Button
@@ -238,7 +250,7 @@ struct RoutineBuilderView: View {
                 }
             }
             .padding(.trailing, AppTheme.Spacing.extraLarge)
-            .padding(.bottom, 160)
+            .padding(.bottom, isModal ? 100 : 160)
             .shadow(radius: 8)
         }
         .sheet(item: $editBlock) { block in
@@ -254,6 +266,7 @@ struct RoutineBuilderView: View {
                 }
                 editBlock = nil
             }
+            .liquidGlassSheet(size: .half)
         }
         .sheet(isPresented: $showAddBlock) {
             AddBlockView { newBlock in
@@ -263,9 +276,11 @@ struct RoutineBuilderView: View {
                 }
                 showAddBlock = false
             }
+            .liquidGlassSheet(size: .half)
         }
         .sheet(isPresented: $showIconPicker) {
             IconPickerView(selectedIcon: $routineIcon)
+                .liquidGlassSheet(size: .compact)
         }
         .alert(isEditMode ? "Update Routine" : "Save Routine", isPresented: $showingSaveAlert) {
             Button(isEditMode ? "Update" : "Save") {
