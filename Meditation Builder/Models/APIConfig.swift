@@ -9,6 +9,9 @@ import Foundation
 enum APIConfig {
     static let baseURL = URL(string: "https://lcn0e7kne5.execute-api.us-east-1.amazonaws.com/v1/v1")!
 
+    /// Audio CDN — `terraform output -raw audio_cloudfront_domain`
+    static let audioCDNBaseURL = URL(string: "https://d16wm96rf8pgju.cloudfront.net")!
+
     /// CloudFront staging alternative: `https://dhdnv4iakcz7z.cloudfront.net/v1`
     /// Production (when DNS exists): `https://api.meditationbuilder.app/v1`
 }

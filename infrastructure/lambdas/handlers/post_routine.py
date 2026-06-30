@@ -19,6 +19,7 @@ logger.setLevel(logging.INFO)
 VALID_BLOCK_TYPES = {"timer", "bell", "music"}
 _sqs_client = None
 _cf_client = None
+_s3_client = None
 
 
 def _sqs():
@@ -35,7 +36,14 @@ def _cloudfront():
     return _cf_client
 
 
-def _validate_body(body: dict[str, Any]) -> str | None:
+def _s3():
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client("s3")
+    return _s3_client
+
+
+def _validate_body(body: dict[str, Any], sub: str) -> str | None:
     name = body.get("name")
     if not name or not isinstance(name, str) or not (1 <= len(name) <= 100):
         return "name must be 1-100 characters"
@@ -61,9 +69,31 @@ def _validate_body(body: dict[str, Any]) -> str | None:
     audio_keys = body.get("audioAssetKeys") or []
     if not isinstance(audio_keys, list) or len(audio_keys) > 10:
         return "audioAssetKeys max 10 items"
+    audio_key_set = set(audio_keys)
+    prefix = f"audio/{sub}/"
+    for key in audio_keys:
+        if not isinstance(key, str) or not key.startswith(prefix):
+            return "audioAssetKeys must belong to the authenticated user"
+    for block in blocks:
+        if block.get("type") == "music":
+            music_key = block.get("musicAssetKey")
+            if music_key not in audio_key_set:
+                return "music blocks require musicAssetKey in audioAssetKeys"
     desc = body.get("userDescription") or ""
     if len(desc) > 500:
         return "userDescription max 500 characters"
+    return None
+
+
+def _verify_audio_objects(audio_keys: list[str]) -> str | None:
+    bucket = os.environ.get("AUDIO_BUCKET")
+    if not bucket or not audio_keys:
+        return None
+    for key in audio_keys:
+        try:
+            _s3().head_object(Bucket=bucket, Key=key)
+        except Exception:
+            return f"audio asset not found: {key}"
     return None
 
 
@@ -97,7 +127,12 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
                 413, "PAYLOAD_TOO_LARGE", "Request body exceeds 100KB.", request_id=request_id
             )
         body = json.loads(raw)
-        err = _validate_body(body)
+        err = _validate_body(body, sub)
+        if err:
+            return response.error(400, "INVALID_BODY", err, request_id=request_id)
+
+        audio_keys = body.get("audioAssetKeys") or []
+        err = _verify_audio_objects(audio_keys)
         if err:
             return response.error(400, "INVALID_BODY", err, request_id=request_id)
 

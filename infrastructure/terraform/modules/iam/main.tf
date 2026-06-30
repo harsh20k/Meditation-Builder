@@ -5,6 +5,7 @@ locals {
   bedrock_model_arns = [
     "arn:aws:bedrock:${data.aws_region.current.name}::foundation-model/anthropic.claude-haiku-4-5-20251001-v1:0",
     "arn:aws:bedrock:${data.aws_region.current.name}::foundation-model/amazon.titan-embed-text-v2:0",
+    "arn:aws:bedrock:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:inference-profile/us.anthropic.claude-haiku-4-5-20251001-v1:0",
   ]
 }
 
@@ -72,7 +73,7 @@ resource "aws_iam_role_policy" "lambda_dynamodb" {
 }
 
 resource "aws_iam_role_policy" "lambda_s3" {
-  for_each = toset(["post_routine", "delete_routine", "import_routine"])
+  for_each = toset(["post_routine", "delete_routine", "import_routine", "presign_audio_upload"])
 
   name = "${var.name_prefix}-${replace(each.key, "_", "-")}-s3"
   role = aws_iam_role.lambda[each.key].id
@@ -81,7 +82,7 @@ resource "aws_iam_role_policy" "lambda_s3" {
     Version = "2012-10-17"
     Statement = [{
       Effect   = "Allow"
-      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"]
+      Action   = ["s3:GetObject", "s3:PutObject", "s3:DeleteObject", "s3:HeadObject"]
       Resource = "${var.audio_bucket_arn}/*"
     }]
   })

@@ -159,6 +159,50 @@ Publish a local routine to the Community Library.
 
 ---
 
+### 2a. POST /uploads/audio
+
+Obtain a presigned S3 PUT URL for uploading custom block music before publishing.
+
+**Auth:** Required (Cognito Bearer token)
+
+**Request Body:**
+
+```json
+{
+  "contentType": "audio/m4a",
+  "fileExtension": "m4a"
+}
+```
+
+| Field | Type | Required | Constraints |
+|---|---|---|---|
+| `contentType` | string | No | Defaults from `fileExtension`; allowed: `audio/m4a`, `audio/mp4`, `audio/mpeg`, `audio/wav`, `audio/aiff` |
+| `fileExtension` | string | No | Default `m4a` |
+
+**Success Response — 200 OK:**
+
+```json
+{
+  "assetKey": "audio/{sub}/{uuid}.m4a",
+  "uploadUrl": "https://mb-staging-audio-assets.s3.amazonaws.com/...",
+  "expiresIn": 900
+}
+```
+
+Client uploads the file with `PUT` to `uploadUrl` and the same `Content-Type` header, then references `assetKey` in `POST /routines` (`blocks[].musicAssetKey` and `audioAssetKeys`).
+
+**Error Responses:**
+
+| Code | Error key | Condition |
+|---|---|---|
+| 400 | `INVALID_BODY` | Unsupported audio type |
+| 401 | `UNAUTHORIZED` | Missing or invalid Bearer token |
+| 500 | `INTERNAL_ERROR` | Presign or configuration failure |
+
+**Cache:** Not cached.
+
+---
+
 ### 3. GET /routines/{id}
 
 Retrieve full detail for a single public routine.

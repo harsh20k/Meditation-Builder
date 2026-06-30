@@ -12,6 +12,7 @@ locals {
     get_recommendations = { route = "GET /recommendations", provisioned = 0 }
     search              = { route = "GET /search", provisioned = 0 }
     post_activity       = { route = "POST /activity", provisioned = 0 }
+    presign_audio_upload = { route = "POST /uploads/audio", provisioned = 0 }
     bedrock_tagger      = { route = "SQS", provisioned = 0 }
     typesense_indexer   = { route = "DynamoDB Stream", provisioned = 0 }
     like_flush          = { route = "EventBridge", provisioned = 0 }
@@ -38,7 +39,7 @@ locals {
   api_route_handlers = [
     "get_routines", "post_routine", "get_routine", "delete_routine",
     "like_routine", "unlike_routine", "import_routine", "get_recommendations",
-    "search", "post_activity",
+    "search", "post_activity", "presign_audio_upload",
   ]
 
   api_lambda_invoke_arns = {

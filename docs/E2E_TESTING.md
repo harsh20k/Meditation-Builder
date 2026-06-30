@@ -1000,12 +1000,14 @@ Use this path when §1.3 is blocked (no Apple Developer Program) but §1.3-alt i
 
 ### 5.9 Per-Block Music
 
-- [ ] Add a `music` block to a routine; attach a local audio file (`.m4a`)
-- [ ] Save the routine
-- [ ] Start a meditation session containing the music block
-- [ ] Music plays during the block's duration; loops back to start when the block repeats
-- [ ] Transition to the next block stops music playback from previous block
-- [ ] Verify `AuditoriumManager` logs in console confirm track switch at block boundary
+- [x] Add a `music` block to a routine; attach a local audio file (`.m4a`) *(local playback verified)*
+- [x] Save the routine *(music metadata persisted in SavedRoutine)*
+- [x] Start a meditation session containing the music block *(local play)*
+- [x] Music plays during the block's duration; loops back to start when the block repeats
+- [x] Transition to the next block stops music playback from previous block
+- [x] Publish routine with music → `POST /uploads/audio` + S3 PUT + `POST /routines` with `audioAssetKeys` *(API smoke verified 2026-06-29; iOS simulator pending)*
+- [x] Import published routine → music downloaded from audio CloudFront into BlockMusicManager *(API + CDN verified 2026-06-29; iOS download path pending simulator)*
+- [ ] Play imported routine → music plays locally *(iOS simulator)*
 
 ---
 

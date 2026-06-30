@@ -59,14 +59,27 @@ final class CommunityAPIClient {
         return try await perform(request)
     }
 
-    func publishRoutine(_ routine: Routine, userDescription: String? = nil) async throws -> CommunityRoutine {
-        let payload = routine.toPublishPayload(userDescription: userDescription)
+    func publishRoutine(
+        _ routine: Routine,
+        userDescription: String? = nil,
+        musicAssetKeys: [UUID: String]? = nil
+    ) async throws -> CommunityRoutine {
+        let musicKeys: [UUID: String]
+        if let musicAssetKeys {
+            musicKeys = musicAssetKeys
+        } else {
+            musicKeys = try await AudioAssetService.uploadMusicAssets(for: routine) { contentType, ext in
+                try await self.requestAudioUploadURL(contentType: contentType, fileExtension: ext)
+            }
+        }
+        let payload = routine.toPublishPayload(userDescription: userDescription, musicAssetKeys: musicKeys)
         let body = try JSONSerialization.data(withJSONObject: payload)
         let request = try await makeRequest(path: "/routines", method: "POST", body: body, requiresAuth: true)
         let response: PublishResponse = try await perform(request)
         if let sub = authManager?.currentUserSub {
             PublishedRoutineStore.add(response.routineId, for: sub)
         }
+        let uploadedAudioKeys = payload["audioAssetKeys"] as? [String]
         return CommunityRoutine(
             routineId: response.routineId,
             name: response.name,
@@ -78,7 +91,7 @@ final class CommunityAPIClient {
             likeCount: 0,
             importCount: 0,
             blocks: nil,
-            audioAssetKeys: nil,
+            audioAssetKeys: uploadedAudioKeys,
             publishedAt: response.publishedAt,
             updatedAt: nil,
             isLikedByMe: nil,
@@ -86,6 +99,32 @@ final class CommunityAPIClient {
             taggingStatus: response.taggingStatus,
             score: nil
         )
+    }
+
+    func requestAudioUploadURL(contentType: String, fileExtension: String) async throws -> PresignAudioResponse {
+        let payload: [String: String] = [
+            "contentType": contentType,
+            "fileExtension": fileExtension,
+        ]
+        let body = try JSONSerialization.data(withJSONObject: payload)
+        let request = try await makeRequest(path: "/uploads/audio", method: "POST", body: body, requiresAuth: true)
+        return try await perform(request)
+    }
+
+    func downloadMusicForImport(_ routine: CommunityRoutine) async throws -> [String: (fileName: String, displayName: String)] {
+        guard let blocks = routine.blocks else { return [:] }
+        var musicFiles: [String: (fileName: String, displayName: String)] = [:]
+        for block in blocks where block.type == "music" {
+            guard let assetKey = block.musicAssetKey else { continue }
+            if musicFiles[assetKey] != nil { continue }
+            let displayName = block.label ?? "Music"
+            let downloaded = try await AudioAssetService.downloadMusic(
+                assetKey: assetKey,
+                displayName: displayName
+            )
+            musicFiles[assetKey] = (fileName: downloaded.storedFileName, displayName: downloaded.displayName)
+        }
+        return musicFiles
     }
 
     func deleteRoutine(id: String) async throws {
@@ -115,6 +154,7 @@ final class CommunityAPIClient {
     }
 
     func getRecommendations(limit: Int = 10) async throws -> [CommunityRoutine] {
+        
         let items = [URLQueryItem(name: "limit", value: String(limit))]
         let request = try await makeRequest(path: "/recommendations", queryItems: items, method: "GET", requiresAuth: true)
         let response: RecommendationsResponse = try await perform(request)

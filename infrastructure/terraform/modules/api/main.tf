@@ -62,6 +62,18 @@ resource "aws_api_gateway_resource" "activity" {
   path_part   = "activity"
 }
 
+resource "aws_api_gateway_resource" "uploads" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.v1.id
+  path_part   = "uploads"
+}
+
+resource "aws_api_gateway_resource" "uploads_audio" {
+  rest_api_id = aws_api_gateway_rest_api.main.id
+  parent_id   = aws_api_gateway_resource.uploads.id
+  path_part   = "audio"
+}
+
 locals {
   routes = {
     get_routines = {
@@ -111,6 +123,11 @@ locals {
     }
     post_activity = {
       resource_id = aws_api_gateway_resource.activity.id
+      method      = "POST"
+      auth        = false
+    }
+    presign_audio_upload = {
+      resource_id = aws_api_gateway_resource.uploads_audio.id
       method      = "POST"
       auth        = false
     }

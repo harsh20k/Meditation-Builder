@@ -198,3 +198,17 @@ Append-only log of architectural trade-offs. See `.cursor/rules/adr.mdc` for for
 **Reason:** User-data installs Typesense at boot and reads the API key from SSM; without an instance profile cloud-init failed with "Unable to locate credentials" and port 8108 never listened.
 **Trade-off:** Instance replacement on user-data changes (`user_data_replace_on_change`); Lambdas also load the API key from SSM at runtime.
 **Status:** Accepted
+
+## ADR-024 — Presigned S3 PUT for community music uploads
+**Date:** 2026-06-29
+**Decision:** Add `POST /uploads/audio` returning a user-scoped presigned PUT URL; iOS uploads before `POST /routines` and references `audioAssetKeys` / `blocks[].musicAssetKey`.
+**Reason:** Binary audio must not flow through API Gateway/Lambda body limits; S3 + CloudFront audio CDN already exist.
+**Trade-off:** Client orchestrates two-step upload+publish; import downloads from CloudFront into local sandbox.
+**Status:** Accepted
+
+## ADR-025 — Expanded CloudWatch ops dashboard
+**Date:** 2026-06-30
+**Decision:** Replace the 4-widget `mb-*-ops` dashboard with sectioned metrics for API Gateway, Lambda (API + async), Bedrock/SQS tagging pipeline, Typesense EC2, ElastiCache Redis, DynamoDB, and a Logs Insights error table.
+**Reason:** The original dashboard only showed aggregate Lambda errors/duration, DDB throttles, and API 5xx — insufficient for debugging tag generation lag, search indexing, or cache pressure.
+**Trade-off:** Tall dashboard (~86 rows); Bedrock metrics require model-dimension alignment; Typesense has EC2-level metrics only (no app-level Typesense stats without a CW agent).
+**Status:** Accepted

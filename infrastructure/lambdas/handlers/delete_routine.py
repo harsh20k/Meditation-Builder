@@ -20,6 +20,7 @@ UUID_RE = re.compile(
     re.I,
 )
 _cf_client = None
+_s3_client = None
 
 
 def _cloudfront():
@@ -27,6 +28,29 @@ def _cloudfront():
     if _cf_client is None:
         _cf_client = boto3.client("cloudfront")
     return _cf_client
+
+
+def _s3():
+    global _s3_client
+    if _s3_client is None:
+        _s3_client = boto3.client("s3")
+    return _s3_client
+
+
+def _delete_audio_assets(item: dict[str, Any]) -> None:
+    bucket = os.environ.get("AUDIO_BUCKET")
+    if not bucket:
+        return
+    audio = item.get("audioAssetKeys") or []
+    if isinstance(audio, set):
+        audio = list(audio)
+    for key in audio:
+        if not isinstance(key, str):
+            continue
+        try:
+            _s3().delete_object(Bucket=bucket, Key=key)
+        except Exception:
+            logger.warning("S3 delete failed for %s", key, exc_info=True)
 
 
 def _invalidate(routine_id: str) -> None:
@@ -85,6 +109,11 @@ def handler(event: dict[str, Any], context: object) -> dict[str, Any]:
                 }
             )
         dynamo.transact_write(transact)
+
+        try:
+            _delete_audio_assets(item)
+        except Exception:
+            logger.warning("Audio asset cleanup failed for %s", routine_id, exc_info=True)
 
         try:
             typesense_client.delete_routine(routine_id)

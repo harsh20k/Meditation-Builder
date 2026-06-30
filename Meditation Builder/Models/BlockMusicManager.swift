@@ -60,4 +60,18 @@ final class BlockMusicManager {
             musicManagerLog.warning("Could not delete music file '\(fileName)': \(error.localizedDescription, privacy: .public)")
         }
     }
+
+    /// Downloads remote audio from the CDN and stores it locally.
+    func importMusic(from remoteURL: URL, displayName: String) async throws -> (storedFileName: String, displayName: String) {
+        let (data, response) = try await URLSession.shared.data(from: remoteURL)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw URLError(.badServerResponse)
+        }
+        let ext = remoteURL.pathExtension.isEmpty ? "m4a" : remoteURL.pathExtension
+        let storedFileName = "\(UUID().uuidString).\(ext)"
+        let destination = musicDirectory.appendingPathComponent(storedFileName)
+        try data.write(to: destination)
+        musicManagerLog.info("Downloaded music '\(displayName)' as '\(storedFileName)'")
+        return (storedFileName, displayName)
+    }
 }

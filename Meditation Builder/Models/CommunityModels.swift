@@ -103,7 +103,9 @@ struct CommunityRoutine: Codable, Identifiable, Equatable, Hashable, Sendable {
     var isTaggingPending: Bool { taggingStatus == "pending" }
 
     /// Converts API blocks into local `RoutineBlock` values for import.
-    func toLocalBlocks() -> [RoutineBlock] {
+    func toLocalBlocks(
+        musicFiles: [String: (fileName: String, displayName: String)] = [:]
+    ) -> [RoutineBlock] {
         guard let blocks else { return [] }
         return blocks.enumerated().map { index, block in
             let minutes = max(1, (block.durationSeconds ?? 60) / 60)
@@ -113,21 +115,28 @@ struct CommunityRoutine: Codable, Identifiable, Equatable, Hashable, Sendable {
             case "music": blockType = .custom
             default: blockType = .breathwork
             }
-            return RoutineBlock(
+            var routineBlock = RoutineBlock(
                 id: UUID(uuidString: block.blockId) ?? UUID(),
                 name: block.label ?? "Block \(index + 1)",
                 durationInMinutes: minutes,
                 type: blockType,
                 blockStartBell: BellSound.from(apiSoundKey: block.soundKey)
             )
+            if block.type == "music", let key = block.musicAssetKey, let music = musicFiles[key] {
+                routineBlock.musicFileName = music.fileName
+                routineBlock.musicDisplayName = music.displayName
+            }
+            return routineBlock
         }
     }
 
-    func toLocalRoutine() -> Routine {
+    func toLocalRoutine(
+        musicFiles: [String: (fileName: String, displayName: String)] = [:]
+    ) -> Routine {
         Routine(
             name: name,
             icon: "globe",
-            blocks: toLocalBlocks(),
+            blocks: toLocalBlocks(musicFiles: musicFiles),
             isSystemRoutine: false
         )
     }
@@ -303,31 +312,49 @@ extension BellSound {
 // MARK: - Routine → Publish Payload
 
 extension Routine {
-    func toPublishPayload(userDescription: String? = nil) -> [String: Any] {
+    func toPublishPayload(
+        userDescription: String? = nil,
+        musicAssetKeys: [UUID: String] = [:]
+    ) -> [String: Any] {
         let totalSeconds = blocks.reduce(0) { $0 + $1.durationInMinutes * 60 }
+        var audioKeys = Set<String>()
+
+        let blockPayloads = blocks.enumerated().map { index, block -> [String: Any] in
+            if block.musicFileName != nil, let assetKey = musicAssetKeys[block.id] {
+                audioKeys.insert(assetKey)
+                return [
+                    "blockId": block.id.uuidString,
+                    "type": "music",
+                    "durationSeconds": block.durationInMinutes * 60,
+                    "label": block.name,
+                    "musicAssetKey": assetKey,
+                ]
+            }
+            if block.blockStartBell != .silent, let key = block.blockStartBell.apiSoundKey {
+                return [
+                    "blockId": block.id.uuidString,
+                    "type": "bell",
+                    "soundKey": key,
+                    "label": block.name,
+                ]
+            }
+            _ = index
+            return [
+                "blockId": block.id.uuidString,
+                "type": "timer",
+                "durationSeconds": block.durationInMinutes * 60,
+                "label": block.name,
+            ]
+        }
+
         var payload: [String: Any] = [
             "name": name,
             "durationSeconds": max(totalSeconds, 60),
-            "blocks": blocks.enumerated().map { index, block in
-                var blockPayload: [String: Any] = [
-                    "blockId": block.id.uuidString,
-                    "type": "timer",
-                    "durationSeconds": block.durationInMinutes * 60,
-                    "label": block.name
-                ]
-                if block.blockStartBell != .silent, let key = block.blockStartBell.apiSoundKey {
-                    blockPayload["type"] = "bell"
-                    blockPayload["soundKey"] = key
-                    blockPayload.removeValue(forKey: "durationSeconds")
-                }
-                if block.musicFileName != nil {
-                    blockPayload["type"] = "music"
-                    blockPayload["durationSeconds"] = block.durationInMinutes * 60
-                }
-                _ = index
-                return blockPayload
-            }
+            "blocks": blockPayloads,
         ]
+        if !audioKeys.isEmpty {
+            payload["audioAssetKeys"] = Array(audioKeys).sorted()
+        }
         if let userDescription, !userDescription.isEmpty {
             payload["userDescription"] = userDescription
         }

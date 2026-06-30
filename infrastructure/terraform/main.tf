@@ -96,10 +96,14 @@ module "cdn" {
 module "monitoring" {
   source = "./modules/monitoring"
 
-  name_prefix           = local.name_prefix
-  environment           = var.environment
-  alarm_email           = var.alarm_email
-  lambda_function_names = [for fn in aws_lambda_function.handlers : fn.function_name]
-  dynamodb_table_name   = module.storage.dynamodb_table_name
-  api_gateway_name      = module.api.rest_api_name
+  name_prefix                = local.name_prefix
+  environment                = var.environment
+  alarm_email                = var.alarm_email
+  lambda_function_names      = [for fn in aws_lambda_function.handlers : fn.function_name]
+  dynamodb_table_name        = module.storage.dynamodb_table_name
+  api_gateway_name           = module.api.rest_api_name
+  redis_cluster_id           = module.cache.redis_cluster_id
+  bedrock_tagging_queue_name = module.messaging.bedrock_tagging_queue_name
+  bedrock_tagging_dlq_name   = module.messaging.bedrock_tagging_dlq_name
+  typesense_instance_id      = module.search.typesense_instance_id
 }

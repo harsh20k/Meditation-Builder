@@ -72,6 +72,7 @@ resource "aws_iam_instance_profile" "typesense" {
 resource "aws_instance" "typesense" {
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = "t4g.nano"
+  monitoring             = true
   subnet_id              = var.private_subnet_id
   vpc_security_group_ids = [var.typesense_security_group_id]
   iam_instance_profile   = aws_iam_instance_profile.typesense.name

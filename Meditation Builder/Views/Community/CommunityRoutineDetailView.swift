@@ -263,7 +263,8 @@ struct CommunityRoutineDetailView: View {
                 return
             }
 
-            let localRoutine = response.routine.toLocalRoutine()
+            let musicFiles = try await CommunityAPIClient.shared.downloadMusicForImport(response.routine)
+            let localRoutine = response.routine.toLocalRoutine(musicFiles: musicFiles)
             let saved = SavedRoutine(routine: localRoutine)
             modelContext.insert(saved)
             try modelContext.save()

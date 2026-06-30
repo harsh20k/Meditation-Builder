@@ -26,6 +26,7 @@ struct PublishRoutineView: View {
     @State private var userDescription = ""
     @State private var publishedRoutine: CommunityRoutine?
     @State private var isPublishing = false
+    @State private var isUploadingAudio = false
     @State private var isPollingTags = false
     @State private var errorMessage: String?
 
@@ -151,10 +152,12 @@ struct PublishRoutineView: View {
                 .background(AppTheme.searchBar)
                 .cornerRadius(AppTheme.CornerRadius.medium)
 
-            if isPublishing || isPollingTags {
+            if isPublishing || isUploadingAudio || isPollingTags {
                 HStack {
                     ProgressView().tint(AppTheme.accentColor)
-                    Text(isPublishing
+                    Text(isUploadingAudio
+                         ? String(localized: "community.publish.uploadingAudio")
+                         : isPublishing
                          ? String(localized: "community.publish.publishing")
                          : String(localized: "community.publish.tagging"))
                         .font(AppTheme.Typography.captionFont)
@@ -189,7 +192,7 @@ struct PublishRoutineView: View {
             Spacer()
 
             if publishedRoutine == nil {
-                AppTheme.primaryButton(isEnabled: selectedRoutine != nil && !isPublishing, action: {
+                AppTheme.primaryButton(isEnabled: selectedRoutine != nil && !isPublishing && !isUploadingAudio, action: {
                     Task { await publish() }
                 }) {
                     Text(LocalizedStringKey("community.publish.submit"))
@@ -224,15 +227,37 @@ struct PublishRoutineView: View {
 
     private func publish() async {
         guard let selectedRoutine else { return }
-        isPublishing = true
         errorMessage = nil
-        defer { isPublishing = false }
+        let routine = selectedRoutine.getRoutine()
+        let hasMusic = routine.blocks.contains { $0.musicFileName != nil }
+
         do {
-            let routine = selectedRoutine.getRoutine()
-            let result = try await CommunityAPIClient.shared.publishRoutine(routine, userDescription: userDescription.isEmpty ? nil : userDescription)
+            let musicKeys: [UUID: String]
+            if hasMusic {
+                isUploadingAudio = true
+                musicKeys = try await AudioAssetService.uploadMusicAssets(for: routine) { contentType, ext in
+                    try await CommunityAPIClient.shared.requestAudioUploadURL(
+                        contentType: contentType,
+                        fileExtension: ext
+                    )
+                }
+                isUploadingAudio = false
+            } else {
+                musicKeys = [:]
+            }
+
+            isPublishing = true
+            defer { isPublishing = false }
+            let result = try await CommunityAPIClient.shared.publishRoutine(
+                routine,
+                userDescription: userDescription.isEmpty ? nil : userDescription,
+                musicAssetKeys: musicKeys
+            )
             publishedRoutine = result
             await pollForTags(routineId: result.routineId)
         } catch {
+            isUploadingAudio = false
+            isPublishing = false
             errorMessage = error.localizedDescription
         }
     }

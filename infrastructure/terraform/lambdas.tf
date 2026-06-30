@@ -51,6 +51,7 @@ resource "aws_lambda_function" "handlers" {
       AUDIO_BUCKET                  = module.storage.audio_bucket_name
       BEDROCK_QUEUE_URL             = module.messaging.bedrock_tagging_queue_url
       SQS_TAGGING_QUEUE_URL         = module.messaging.bedrock_tagging_queue_url
+      BEDROCK_MODEL_ID              = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
       CLOUDFRONT_DISTRIBUTION_ID    = module.cdn.api_distribution_id
       LIKE_NOTIFICATIONS_TOPIC_ARN  = module.messaging.like_notifications_topic_arn
       COGNITO_USER_POOL_ID          = module.auth.user_pool_id
