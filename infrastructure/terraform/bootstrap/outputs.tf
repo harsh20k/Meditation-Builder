@@ -7,3 +7,8 @@ output "lock_table_name" {
   description = "DynamoDB table for Terraform state locking."
   value       = aws_dynamodb_table.terraform_locks.name
 }
+
+output "github_actions_role_arn" {
+  description = "IAM role ARN for GitHub Actions OIDC. Set as repository secret AWS_ROLE_ARN."
+  value       = aws_iam_role.github_actions.arn
+}

@@ -212,3 +212,10 @@ Append-only log of architectural trade-offs. See `.cursor/rules/adr.mdc` for for
 **Reason:** The original dashboard only showed aggregate Lambda errors/duration, DDB throttles, and API 5xx — insufficient for debugging tag generation lag, search indexing, or cache pressure.
 **Trade-off:** Tall dashboard (~86 rows); Bedrock metrics require model-dimension alignment; Typesense has EC2-level metrics only (no app-level Typesense stats without a CW agent).
 **Status:** Accepted
+
+## ADR-026 — GitHub Actions OIDC role in Terraform bootstrap
+**Date:** 2026-06-30
+**Decision:** Manage the GitHub OIDC provider and `github-actions-meditation-builder` IAM role in `infrastructure/terraform/bootstrap/github_oidc.tf`, outputting `github_actions_role_arn` for the `AWS_ROLE_ARN` secret.
+**Reason:** CI failed with missing OIDC trust; codifying the role alongside the state bucket keeps one-time account setup in a single `terraform apply`.
+**Trade-off:** Role starts with `AdministratorAccess`; must be scoped before production hardening.
+**Status:** Accepted
