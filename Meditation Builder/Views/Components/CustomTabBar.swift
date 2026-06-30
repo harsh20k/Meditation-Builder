@@ -5,11 +5,14 @@
 
 import SwiftUI
 
-enum TabSelection: Int, CaseIterable {
-	case library = 0
-	case community = 1
-	case timer = 2
-	case settings = 3
+enum TabSelection: Hashable {
+	case library
+	case community
+	case timer
+	case settings
+	case create
+
+	static let mainTabs: [TabSelection] = [.library, .community, .timer, .settings]
 
 	var icon: String {
 		switch self {
@@ -17,6 +20,7 @@ enum TabSelection: Int, CaseIterable {
 		case .community: return "person.3.fill"
 		case .timer:     return "timer"
 		case .settings:  return "gearshape"
+		case .create:    return "plus"
 		}
 	}
 
@@ -26,6 +30,7 @@ enum TabSelection: Int, CaseIterable {
 		case .community: return String(localized: "tab.community")
 		case .timer:     return String(localized: "tab.timer")
 		case .settings:  return String(localized: "tab.settings")
+		case .create:    return String(localized: "tab.create")
 		}
 	}
 
@@ -35,6 +40,7 @@ enum TabSelection: Int, CaseIterable {
 		case .community: return LocalizedStringKey("tab.community")
 		case .timer:     return LocalizedStringKey("tab.timer")
 		case .settings:  return LocalizedStringKey("tab.settings")
+		case .create:    return LocalizedStringKey("tab.create")
 		}
 	}
 }
@@ -42,42 +48,45 @@ enum TabSelection: Int, CaseIterable {
 struct CustomTabBar: View {
 	@Binding var selectedTab: TabSelection
 	@State private var pressedTab: TabSelection?
+	@State private var tabTapHapticTrigger = 0
 	@Namespace private var selectionNamespace
 	var onTabTap: ((TabSelection) -> Void)?
+	var onCreateTap: (() -> Void)?
 
 	private let barShape = RoundedRectangle(cornerRadius: 28, style: .continuous)
 
 	var body: some View {
-		Group {
-			if #available(iOS 26.0, *) {
-				liquidGlassBar
-			} else {
-				legacyGlassBar
+		HStack(alignment: .center, spacing: 10) {
+			mainTabSection
+
+			if onCreateTap != nil {
+				createAccessoryButton
 			}
 		}
 		.padding(.horizontal, 20)
 		.padding(.top, 4)
 		.padding(.bottom, 8)
-		.sensoryFeedback(.selection, trigger: selectedTab)
+		.sensoryFeedback(.selection, trigger: tabTapHapticTrigger)
 	}
 
-	@available(iOS 26.0, *)
-	private var liquidGlassBar: some View {
-		GlassEffectContainer(spacing: 4) {
+	@ViewBuilder
+	private var mainTabSection: some View {
+		if #available(iOS 26.0, *) {
+			GlassEffectContainer(spacing: 4) {
+				tabRow
+					.padding(6)
+			}
+			.glassEffect(.clear, in: barShape)
+		} else {
 			tabRow
 				.padding(6)
+				.liquidGlassFallback(in: barShape)
 		}
-		.glassEffect(.clear, in: barShape)
-	}
-
-	private var legacyGlassBar: some View {
-		tabRow
-			.padding(6)
 	}
 
 	private var tabRow: some View {
 		HStack(spacing: 4) {
-			ForEach(TabSelection.allCases, id: \.self) { tab in
+			ForEach(TabSelection.mainTabs, id: \.self) { tab in
 				tabButton(for: tab)
 			}
 		}
@@ -85,6 +94,7 @@ struct CustomTabBar: View {
 
 	private func tabButton(for tab: TabSelection) -> some View {
 		Button {
+			tabTapHapticTrigger += 1
 			onTabTap?(tab)
 		} label: {
 			VStack(spacing: 3) {
@@ -136,6 +146,31 @@ struct CustomTabBar: View {
 		} else {
 			Capsule()
 				.fill(Color.white.opacity(0.14))
+		}
+	}
+
+	@ViewBuilder
+	private var createAccessoryButton: some View {
+		if #available(iOS 26.0, *) {
+			Button {
+				tabTapHapticTrigger += 1
+				onCreateTap?()
+			} label: {
+				Image(systemName: "plus")
+					.font(.system(size: 17, weight: .semibold))
+					.frame(width: 52, height: 52)
+			}
+			.buttonStyle(.glassProminent)
+			.buttonBorderShape(.circle)
+			.controlSize(.small)
+			.tint(AppTheme.accentColor)
+			.accessibilityLabel("Create new ritual")
+		} else {
+			AppTheme.floatingActionButton(icon: "plus") {
+				tabTapHapticTrigger += 1
+				onCreateTap?()
+			}
+			.accessibilityLabel("Create new ritual")
 		}
 	}
 }

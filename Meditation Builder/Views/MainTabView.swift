@@ -16,6 +16,7 @@ enum RoutineBuilderDestination: Hashable {
 
 struct MainTabView: View {
     @State private var selectedTab: TabSelection = .library
+    @State private var tabHapticTrigger = 0
     @Environment(AuthManager.self) private var authManager
     @Environment(\.modelContext) private var modelContext
     @State private var libraryPath = NavigationPath()
@@ -60,6 +61,11 @@ struct MainTabView: View {
             logger.info("MainTabView appeared", category: "Navigation")
         }
         .onChange(of: selectedTab) { _, newTab in
+            if newTab == .create {
+                openCreateRitual()
+                return
+            }
+            tabHapticTrigger += 1
             logger.info("Tab changed to: \(newTab)", category: "Navigation")
         }
     }
@@ -82,7 +88,7 @@ struct MainTabView: View {
             }
 
             Tab(value: TabSelection.timer) {
-                RoutinePlayerView(modelContext: modelContext)
+                RoutinePlayerView(modelContext: modelContext, showsCloseButton: false)
             } label: {
                 Label(LocalizedStringKey("tab.timer"), systemImage: "timer")
             }
@@ -92,17 +98,16 @@ struct MainTabView: View {
             } label: {
                 Label(LocalizedStringKey("tab.settings"), systemImage: "gearshape")
             }
-        }
-        .tabBarMinimizeBehavior(.onScrollDown)
-        .tabViewBottomAccessory {
-            if selectedTab == .library && libraryPath.isEmpty {
-                HStack {
-                    Spacer()
-                    createRitualButton
-                }
-                .padding(.horizontal, AppTheme.Spacing.extraLarge)
+
+            Tab(value: TabSelection.create, role: .search) {
+                Color.clear
+                    .accessibilityHidden(true)
+            } label: {
+                Label(LocalizedStringKey("tab.create"), systemImage: "plus")
             }
         }
+        .tabBarMinimizeBehavior(.onScrollDown)
+        .sensoryFeedback(.selection, trigger: tabHapticTrigger)
     }
 
     // MARK: - Legacy Custom Tab Bar (iOS 18)
@@ -116,7 +121,7 @@ struct MainTabView: View {
                 case .community:
                     CommunityHomeView()
                 case .timer:
-                    RoutinePlayerView(modelContext: modelContext)
+                    RoutinePlayerView(modelContext: modelContext, showsCloseButton: false)
                 case .settings:
                     SettingsView()
                 }
@@ -135,15 +140,9 @@ struct MainTabView: View {
                 selectedTab: $selectedTab,
                 onTabTap: { tappedTab in
                     handleLegacyTabTap(tappedTab)
-                }
+                },
+                onCreateTap: openCreateRitual
             )
-        }
-        .overlay(alignment: .bottomTrailing) {
-            if selectedTab == .library && legacyNavigationPath.isEmpty {
-                createRitualButton
-                    .padding(.trailing, AppTheme.Spacing.extraLarge)
-                    .padding(.bottom, AppTheme.Spacing.fabTabBarClearance)
-            }
         }
     }
 
@@ -191,18 +190,14 @@ struct MainTabView: View {
         }
     }
 
-    private var createRitualButton: some View {
-        AppTheme.floatingActionButton(
-            icon: "plus",
-            action: {
-                if #available(iOS 26.0, *) {
-                    libraryPath.append(RoutineBuilderDestination.create)
-                } else {
-                    legacyNavigationPath.append(RoutineBuilderDestination.create)
-                }
-            }
-        )
-        .accessibilityLabel("Create new ritual")
+    private func openCreateRitual() {
+        tabHapticTrigger += 1
+        selectedTab = .library
+        if #available(iOS 26.0, *) {
+            libraryPath.append(RoutineBuilderDestination.create)
+        } else {
+            legacyNavigationPath.append(RoutineBuilderDestination.create)
+        }
     }
 
     private func handleLegacyTabTap(_ tappedTab: TabSelection) {

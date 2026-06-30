@@ -15,6 +15,7 @@
 "tab.tools" = "Tools";
 "tab.history" = "History";
 "tab.settings" = "Settings";
+"tab.create" = "Create";
 "History" = "History";
 
 // MARK: - Tab Descriptions
@@ -278,6 +279,7 @@
 "community.publish.select.empty" = "Create a ritual in your library first.";
 "community.publish.description.placeholder" = "Optional description for others…";
 "community.publish.publishing" = "Publishing…";
+"community.publish.uploadingAudio" = "Uploading audio…";
 "community.publish.tagging" = "Generating tags…";
 "community.publish.tags.pending" = "AI tags are being generated…";
 "community.publish.tags.title" = "Suggested tags";

@@ -34,22 +34,24 @@ struct PlayerLayout<Content: View>: View {
 // MARK: - Player Header View
 struct PlayerHeaderView: View {
     let title: String
+    var showsCloseButton: Bool = true
     let onClose: () -> Void
     
     var body: some View {
         GeometryReader { geometry in
             ZStack {
-                // Close button - positioned at top right
-                Button(action: onClose) {
-                    Image(systemName: "xmark")
-                        .foregroundColor(AppTheme.offWhiteText)
-                        .font(.system(size: 20, weight: .medium))
-                        .frame(width: 44, height: 44)
-                        .background(Color.black.opacity(0.3))
-                        .clipShape(Circle())
+                if showsCloseButton {
+                    Button(action: onClose) {
+                        Image(systemName: "xmark")
+                            .foregroundColor(AppTheme.offWhiteText)
+                            .font(.system(size: 20, weight: .medium))
+                            .frame(width: 44, height: 44)
+                            .background(Color.black.opacity(0.3))
+                            .clipShape(Circle())
+                    }
+                    .accessibilityLabel("Close session")
+                    .position(x: geometry.size.width - 44, y: geometry.safeAreaInsets.top + 60)
                 }
-                .accessibilityLabel("Close session")
-                .position(x: geometry.size.width - 44, y: geometry.safeAreaInsets.top + 60)
                 
                 // Title - positioned at top center
                 Text(title)
@@ -283,6 +285,7 @@ struct BreathingLightView: View {
 
 struct PreSessionState: View {
     @Bindable var viewModel: RoutinePlayerViewModel
+    let showsCloseButton: Bool
     let onStartSession: () -> Void
     let onClose: () -> Void
     
@@ -316,6 +319,7 @@ struct PreSessionState: View {
                 // Player Header
                 PlayerHeaderView(
                     title: viewModel.routineData.name,
+                    showsCloseButton: showsCloseButton,
                     onClose: onClose
                 )
                 
@@ -353,6 +357,7 @@ struct PreSessionState: View {
 
 struct ActiveSessionState: View {
     @Bindable var viewModel: RoutinePlayerViewModel
+    let showsCloseButton: Bool
     let onClose: () -> Void
     
     var body: some View {
@@ -367,6 +372,7 @@ struct ActiveSessionState: View {
                 // Player Header
                 PlayerHeaderView(
                     title: viewModel.routineData.name,
+                    showsCloseButton: showsCloseButton,
                     onClose: onClose
                 )
                 
@@ -399,8 +405,10 @@ struct RoutinePlayerView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var viewModel: RoutinePlayerViewModel
     @State private var sessionStarted = false
+    private let showsCloseButton: Bool
     
-    init(routine: SavedRoutine? = nil, modelContext: ModelContext) {
+    init(routine: SavedRoutine? = nil, modelContext: ModelContext, showsCloseButton: Bool = true) {
+        self.showsCloseButton = showsCloseButton
         _viewModel = State(initialValue: RoutinePlayerViewModel(routine: routine, modelContext: modelContext))
     }
     
@@ -410,6 +418,7 @@ struct RoutinePlayerView: View {
                 if !sessionStarted {
                     PreSessionState(
                         viewModel: viewModel,
+                        showsCloseButton: showsCloseButton,
                         onStartSession: {
                             sessionStarted = true
                             viewModel.startTimer()
@@ -421,6 +430,7 @@ struct RoutinePlayerView: View {
                 } else {
                     ActiveSessionState(
                         viewModel: viewModel,
+                        showsCloseButton: showsCloseButton,
                         onClose: {
                             Task {
                                 await viewModel.endSession(saveProgress: false)
